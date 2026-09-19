@@ -1,21 +1,22 @@
 {
   "version": 2,
-  "dgSpecHash": "xtQmIJCWC9g=",
+  "dgSpecHash": "jCt74rC7+mk=",
   "success": true,
-  "projectFilePath": "C:\\Users\\afern\\source\\repos\\iet-bi-portal-backend\\iet-bi-portal-backend.csproj",
+  "projectFilePath": "/home/jeferson/Documentos/GitHub/iet-bi-portal-backend/iet-bi-portal-backend.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\afern\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.9\\microsoft.aspnetcore.openapi.10.0.9.nupkg.sha512",
-    "C:\\Users\\afern\\.nuget\\packages\\microsoft.openapi\\2.0.0\\microsoft.openapi.2.0.0.nupkg.sha512",
-    "C:\\Users\\afern\\.nuget\\packages\\microsoft.visualstudio.azure.containers.tools.targets\\1.23.0\\microsoft.visualstudio.azure.containers.tools.targets.1.23.0.nupkg.sha512"
+    "/home/jeferson/.nuget/packages/microsoft.aspnetcore.openapi/10.0.9/microsoft.aspnetcore.openapi.10.0.9.nupkg.sha512",
+    "/home/jeferson/.nuget/packages/microsoft.openapi/2.0.0/microsoft.openapi.2.0.0.nupkg.sha512",
+    "/home/jeferson/.nuget/packages/microsoft.visualstudio.azure.containers.tools.targets/1.23.0/microsoft.visualstudio.azure.containers.tools.targets.1.23.0.nupkg.sha512",
+    "/home/jeferson/.nuget/packages/npgsql/10.0.0/npgsql.10.0.0.nupkg.sha512"
   ],
   "logs": [
     {
       "code": "NU1903",
       "level": "Warning",
-      "message": "Package 'Microsoft.OpenApi' 2.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
-      "projectPath": "C:\\Users\\afern\\source\\repos\\iet-bi-portal-backend\\iet-bi-portal-backend.csproj",
+      "message": "El paquete \"Microsoft.OpenApi\" 2.0.0 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
+      "projectPath": "/home/jeferson/Documentos/GitHub/iet-bi-portal-backend/iet-bi-portal-backend.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\afern\\source\\repos\\iet-bi-portal-backend\\iet-bi-portal-backend.csproj",
+      "filePath": "/home/jeferson/Documentos/GitHub/iet-bi-portal-backend/iet-bi-portal-backend.csproj",
       "libraryId": "Microsoft.OpenApi",
       "targetGraphs": [
         "net10.0"

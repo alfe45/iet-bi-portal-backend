@@ -1,0 +1,13 @@
+# Archivos locales de asistentes de IA
+.agents/
+.codex/
+.claude/
+.cursor/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+SKILL.md
+skills-lock.json
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
