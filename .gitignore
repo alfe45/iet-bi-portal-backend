@@ -1,3 +1,17 @@
+# Salidas de compilación y publicación de .NET
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+
+# Estado local del IDE y preferencias de usuario
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
 # Archivos locales de asistentes de IA
 .agents/
 .codex/
