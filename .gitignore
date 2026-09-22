@@ -1,6 +1,6 @@
 # Salidas de compilación y publicación de .NET
-[Bb]in/
-[Oo]bj/
+bin/
+obj/
 artifacts/
 TestResults/
 
