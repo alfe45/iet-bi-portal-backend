@@ -25,3 +25,11 @@ skills-lock.json
 .github/copilot-instructions.md
 .github/instructions/
 .github/prompts/
+
+#environment files
+.env
+.env.*
+!.env.example
+
+# borradores
+Resources/drafts/
