@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Npgsql;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -95,6 +96,32 @@ public static class AuthModule
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SecretKey)),
                     ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
                     RoleClaimType = AuthClaims.Role
+                };
+                // Revocación server-side: rechaza tokens emitidos antes de un logout-all,
+                // cambio de contraseña o cambio de roles, aunque el JWT todavía no expiró.
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var subClaim = context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                        var iatClaim = context.Principal?.FindFirst(JwtRegisteredClaimNames.Iat)?.Value;
+
+                        if (!Guid.TryParse(subClaim, out var userId) || !long.TryParse(iatClaim, out var iatUnix))
+                        {
+                            context.Fail("Token inválido.");
+                            return;
+                        }
+
+                        var repo = context.HttpContext.RequestServices.GetRequiredService<AuthRepository>();
+                        var invalidatedSince = await repo.GetTokenInvalidationWatermarkAsync(userId);
+
+                        if (invalidatedSince is { } watermark)
+                        {
+                            var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iatUnix).UtcDateTime;
+                            if (issuedAt < watermark)
+                                context.Fail("La sesión fue cerrada. Inicia sesión de nuevo.");
+                        }
+                    }
                 };
             });
 

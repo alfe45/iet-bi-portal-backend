@@ -17,6 +17,21 @@ CREATE TYPE api.rotate_session_result AS (
 );
 
 -- ============================================================
+-- FUNCIONES AUXILIARES
+-- ============================================================
+CREATE OR REPLACE FUNCTION auth.fn_lanzar_excepcion(
+    p_codigo TEXT,
+    p_mensaje TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RAISE EXCEPTION USING ERRCODE = p_codigo, MESSAGE = p_mensaje;
+END;
+$$;
+
+-- ============================================================
 -- TABLAS
 -- ============================================================
 
@@ -32,6 +47,7 @@ CREATE TABLE api.usuarios (
     password_cambiada_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    tokens_invalidados_desde TIMESTAMPTZ NULL,
     CONSTRAINT ck_usuarios_email_lower CHECK (email = lower(email)),
     CONSTRAINT uq_usuarios_email UNIQUE (email),
     CONSTRAINT ck_usuarios_email_length CHECK (length(email) BETWEEN 3 AND 254),
@@ -78,7 +94,6 @@ CREATE TABLE IF NOT EXISTS api.bootstrap_admin (
 -- ============================================================
 -- FUNCIONES DE BOOTSTRAP
 -- ============================================================
-
 CREATE OR REPLACE FUNCTION auth.fn_crear_primer_admin(
     p_email TEXT,
     p_password_hash TEXT
@@ -89,69 +104,26 @@ AS $$
 DECLARE
     v_id_usuario UUID;
 BEGIN
-
-    -- Evita que dos procesos intenten crear el primer ADMIN simultáneamente.
     PERFORM pg_advisory_xact_lock(hashtextextended('api.bootstrap_admin', 0));
 
-    -- Verificar que todavía no exista el bootstrap
-    IF EXISTS (
-        SELECT 1
-        FROM api.bootstrap_admin
-        WHERE id = 1
-    ) THEN
-        RAISE EXCEPTION
-            'El administrador inicial ya fue creado.';
+    IF EXISTS (SELECT 1 FROM api.bootstrap_admin WHERE id = 1) THEN
+        PERFORM auth.fn_lanzar_excepcion('AP004', 'El administrador inicial ya fue creado.');
     END IF;
 
-    -- Validar que el email no exista
-    IF EXISTS (
-        SELECT 1
-        FROM api.usuarios
-        WHERE email = lower(trim(p_email))
-    ) THEN
-        RAISE EXCEPTION
-            'El correo % ya existe.',
-            lower(trim(p_email));
+    IF EXISTS (SELECT 1 FROM api.usuarios WHERE email = lower(trim(p_email))) THEN
+        PERFORM auth.fn_lanzar_excepcion('AP005', 'El correo ya está en uso.');
     END IF;
 
-    -- Crear usuario
-    INSERT INTO api.usuarios (
-        email,
-        password_hash,
-        activo
-    )
-    VALUES (
-        lower(trim(p_email)),
-        p_password_hash,
-        TRUE
-    )
-    RETURNING id_usuario
-    INTO v_id_usuario;
+    INSERT INTO api.usuarios (email, password_hash, activo)
+    VALUES (lower(trim(p_email)), p_password_hash, TRUE)
+    RETURNING id_usuario INTO v_id_usuario;
 
-    -- Asignar ADMIN
-    INSERT INTO api.usuario_roles (
-        id_usuario,
-        rol,
-        asignado_por
-    )
-    VALUES (
-        v_id_usuario,
-        'ADMIN',
-        NULL
-    );
+    INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
+    VALUES (v_id_usuario, 'ADMIN', NULL);
 
-    -- Registrar que el bootstrap ya fue ejecutado
-    INSERT INTO api.bootstrap_admin (
-        id,
-        id_usuario
-    )
-    VALUES (
-        1,
-        v_id_usuario
-    );
+    INSERT INTO api.bootstrap_admin (id, id_usuario) VALUES (1, v_id_usuario);
 
     RETURN v_id_usuario;
-
 END;
 $$;
 
@@ -247,7 +219,12 @@ BEGIN
     END IF;
 
     IF v_sesion.rotado_en IS NOT NULL THEN
+        -- Reuso de un refresh token ya rotado = posible robo. No alcanza con
+        -- borrar las sesiones (refresh tokens): hay que invalidar también los
+        -- access tokens (JWT) ya emitidos, que si no siguen siendo válidos
+        -- hasta su expiración natural pese a que el robo ya fue detectado.
         DELETE FROM api.sesiones WHERE id_usuario = v_sesion.id_usuario;
+        UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = v_sesion.id_usuario;
         RETURN QUERY SELECT 'reused'::TEXT, NULL::UUID, NULL::TEXT, NULL::TEXT[];
         RETURN;
     END IF;
@@ -294,11 +271,11 @@ BEGIN
     ) INTO v_es_admin;
 
     IF NOT v_es_admin THEN
-        RAISE EXCEPTION 'El usuario no tiene permisos para asignar roles.';
+        PERFORM auth.fn_lanzar_excepcion('AP001', 'No tienes permisos para asignar roles.');
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM api.usuarios WHERE id_usuario = p_id_usuario_objetivo) THEN
-        RAISE EXCEPTION 'El usuario objetivo no existe.';
+        PERFORM auth.fn_lanzar_excepcion('AP002', 'El usuario objetivo no existe.');
     END IF;
 
     INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
@@ -309,7 +286,9 @@ BEGIN
         RETURN 'SIN_CAMBIOS';
     END IF;
 
+    -- Cierra sesiones e invalida access tokens ya emitidos (ver sección de revocación)
     DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario_objetivo;
+    UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = p_id_usuario_objetivo;
 
     RETURN 'OK';
 END;
@@ -327,6 +306,7 @@ DECLARE
     v_es_admin BOOLEAN;
     v_cantidad_roles INTEGER;
 BEGIN
+    
     SELECT EXISTS (
         SELECT 1 FROM api.usuarios u
         JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
@@ -334,18 +314,11 @@ BEGIN
     ) INTO v_es_admin;
 
     IF NOT v_es_admin THEN
-        RAISE EXCEPTION 'El usuario no tiene permisos para revocar roles.';
+        PERFORM auth.fn_lanzar_excepcion('AP001', 'No tienes permisos para revocar roles.');
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM api.usuarios WHERE id_usuario = p_id_usuario_objetivo) THEN
-        RAISE EXCEPTION 'El usuario objetivo no existe.';
-    END IF;
-
-    SELECT COUNT(*) INTO v_cantidad_roles
-    FROM api.usuario_roles WHERE id_usuario = p_id_usuario_objetivo;
-
-    IF v_cantidad_roles <= 1 THEN
-        RAISE EXCEPTION 'No se puede quitar el único rol que tiene el usuario.';
+        PERFORM auth.fn_lanzar_excepcion('AP002', 'El usuario objetivo no existe.');
     END IF;
 
     DELETE FROM api.usuario_roles
@@ -355,7 +328,19 @@ BEGIN
         RETURN 'SIN_CAMBIOS';
     END IF;
 
+    IF p_rol = 'PROFESOR' THEN
+        PERFORM auth.fn_lanzar_excepcion('AP006', 'No se puede quitar el rol de PROFESOR.');
+    END IF;
+
+    SELECT COUNT(*) INTO v_cantidad_roles
+    FROM api.usuario_roles WHERE id_usuario = p_id_usuario_objetivo;
+
+    IF v_cantidad_roles = 0 THEN
+        PERFORM auth.fn_lanzar_excepcion('AP003', 'No se puede quitar el único rol que tiene el usuario.');
+    END IF;
+
     DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario_objetivo;
+    UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = p_id_usuario_objetivo;
 
     RETURN 'OK';
 END;
@@ -442,12 +427,11 @@ END;
 $$;
 
 -- Logout global (todas las sesiones)
-CREATE OR REPLACE PROCEDURE auth.sp_logout_all(
-    p_id_usuario UUID
-)
+CREATE OR REPLACE PROCEDURE auth.sp_logout_all(p_id_usuario UUID)
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = p_id_usuario;
     DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario;
 END;
 $$;
@@ -462,16 +446,15 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     UPDATE api.usuarios
-    SET 
-        password_hash = p_new_password_hash,
+    SET password_hash = p_new_password_hash,
         password_cambiada_en = NOW(),
         intentos_fallidos_login = 0,
         bloqueado_hasta = NULL,
+        tokens_invalidados_desde = NOW(),
         actualizado_en = NOW()
     WHERE id_usuario = p_id_usuario;
 
     DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario;
-
 END;
 $$;
 
@@ -491,10 +474,8 @@ SELECT * FROM api.bootstrap_admin;
 -- sesiones
 SELECT * FROM api.sesiones;
 
--- usarios y sus roles
+-- usuarios y sus roles
 SELECT u.id_usuario, u.email, u.activo, u.bloqueado_hasta, array_agg(ur.rol) AS roles
 FROM api.usuarios u
 LEFT JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
 GROUP BY u.id_usuario, u.email, u.activo, u.bloqueado_hasta;
-
-

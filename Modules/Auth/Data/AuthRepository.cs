@@ -103,6 +103,16 @@ public class AuthRepository
     /// <summary> Elimina las sesiones expiradas. </summary>
     public Task PurgeExpiredSessionsAsync() => CallAsync("CALL auth.sp_purgar_sesiones_expiradas()");
 
+    /// <summary>Fecha desde la cual los tokens emitidos antes deben considerarse revocados (logout-all, cambio de contraseña o cambio de roles). Null si nunca se invalidó nada.</summary>
+    public async Task<DateTime?> GetTokenInvalidationWatermarkAsync(Guid userId)
+    {
+        await using var cmd = _db.CreateCommand(
+            "SELECT tokens_invalidados_desde FROM api.usuarios WHERE id_usuario = $1");
+        cmd.Parameters.AddWithValue(userId);
+        var result = await cmd.ExecuteScalarAsync();
+        return result is DateTime dt ? dt : null;
+    }
+
     /// <summary> Llama a una función de rol y devuelve su resultado. </summary>
     private async Task<string> CallRoleFunctionAsync(string function, Guid actorUserId, Guid targetUserId, string role)
     {
