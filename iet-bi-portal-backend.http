@@ -1,6 +1,2 @@
 @iet_bi_portal_backend_HostAddress = http://localhost:5149
-
-GET {{iet_bi_portal_backend_HostAddress}}/weatherforecast/
-Accept: application/json
-
 ###

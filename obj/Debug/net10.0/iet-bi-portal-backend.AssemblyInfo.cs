@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("iet-bi-portal-backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1cdaf9d6d0cbcd07e3c0d2e2fafca0752158be00")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a46bbcd5ae97e2d73fcfb5bf24158223220c930a")]
 [assembly: System.Reflection.AssemblyProductAttribute("iet-bi-portal-backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("iet-bi-portal-backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
