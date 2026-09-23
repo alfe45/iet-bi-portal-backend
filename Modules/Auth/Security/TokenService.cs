@@ -36,17 +36,15 @@ public class TokenService : ITokenService
     /// <summary> Crea un access token JWT para un usuario autenticado. </summary>
     public AccessToken CreateAccessToken(Guid userId, string email, IEnumerable<string> roles)
     {
-        var expires = DateTime.UtcNow.AddMinutes(_jwt.AccessTokenMinutes);
+        var now = DateTime.UtcNow;
+        var expires = now.AddMinutes(_jwt.AccessTokenMinutes);
 
         var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-        // Un claim "role" por cada rol. [Authorize(Roles = "A,B")] valida
-        // con OR contra todos los claims que compartan RoleClaimType, así que
-        // esto funciona con [Authorize] sin ningún cambio adicional.
+    {
+        new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        new(JwtRegisteredClaimNames.Email, email),
+        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
         claims.AddRange(roles.Select(r => new Claim(AuthClaims.Role, r)));
 
         var descriptor = new SecurityTokenDescriptor
@@ -54,6 +52,7 @@ public class TokenService : ITokenService
             Subject = new ClaimsIdentity(claims),
             Issuer = _jwt.Issuer,
             Audience = _jwt.Audience,
+            IssuedAt = now, // <- explícito, lo usa la revocación
             Expires = expires,
             SigningCredentials = _credentials
         };

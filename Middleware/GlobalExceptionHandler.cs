@@ -1,56 +1,41 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Npgsql;
 
+/// <summary>
+/// Único punto de manejo de excepciones no capturadas. Respuesta siempre con
+/// forma { codigo, mensaje }. Solo se exponen al cliente los códigos que están
+/// catalogados en ApiErrorCatalog, con un mensaje fijo y seguro; cualquier otro
+/// error (de Postgres o no) responde 500 genérico y nunca filtra texto interno
+/// del motor (message/detail de Postgres pueden contener datos del usuario).
+/// </summary>
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext http, Exception ex, CancellationToken ct)
     {
-        int status = 400;
-        string mensaje = "Ocurrió un error inesperado.";
-        string? codigo = null;
-        object? datos = null;
-        string? sugerencia = null;
-
-        switch (ex)
+        var (status, codigo, mensaje) = ex switch
         {
-            case PostgresException pg:
-                status = 422;
-                mensaje = pg.MessageText;
-                codigo = pg.SqlState;
-                datos = ParsearJson(pg.Detail);
-                sugerencia = string.IsNullOrEmpty(pg.Hint) ? null : pg.Hint;
-                logger.LogWarning("[{Codigo}] {Mensaje}", codigo, mensaje);
-                break;
+            PostgresException pg when ApiErrorCatalog.Errors.TryGetValue(pg.SqlState ?? "", out var info)
+                => (info.Status, pg.SqlState!, info.Mensaje),
 
-            case UnauthorizedAccessException:
-                status = 401;
-                mensaje = "No autorizado.";
-                codigo = "UNAUTHORIZED";
-                datos = null;
-                sugerencia = null;
-                logger.LogWarning("[{Codigo}] {Mensaje}", codigo, mensaje);
-                break;
+            PostgresException
+                => (StatusCodes.Status500InternalServerError, "DB_ERROR", "Ocurrió un error al procesar la solicitud."),
 
-            default:
-                status = 500;
-                mensaje = "Ocurrió un error inesperado.";
-                datos = ex.Message;
+            UnauthorizedAccessException
+                => (StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "No autorizado."),
 
-                logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}",
-                    http.Request.Method, http.Request.Path);
-                break;
-        }
+            _ => (StatusCodes.Status500InternalServerError, "INTERNAL_ERROR", "Ocurrió un error inesperado.")
+        };
+
+        if (ex is PostgresException pg2 && !ApiErrorCatalog.Errors.ContainsKey(pg2.SqlState ?? ""))
+            logger.LogError(ex, "PostgresException no catalogada [{SqlState}] en {Metodo} {Ruta}: {Mensaje}",
+                pg2.SqlState, http.Request.Method, http.Request.Path, pg2.MessageText);
+        else if (status >= 500)
+            logger.LogError(ex, "Error no controlado en {Metodo} {Ruta}", http.Request.Method, http.Request.Path);
+        else
+            logger.LogWarning("[{Codigo}] {Mensaje} en {Metodo} {Ruta}", codigo, mensaje, http.Request.Method, http.Request.Path);
 
         http.Response.StatusCode = status;
-        await http.Response.WriteAsJsonAsync(new { mensaje, codigo, datos, sugerencia }, ct);
+        await http.Response.WriteAsJsonAsync(new { codigo, mensaje }, ct);
         return true;
-    }
-
-    private static object? ParsearJson(string? detail)
-    {
-        if (string.IsNullOrWhiteSpace(detail)) return null;
-        try { return JsonDocument.Parse(detail).RootElement.Clone(); }
-        catch (JsonException) { return detail; }
     }
 }
