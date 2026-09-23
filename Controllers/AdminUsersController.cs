@@ -1,9 +1,8 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Services;
-using iet_bi_portal_backend.Modules.Auth.Models;
 
 namespace iet_bi_portal_backend.Modules.Auth.Controllers;
 
@@ -16,18 +15,18 @@ public class AdminUsersController : ControllerBase
 
     public AdminUsersController(AuthService auth) => _auth = auth;
 
-    /// <summary>Otorga un rol adicional a un usuario (los roles que ya tenía se conservan).</summary>
+    /// <summary>Otorga un rol adicional. Los roles que ya tenía se conservan.</summary>
     [HttpPost("{id:guid}/roles")]
     public async Task<IActionResult> AssignRole(Guid id, RoleRequest request)
     {
         var actorId = User.GetUserId();
         if (actorId is null) return Unauthorized();
 
-        var result = await _auth.AssignRoleAsync(actorId.Value, id, request.Role);
-        return MapResult(result);
+        var status = await _auth.AssignRoleAsync(actorId.Value, id, request.Role);
+        return status == "OK" ? StatusCode(StatusCodes.Status201Created) : NoContent();
     }
 
-    /// <summary>Quita un rol de un usuario. Falla si sería el último rol que le queda.</summary>
+    /// <summary>Quita un rol. Falla (AP003) si sería el último rol que le queda al usuario.</summary>
     [HttpDelete("{id:guid}/roles/{role}")]
     public async Task<IActionResult> RevokeRole(Guid id, string role)
     {
@@ -35,29 +34,16 @@ public class AdminUsersController : ControllerBase
         if (actorId is null) return Unauthorized();
 
         if (actorId == id)
-            return BadRequest(new { error = "No puedes modificar tus propios roles." });
+            return BadRequest(new { codigo = "SELF_ROLE_CHANGE", mensaje = "No puedes modificar tus propios roles." });
 
-        var result = await _auth.RevokeRoleAsync(actorId.Value, id, role.ToUpperInvariant());
-        return MapResult(result);
+        await _auth.RevokeRoleAsync(actorId.Value, id, role.ToUpperInvariant());
+        return NoContent();
     }
-
-    private IActionResult MapResult(ChangeRoleResult result) => result switch
-    {
-        ChangeRoleResult.Ok => NoContent(),
-        ChangeRoleResult.NoChange => NoContent(),
-        ChangeRoleResult.Forbidden => Forbid(),
-        ChangeRoleResult.NotFound => NotFound(new { error = "El usuario no existe." }),
-        ChangeRoleResult.InvalidRole => BadRequest(new { error = "Rol inválido. Valores permitidos: ADMIN, PROFESOR, GUIA, COORD_MONOGRAFIA, COORD_CAS." }),
-        ChangeRoleResult.CannotRemoveLastRole => BadRequest(new { error = "No se puede quitar el rol del usuario." }),
-        _ => StatusCode(StatusCodes.Status500InternalServerError)
-    };
 }
 
-public record RoleRequest(
-    [Required]
-    [RegularExpression(
-        "^(ADMIN|PROFESOR|GUIA|COORD_MONOGRAFIA|COORD_CAS)$",
-        ErrorMessage = "Rol inválido. Valores permitidos: ADMIN, PROFESOR, GUIA, COORD_MONOGRAFIA, COORD_CAS."
-    )]
-    string Role
-);
+public class RoleRequest
+{
+    [Required, RegularExpression("^(ADMIN|PROFESOR|GUIA|COORD_MONOGRAFIA|COORD_CAS)$",
+        ErrorMessage = "Rol inválido. Valores permitidos: ADMIN, PROFESOR, GUIA, COORD_MONOGRAFIA, COORD_CAS.")]
+    public string Role { get; set; } = string.Empty;
+}
