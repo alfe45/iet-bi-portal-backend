@@ -1,6 +1,7 @@
-namespace iet_bi_portal_backend.Modules.Auth.Settings;
+// Config/EnvConfig.cs
+namespace iet_bi_portal_backend.Config;
 
-//Lee variables de entorno requeridas (planas, no anidadas) con errores claros si faltan.
+/// <summary>Lee variables de entorno requeridas. </summary>
 public static class EnvConfig
 {
     public static string Required(IConfiguration config, string key) =>

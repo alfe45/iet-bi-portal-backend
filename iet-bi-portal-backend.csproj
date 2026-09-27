@@ -18,6 +18,8 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
+
+    <None Include="Modules/Errors/error_codes.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

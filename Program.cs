@@ -1,4 +1,8 @@
 using iet_bi_portal_backend.Modules.Auth;
+using iet_bi_portal_backend.Modules.Logs;
+using iet_bi_portal_backend.Modules.Errors;
+using iet_bi_portal_backend.Modules.Users;
+using iet_bi_portal_backend.Config;
 using DotNetEnv;
 
 Env.Load();
@@ -6,9 +10,11 @@ Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddAuthModule(builder.Configuration);
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
+builder.Services.AddLogsModule();
+builder.Services.AddErrorsModule();
+builder.Services.AddUsersModule();
 
 var app = builder.Build();
 

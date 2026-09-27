@@ -4,7 +4,8 @@ namespace iet_bi_portal_backend.Modules.Auth.Security;
 public static class Roles
 {
     public const string Admin  = "ADMIN";
-    public const string Profesor = "PROFESOR";
+    public const string ProfesorRegular = "PROFESOR_REGULAR";
+    public const string ProfesorCas = "PROFESOR_CAS";
     public const string Guia = "GUIA";
     public const string CordinadorMonografia = "COORD_MONOGRAFIA";
     public const string CordinadorCAS = "COORD_CAS";

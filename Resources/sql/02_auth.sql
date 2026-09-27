@@ -1,19 +1,33 @@
-CREATE TYPE api.roles AS ENUM ('ADMIN','PROFESOR','GUIA','COORD_MONOGRAFIA','COORD_CAS');
+SET search_path = academico, api, auth, public;
+-- ============================================================
+-- ENUMS
+-- ============================================================
+CREATE TYPE api.roles AS ENUM (
+    'ADMIN',
+    'PROFESOR_REGULAR',
+    'PROFESOR_CAS',
+    'GUIA',
+    'COORD_MONOGRAFIA',
+    'COORD_CAS'
+);
 
+-- ============================================================
+-- PUBLIC TYPES
+-- ============================================================
 CREATE TYPE api.usuario AS (
     id_usuario UUID,
-    email TEXT,
+    email CITEXT,
     password_hash TEXT,
     activo BOOLEAN,
     bloqueado_hasta TIMESTAMPTZ,
-    roles TEXT[]
+    roles api.roles[]
 );
 
 CREATE TYPE api.rotate_session_result AS (
     out_status TEXT,
     out_user_id UUID,
-    out_email TEXT, 
-    out_roles TEXT[]
+    out_email CITEXT, 
+    out_roles api.roles[]
 );
 
 -- ============================================================
@@ -34,11 +48,10 @@ $$;
 -- ============================================================
 -- TABLAS
 -- ============================================================
-
 -- USUARIOS
 CREATE TABLE api.usuarios (
     id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT NOT NULL,
+    email CITEXT NOT NULL,
     password_hash TEXT NOT NULL,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     intentos_fallidos_login INTEGER NOT NULL DEFAULT 0,
@@ -48,7 +61,7 @@ CREATE TABLE api.usuarios (
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     tokens_invalidados_desde TIMESTAMPTZ NULL,
-    CONSTRAINT ck_usuarios_email_lower CHECK (email = lower(email)),
+    CONSTRAINT ck_usuarios_password_hash_not_empty CHECK (trim(password_hash) <> ''),
     CONSTRAINT uq_usuarios_email UNIQUE (email),
     CONSTRAINT ck_usuarios_email_length CHECK (length(email) BETWEEN 3 AND 254),
     CONSTRAINT ck_usuarios_intentos_fallidos CHECK (intentos_fallidos_login >= 0),
@@ -84,8 +97,9 @@ CREATE UNIQUE INDEX ux_sesiones_token_hash ON api.sesiones (token_hash);
 CREATE INDEX ix_sesiones_user_id ON api.sesiones (id_usuario);
 CREATE INDEX ix_sesiones_expira_en ON api.sesiones (expira_en);
 
+-- BOOTSTRAP ADMIN
 CREATE TABLE IF NOT EXISTS api.bootstrap_admin (
-    id INTEGER PRIMARY KEY,
+    id_bootstrap INTEGER PRIMARY KEY,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     id_usuario UUID NOT NULL,
     CONSTRAINT fk_bootstrap_admin_usuario FOREIGN KEY (id_usuario) REFERENCES api.usuarios (id_usuario)
@@ -95,33 +109,43 @@ CREATE TABLE IF NOT EXISTS api.bootstrap_admin (
 -- FUNCIONES DE BOOTSTRAP
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_crear_primer_admin(
-    p_email TEXT,
+    p_email CITEXT,
     p_password_hash TEXT
 )
 RETURNS UUID
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_id_usuario UUID;
 BEGIN
     PERFORM pg_advisory_xact_lock(hashtextextended('api.bootstrap_admin', 0));
 
-    IF EXISTS (SELECT 1 FROM api.bootstrap_admin WHERE id = 1) THEN
-        PERFORM auth.fn_lanzar_excepcion('AP004', 'El administrador inicial ya fue creado.');
+    IF EXISTS (SELECT 1 FROM api.bootstrap_admin) THEN
+        PERFORM auth.fn_lanzar_excepcion('AU001', 'El administrador inicial ya fue creado.');
+    END IF;
+    
+    IF p_email IS NULL OR trim(p_email::TEXT) = '' THEN
+        PERFORM auth.fn_lanzar_excepcion('NU001', 'El correo no puede estar vacío.');
     END IF;
 
-    IF EXISTS (SELECT 1 FROM api.usuarios WHERE email = lower(trim(p_email))) THEN
-        PERFORM auth.fn_lanzar_excepcion('AP005', 'El correo ya está en uso.');
+    IF EXISTS (SELECT 1 FROM api.usuarios WHERE email = trim(p_email::TEXT)::CITEXT) THEN
+        PERFORM auth.fn_lanzar_excepcion('TA001', 'El correo ya está en uso.');
+    END IF;
+
+    IF p_password_hash IS NULL OR trim(p_password_hash) = '' THEN
+        PERFORM auth.fn_lanzar_excepcion('NU002', 'La contraseña no puede estar vacía.');
     END IF;
 
     INSERT INTO api.usuarios (email, password_hash, activo)
-    VALUES (lower(trim(p_email)), p_password_hash, TRUE)
+    VALUES (trim(p_email::TEXT)::CITEXT, p_password_hash, TRUE)
     RETURNING id_usuario INTO v_id_usuario;
 
     INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
     VALUES (v_id_usuario, 'ADMIN', NULL);
 
-    INSERT INTO api.bootstrap_admin (id, id_usuario) VALUES (1, v_id_usuario);
+    INSERT INTO api.bootstrap_admin (id_bootstrap, id_usuario)
+    VALUES (1, v_id_usuario);
 
     RETURN v_id_usuario;
 END;
@@ -130,252 +154,449 @@ $$;
 -- ============================================================
 -- FUNCIONES DE AUTENTICACIÓN
 -- ============================================================
-
 -- Registrar usuario. Devuelve el id nuevo, o NULL si el correo ya existe.
 CREATE OR REPLACE FUNCTION auth.fn_registrar_usuario(
-    p_email text, 
-    p_password_hash text)
+    p_email CITEXT,
+    p_password_hash TEXT
+)
 RETURNS UUID
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_id UUID;
 BEGIN
+    IF p_email IS NULL OR trim(p_email::TEXT) = '' THEN
+        PERFORM auth.fn_lanzar_excepcion('NU001', 'El correo no puede estar vacío.');
+    END IF;
+
+    IF p_password_hash IS NULL OR trim(p_password_hash) = '' THEN
+        PERFORM auth.fn_lanzar_excepcion('NU002', 'La contraseña no puede estar vacía.');
+    END IF;
+
     INSERT INTO api.usuarios (email, password_hash)
-    VALUES (lower(trim(p_email)), p_password_hash)
+    VALUES (trim(p_email::TEXT)::CITEXT, p_password_hash)
     ON CONFLICT (email) DO NOTHING
-    RETURNING id_usuario INTO v_id;
+    RETURNING id_usuario
+    INTO v_id;
 
     IF v_id IS NOT NULL THEN
-        INSERT INTO api.usuario_roles (id_usuario, rol) VALUES (v_id, 'PROFESOR');
+        INSERT INTO api.usuario_roles (id_usuario, rol)
+        VALUES (v_id, 'PROFESOR_REGULAR');
     END IF;
 
     RETURN v_id;
 END;
 $$;
 
--- Obtener usuario por email. Devuelve NULL si no existe.
+-- Obtener usuario por email. Devuelve 0 filas si no existe.
 CREATE OR REPLACE FUNCTION auth.fn_obtener_usuario_por_email(
-    p_email TEXT
+    p_email CITEXT
 )
 RETURNS SETOF api.usuario
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT u.id_usuario, u.email, u.password_hash, u.activo, u.bloqueado_hasta,
-           COALESCE(array_agg(ur.rol::text) FILTER (WHERE ur.rol IS NOT NULL), ARRAY[]::text[])
+    SELECT
+        u.id_usuario,
+        u.email,
+        u.password_hash,
+        u.activo,
+        u.bloqueado_hasta,
+        COALESCE(
+            array_agg(ur.rol) FILTER (WHERE ur.rol IS NOT NULL),
+            ARRAY[]::api.roles[]
+        )
     FROM api.usuarios u
-    LEFT JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
-    WHERE u.email = lower(trim(p_email))
-    GROUP BY u.id_usuario, u.email, u.password_hash, u.activo, u.bloqueado_hasta;
+    LEFT JOIN api.usuario_roles ur
+        ON ur.id_usuario = u.id_usuario
+    WHERE u.email = trim(p_email::TEXT)::CITEXT
+    GROUP BY
+        u.id_usuario,
+        u.email,
+        u.password_hash,
+        u.activo,
+        u.bloqueado_hasta;
 END;
 $$;
 
--- Obtener usuario por id. Devuelve NULL si no existe.
+-- Obtener usuario por ID. Devuelve 0 filas si no existe.
 CREATE OR REPLACE FUNCTION auth.fn_obtener_usuario_por_id(
     p_id_usuario UUID
 )
 RETURNS SETOF api.usuario
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT u.id_usuario, u.email, u.password_hash, u.activo, u.bloqueado_hasta,
-           COALESCE(array_agg(ur.rol::text) FILTER (WHERE ur.rol IS NOT NULL), ARRAY[]::text[])
+    SELECT
+        u.id_usuario,
+        u.email,
+        u.password_hash,
+        u.activo,
+        u.bloqueado_hasta,
+        COALESCE(
+            array_agg(ur.rol) FILTER (WHERE ur.rol IS NOT NULL),
+            ARRAY[]::api.roles[]
+        )
     FROM api.usuarios u
-    LEFT JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
+    LEFT JOIN api.usuario_roles ur
+        ON ur.id_usuario = u.id_usuario
     WHERE u.id_usuario = p_id_usuario
-    GROUP BY u.id_usuario, u.email, u.password_hash, u.activo, u.bloqueado_hasta;
+    GROUP BY
+        u.id_usuario,
+        u.email,
+        u.password_hash,
+        u.activo,
+        u.bloqueado_hasta;
 END;
 $$;
 
--- Renovar sesión (rotación de refresh token), todo en UNA transacción.
--- Devuelve out_status:
+-- Renovar sesión (rotación de refresh token). Todo ocurre dentro de la transacción de la función.
+-- out_status:
 --   'ok'       -> token válido; se marcó como usado y se creó uno nuevo
 --   'invalid'  -> no existe / usuario inactivo
 --   'expired'  -> el token expiró
---   'reused'   -> alguien intentó usar un token ya usado (posible robo):
---                 se cierran TODAS las sesiones del usuario
+--   'reused'   -> se intentó usar un token ya usado.
+--                 Se cierran todas las sesiones del usuario y
+--                 se invalidan los access tokens emitidos.
 CREATE OR REPLACE FUNCTION auth.fn_rotar_sesion(
     p_old_token_hash TEXT,
     p_new_token_hash TEXT,
     p_new_expires_at TIMESTAMPTZ,
     p_direccion_ip TEXT,
     p_agente_usuario TEXT
-) RETURNS SETOF api.rotate_session_result
+)
+RETURNS SETOF api.rotate_session_result
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_sesion api.sesiones%ROWTYPE;
     v_usuario api.usuarios%ROWTYPE;
-    v_roles TEXT[];
+    v_roles api.roles[];
 BEGIN
-    SELECT * INTO v_sesion FROM api.sesiones s WHERE s.token_hash = p_old_token_hash FOR UPDATE;
+    -- Buscar y bloquear el refresh token.
+    SELECT *
+    INTO v_sesion
+    FROM api.sesiones s
+    WHERE s.token_hash = p_old_token_hash
+    FOR UPDATE;
 
+    -- Token inexistente.
     IF NOT FOUND THEN
-        RETURN QUERY SELECT 'invalid'::TEXT, NULL::UUID, NULL::TEXT, NULL::TEXT[];
+        RETURN QUERY
+        SELECT
+            'invalid'::TEXT,
+            NULL::UUID,
+            NULL::CITEXT,
+            ARRAY[]::api.roles[];
         RETURN;
     END IF;
 
+    -- El token ya fue utilizado.
+    -- Posible reutilización/robo del refresh token.
     IF v_sesion.rotado_en IS NOT NULL THEN
-        -- Reuso de un refresh token ya rotado = posible robo. No alcanza con
-        -- borrar las sesiones (refresh tokens): hay que invalidar también los
-        -- access tokens (JWT) ya emitidos, que si no siguen siendo válidos
-        -- hasta su expiración natural pese a que el robo ya fue detectado.
-        DELETE FROM api.sesiones WHERE id_usuario = v_sesion.id_usuario;
-        UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = v_sesion.id_usuario;
-        RETURN QUERY SELECT 'reused'::TEXT, NULL::UUID, NULL::TEXT, NULL::TEXT[];
+        -- Revocar todos los refresh tokens del usuario.
+        DELETE FROM api.sesiones
+        WHERE id_usuario = v_sesion.id_usuario;
+
+        -- Invalidar los access tokens emitidos anteriormente.
+        UPDATE api.usuarios
+        SET tokens_invalidados_desde = NOW()
+        WHERE id_usuario = v_sesion.id_usuario;
+
+        RETURN QUERY
+        SELECT
+            'reused'::TEXT,
+            NULL::UUID,
+            NULL::CITEXT,
+            ARRAY[]::api.roles[];
         RETURN;
     END IF;
 
+    -- Token expirado.
     IF v_sesion.expira_en <= NOW() THEN
-        RETURN QUERY SELECT 'expired'::TEXT, NULL::UUID, NULL::TEXT, NULL::TEXT[];
+        RETURN QUERY
+        SELECT
+            'expired'::TEXT,
+            NULL::UUID,
+            NULL::CITEXT,
+            ARRAY[]::api.roles[];
         RETURN;
     END IF;
 
-    SELECT * INTO v_usuario FROM api.usuarios u WHERE u.id_usuario = v_sesion.id_usuario;
+    -- Obtener usuario.
+    SELECT *
+    INTO v_usuario
+    FROM api.usuarios u
+    WHERE u.id_usuario = v_sesion.id_usuario;
 
+    -- Usuario inexistente o inactivo.
     IF NOT FOUND OR NOT v_usuario.activo THEN
-        RETURN QUERY SELECT 'invalid'::TEXT, NULL::UUID, NULL::TEXT, NULL::TEXT[];
+        RETURN QUERY
+        SELECT
+            'invalid'::TEXT,
+            NULL::UUID,
+            NULL::CITEXT,
+            ARRAY[]::api.roles[];
         RETURN;
     END IF;
 
-    SELECT COALESCE(array_agg(rol::text), ARRAY[]::text[]) INTO v_roles
-    FROM api.usuario_roles WHERE id_usuario = v_usuario.id_usuario;
+    -- Obtener roles.
+    SELECT COALESCE(
+        array_agg(ur.rol),
+        ARRAY[]::api.roles[]
+    )
+    INTO v_roles
+    FROM api.usuario_roles ur
+    WHERE ur.id_usuario = v_usuario.id_usuario;
 
-    UPDATE api.sesiones SET rotado_en = NOW() WHERE id_sesion = v_sesion.id_sesion;
+    -- Marcar el refresh token anterior como rotado.
+    UPDATE api.sesiones
+    SET rotado_en = NOW()
+    WHERE id_sesion = v_sesion.id_sesion;
 
-    INSERT INTO api.sesiones (id_usuario, token_hash, expira_en, direccion_ip, agente_usuario)
-    VALUES (v_sesion.id_usuario, p_new_token_hash, p_new_expires_at, p_direccion_ip, p_agente_usuario);
+    -- Crear el nuevo refresh token.
+    INSERT INTO api.sesiones (
+        id_usuario,
+        token_hash,
+        expira_en,
+        direccion_ip,
+        agente_usuario
+    )
+    VALUES (
+        v_sesion.id_usuario,
+        p_new_token_hash,
+        p_new_expires_at,
+        p_direccion_ip,
+        p_agente_usuario
+    );
 
-    RETURN QUERY SELECT 'ok'::TEXT, v_usuario.id_usuario, v_usuario.email, v_roles;
+    -- Éxito.
+    RETURN QUERY
+    SELECT
+        'ok'::TEXT,
+        v_usuario.id_usuario,
+        v_usuario.email,
+        v_roles;
 END;
 $$;
 
--- Otorga un rol adicional (no reemplaza los que ya tiene)
+-- Asignar rol. No reemplaza los roles existentes.
 CREATE OR REPLACE FUNCTION auth.fn_asignar_rol(
     p_id_usuario_actor UUID,
     p_id_usuario_objetivo UUID,
     p_rol api.roles
-) RETURNS TEXT
+)
+RETURNS TEXT
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_es_admin BOOLEAN;
 BEGIN
+    -- El actor debe ser un administrador activo.
     SELECT EXISTS (
-        SELECT 1 FROM api.usuarios u
-        JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
-        WHERE u.id_usuario = p_id_usuario_actor AND u.activo = TRUE AND ur.rol = 'ADMIN'
-    ) INTO v_es_admin;
+        SELECT 1
+        FROM api.usuarios u
+        JOIN api.usuario_roles ur
+            ON ur.id_usuario = u.id_usuario
+        WHERE u.id_usuario = p_id_usuario_actor
+            AND u.activo = TRUE
+            AND ur.rol = 'ADMIN'
+    )
+    INTO v_es_admin;
 
     IF NOT v_es_admin THEN
-        PERFORM auth.fn_lanzar_excepcion('AP001', 'No tienes permisos para asignar roles.');
+        PERFORM auth.fn_lanzar_excepcion('AU002', 'No tienes permisos para modificar roles.');
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM api.usuarios WHERE id_usuario = p_id_usuario_objetivo) THEN
-        PERFORM auth.fn_lanzar_excepcion('AP002', 'El usuario objetivo no existe.');
+    -- El usuario objetivo debe existir.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM api.usuarios
+        WHERE id_usuario = p_id_usuario_objetivo
+    ) THEN
+        PERFORM auth.fn_lanzar_excepcion('NF001', 'El usuario objetivo no existe.');
     END IF;
 
-    INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
-    VALUES (p_id_usuario_objetivo, p_rol, p_id_usuario_actor)
+    -- Asignar el rol si todavía no lo tiene.
+    INSERT INTO api.usuario_roles (
+        id_usuario,
+        rol,
+        asignado_por
+    )
+    VALUES (
+        p_id_usuario_objetivo,
+        p_rol,
+        p_id_usuario_actor
+    )
     ON CONFLICT (id_usuario, rol) DO NOTHING;
 
+    -- El rol ya existía.
     IF NOT FOUND THEN
         RETURN 'SIN_CAMBIOS';
     END IF;
 
-    -- Cierra sesiones e invalida access tokens ya emitidos (ver sección de revocación)
-    DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario_objetivo;
-    UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = p_id_usuario_objetivo;
+    -- Cambio de roles: revocar sesiones y tokens ya emitidos.
+    DELETE FROM api.sesiones
+    WHERE id_usuario = p_id_usuario_objetivo;
+
+    UPDATE api.usuarios
+    SET tokens_invalidados_desde = NOW()
+    WHERE id_usuario = p_id_usuario_objetivo;
 
     RETURN 'OK';
 END;
 $$;
 
--- Quita un rol. No permite dejar al usuario sin ningún rol.
+-- ============================================================
+-- Revoca un rol.
+-- Reglas:
+--   1. El actor debe ser un administrador activo.
+--   2. El usuario objetivo debe existir.
+--   3. El usuario debe tener el rol que se quiere revocar.
+--   4. El usuario no puede quedarse sin roles.
+--   5. Un administrador no puede quitarse a sí mismo el rol ADMIN.
+--   6. No se puede eliminar el último ADMIN del sistema.
+-- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_revocar_rol(
     p_id_usuario_actor UUID,
     p_id_usuario_objetivo UUID,
     p_rol api.roles
-) RETURNS TEXT
+)
+RETURNS TEXT
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_es_admin BOOLEAN;
     v_cantidad_roles INTEGER;
+    v_cantidad_admins INTEGER;
 BEGIN
-    
+    -- 1. El actor debe ser un administrador activo.
     SELECT EXISTS (
-        SELECT 1 FROM api.usuarios u
-        JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
-        WHERE u.id_usuario = p_id_usuario_actor AND u.activo = TRUE AND ur.rol = 'ADMIN'
-    ) INTO v_es_admin;
+        SELECT 1
+        FROM api.usuarios u
+        JOIN api.usuario_roles ur
+            ON ur.id_usuario = u.id_usuario
+        WHERE u.id_usuario = p_id_usuario_actor
+            AND u.activo = TRUE
+            AND ur.rol = 'ADMIN'
+    )
+    INTO v_es_admin;
 
     IF NOT v_es_admin THEN
-        PERFORM auth.fn_lanzar_excepcion('AP001', 'No tienes permisos para revocar roles.');
+        PERFORM auth.fn_lanzar_excepcion('AU002', 'No tienes permisos para modificar roles.');
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM api.usuarios WHERE id_usuario = p_id_usuario_objetivo) THEN
-        PERFORM auth.fn_lanzar_excepcion('AP002', 'El usuario objetivo no existe.');
+    -- 2. El usuario objetivo debe existir.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM api.usuarios
+        WHERE id_usuario = p_id_usuario_objetivo
+    ) THEN
+        PERFORM auth.fn_lanzar_excepcion('NF001', 'El usuario objetivo no existe.');
     END IF;
 
-    DELETE FROM api.usuario_roles
-    WHERE id_usuario = p_id_usuario_objetivo AND rol = p_rol;
-
-    IF NOT FOUND THEN
+    -- 3. Comprobar que el usuario tenga el rol.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM api.usuario_roles
+        WHERE id_usuario = p_id_usuario_objetivo
+            AND rol = p_rol
+    ) THEN
         RETURN 'SIN_CAMBIOS';
     END IF;
 
-    IF p_rol = 'PROFESOR' THEN
-        PERFORM auth.fn_lanzar_excepcion('AP006', 'No se puede quitar el rol de PROFESOR.');
+    -- 4. Un ADMIN no puede quitarse a sí mismo el ADMIN.
+    IF p_rol = 'ADMIN'
+        AND p_id_usuario_actor = p_id_usuario_objetivo THEN
+        PERFORM auth.fn_lanzar_excepcion('AU003', 'Un administrador no puede quitarse a sí mismo el rol ADMIN.');
     END IF;
 
-    SELECT COUNT(*) INTO v_cantidad_roles
-    FROM api.usuario_roles WHERE id_usuario = p_id_usuario_objetivo;
-
-    IF v_cantidad_roles = 0 THEN
-        PERFORM auth.fn_lanzar_excepcion('AP003', 'No se puede quitar el único rol que tiene el usuario.');
+    -- 5. No eliminar el último ADMIN del sistema.
+    IF p_rol = 'ADMIN' THEN
+        SELECT COUNT(*)
+        INTO v_cantidad_admins
+        FROM api.usuario_roles ur
+        JOIN api.usuarios u
+            ON u.id_usuario = ur.id_usuario
+        WHERE ur.rol = 'ADMIN'
+          AND u.activo = TRUE;
+        IF v_cantidad_admins <= 1 THEN
+            PERFORM auth.fn_lanzar_excepcion('AU004', 'No se puede revocar el último administrador activo del sistema.');
+        END IF;
     END IF;
 
-    DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario_objetivo;
-    UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = p_id_usuario_objetivo;
+    -- 6. Contar roles actuales del usuario.
+    SELECT COUNT(*)
+    INTO v_cantidad_roles
+    FROM api.usuario_roles
+    WHERE id_usuario = p_id_usuario_objetivo;
+
+    -- 7. No permitir que el usuario quede sin ningún rol.
+    IF v_cantidad_roles <= 1 THEN
+        PERFORM auth.fn_lanzar_excepcion('AU005', 'No se puede quitar el único rol que tiene el usuario.');
+    END IF;
+
+    -- 8. Revocar el rol.
+    DELETE FROM api.usuario_roles
+    WHERE id_usuario = p_id_usuario_objetivo
+        AND rol = p_rol;
+
+    -- 9. Revocar sesiones y tokens existentes.
+    -- TODO: esto podria ser una funcion aparte, pero por ahora lo dejamos aquí.
+    DELETE FROM api.sesiones
+    WHERE id_usuario = p_id_usuario_objetivo;
+
+    UPDATE api.usuarios
+    SET tokens_invalidados_desde = NOW()
+    WHERE id_usuario = p_id_usuario_objetivo;
 
     RETURN 'OK';
 END;
 $$;
 
--- Login fallido: suma un intento; al llegar al máximo bloquea la cuenta
--- p_minutos_bloqueo minutos y reinicia el contador.
+-- Login fallido: suma un intento; al llegar al máximo bloquea la cuenta.
 CREATE OR REPLACE PROCEDURE auth.sp_registrar_login_fallido(
     p_id_usuario UUID,
     p_intentos_maximos INTEGER,
     p_minutos_bloqueo INTEGER
 )
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     UPDATE api.usuarios
     SET
         bloqueado_hasta =
             CASE
-                WHEN intentos_fallidos_login + 1 >= p_intentos_maximos THEN
-                    NOW() + make_interval(mins => p_minutos_bloqueo)
-                ELSE
-                    bloqueado_hasta
-            END,
+                WHEN intentos_fallidos_login + 1 >= p_intentos_maximos
+                     AND (
+                         bloqueado_hasta IS NULL
+                         OR bloqueado_hasta <= NOW()
+                     )
+                THEN NOW() + make_interval(mins => p_minutos_bloqueo)
 
+                ELSE bloqueado_hasta
+            END,
         intentos_fallidos_login =
             CASE
-                WHEN intentos_fallidos_login + 1 >= p_intentos_maximos THEN
-                    0
-                ELSE
-                    intentos_fallidos_login + 1
+                WHEN intentos_fallidos_login + 1 >= p_intentos_maximos
+                     AND (
+                         bloqueado_hasta IS NULL
+                         OR bloqueado_hasta <= NOW()
+                     )
+                THEN 0
+
+                ELSE intentos_fallidos_login + 1
             END,
-
         actualizado_en = NOW()
-
     WHERE id_usuario = p_id_usuario;
 END;
 $$;
@@ -385,6 +606,7 @@ CREATE OR REPLACE PROCEDURE auth.sp_registrar_login_exitoso(
     p_id_usuario UUID
 )
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     UPDATE api.usuarios
@@ -405,12 +627,21 @@ CREATE OR REPLACE PROCEDURE auth.sp_crear_sesion(
     p_agente_usuario TEXT
 )
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     INSERT INTO api.sesiones (
-        id_usuario, token_hash, expira_en, direccion_ip, agente_usuario
+        id_usuario, 
+        token_hash, 
+        expira_en, 
+        direccion_ip, 
+        agente_usuario
     ) VALUES (
-        p_id_usuario, p_token_hash, p_expira_en, p_direccion_ip, p_agente_usuario
+        p_id_usuario, 
+        p_token_hash,
+        p_expira_en,
+        p_direccion_ip, 
+        p_agente_usuario
     );
 END;
 $$;
@@ -420,6 +651,7 @@ CREATE OR REPLACE PROCEDURE auth.sp_logout(
     p_token_hash TEXT
 )
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     DELETE FROM api.sesiones WHERE token_hash = p_token_hash;
@@ -427,26 +659,44 @@ END;
 $$;
 
 -- Logout global (todas las sesiones)
-CREATE OR REPLACE PROCEDURE auth.sp_logout_all(p_id_usuario UUID)
+CREATE OR REPLACE PROCEDURE auth.sp_logout_all(
+    p_id_usuario UUID
+)
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
-    UPDATE api.usuarios SET tokens_invalidados_desde = NOW() WHERE id_usuario = p_id_usuario;
-    DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario;
+    UPDATE api.usuarios
+    SET tokens_invalidados_desde = NOW(),
+        actualizado_en = NOW()
+    WHERE id_usuario = p_id_usuario;
+
+    DELETE FROM api.sesiones
+    WHERE id_usuario = p_id_usuario;
 END;
 $$;
 
--- Cambio de contraseña: actualiza el hash y cierra TODAS las sesiones
--- (atómico: si algo falla, no se aplica nada)
 CREATE OR REPLACE PROCEDURE auth.sp_cambiar_contrasena(
     p_id_usuario UUID,
     p_new_password_hash TEXT
 )
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
+
+    IF NOT EXISTS (SELECT 1 FROM api.usuarios WHERE id_usuario = p_id_usuario) THEN
+        PERFORM auth.fn_lanzar_excepcion('NF001', 'El usuario objetivo no existe.');
+    END IF;
+
+    IF p_new_password_hash IS NULL
+       OR trim(p_new_password_hash) = '' THEN
+        PERFORM auth.fn_lanzar_excepcion('NU002', 'La contraseña no puede estar vacía.');
+    END IF;
+
     UPDATE api.usuarios
-    SET password_hash = p_new_password_hash,
+    SET
+        password_hash = p_new_password_hash,
         password_cambiada_en = NOW(),
         intentos_fallidos_login = 0,
         bloqueado_hasta = NULL,
@@ -454,28 +704,18 @@ BEGIN
         actualizado_en = NOW()
     WHERE id_usuario = p_id_usuario;
 
-    DELETE FROM api.sesiones WHERE id_usuario = p_id_usuario;
+    DELETE FROM api.sesiones
+    WHERE id_usuario = p_id_usuario;
 END;
 $$;
 
--- Mantenimiento: borrar sesiones expiradas (programar 1 vez al día,
--- por ejemplo con pg_cron o un job del backend)
+-- Elimina las sesiones (refresh tokens) ya expiradas. La corre SessionCleanupService cada 24hs.
 CREATE OR REPLACE PROCEDURE auth.sp_purgar_sesiones_expiradas()
 LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
 AS $$
 BEGIN
-    DELETE FROM api.sesiones WHERE expira_en < NOW();
+    DELETE FROM api.sesiones
+    WHERE expira_en <= NOW();
 END;
 $$;
-
--- ver si el bootstrap ya fue ejecutado
-SELECT * FROM api.bootstrap_admin;
-
--- sesiones
-SELECT * FROM api.sesiones;
-
--- usuarios y sus roles
-SELECT u.id_usuario, u.email, u.activo, u.bloqueado_hasta, array_agg(ur.rol) AS roles
-FROM api.usuarios u
-LEFT JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
-GROUP BY u.id_usuario, u.email, u.activo, u.bloqueado_hasta;

@@ -3,6 +3,7 @@ using System.Text;
 using iet_bi_portal_backend.Modules.Auth.Models;
 using iet_bi_portal_backend.Modules.Auth.Services;
 using iet_bi_portal_backend.Modules.Auth.Settings;
+using iet_bi_portal_backend.Modules.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -27,14 +28,14 @@ public class SetupController : ControllerBase
     [AllowAnonymous]
     [HttpPost("first-admin")]
     public async Task<IActionResult> CreateFirstAdmin(
-        BootstrapAdminRequest request,
-        [FromHeader(Name = "X-Bootstrap-Token")] string? bootstrapToken)
+    BootstrapAdminRequest request,
+    [FromHeader(Name = "X-Bootstrap-Token")] string? bootstrapToken)
     {
         if (!IsAuthorized(bootstrapToken))
-            return StatusCode(StatusCodes.Status403Forbidden, new { codigo = "BOOTSTRAP_UNAUTHORIZED", mensaje = "No autorizado." });
+            return this.ApiError("AU009");
 
         // Si ya existe el admin inicial o el correo está en uso, la excepción
-        // sube desde la DB (AP004/AP005) y GlobalExceptionHandler la traduce.
+        // sube desde la DB (AU001/TA001) y GlobalExceptionHandler la traduce.
         var userId = await _auth.BootstrapAdminAsync(request.Email, request.Password);
 
         return StatusCode(StatusCodes.Status201Created, new

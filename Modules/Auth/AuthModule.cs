@@ -2,14 +2,13 @@
 using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Services;
 using iet_bi_portal_backend.Modules.Auth.Settings;
+using iet_bi_portal_backend.Config;
 using iet_bi_portal_backend.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Npgsql;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -58,18 +57,6 @@ public static class AuthModule
                 "ADMIN_BOOTSTRAP_TOKEN es demasiado corto. Usa al menos 16 caracteres aleatorios.");
 
         services.AddSingleton(Options.Create(bootstrap));
-
-        // PostgreSQL: se arma el connection string desde las 5 variables del .env
-        var connectionString = new NpgsqlConnectionStringBuilder
-        {
-            Host = EnvConfig.Required(configuration, "DB_HOST"),
-            Port = EnvConfig.RequiredInt(configuration, "DB_PORT"),
-            Database = EnvConfig.Required(configuration, "DB_NAME"),
-            Username = EnvConfig.Required(configuration, "DB_USER"),
-            Password = EnvConfig.Required(configuration, "DB_PASSWORD"),
-        }.ConnectionString;
-
-        services.TryAddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connectionString));
 
         // Servicios del módulo
         services.AddSingleton<IPasswordService, PasswordService>();
