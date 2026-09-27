@@ -1,0 +1,26 @@
+{
+  "AU001": { "status": 409, "mensaje": "El administrador inicial ya fue creado." },
+  "AU002": { "status": 403, "mensaje": "No tienes permisos para modificar roles." },
+  "AU003": { "status": 400, "mensaje": "Un administrador no puede quitarse a sí mismo el rol ADMIN." },
+  "AU004": { "status": 409, "mensaje": "No se puede revocar el último administrador activo del sistema." },
+  "AU005": { "status": 400, "mensaje": "No se puede quitar el único rol que tiene el usuario." },
+  "AU006": { "status": 401, "mensaje": "Credenciales inválidas." },
+  "AU007": { "status": 401, "mensaje": "Sesión inválida o expirada. Inicia sesión de nuevo." },
+  "AU008": { "status": 400, "mensaje": "La contraseña actual es incorrecta." },
+  "AU009": { "status": 403, "mensaje": "No autorizado." },
+  "AU010": { "status": 400, "mensaje": "Un administrador no puede desactivarse a sí mismo." },
+  "AU011": { "status": 409, "mensaje": "No se puede desactivar al último administrador activo del sistema." },
+  "AU012": { "status": 400, "mensaje": "Un administrador no puede eliminarse a sí mismo." },
+  "AU013": { "status": 409, "mensaje": "No se puede eliminar al último administrador activo del sistema." },
+
+  "NU001": { "status": 400, "mensaje": "El correo no puede estar vacío." },
+  "NU002": { "status": 400, "mensaje": "La contraseña no puede estar vacía." },
+
+  "TA001": { "status": 409, "mensaje": "El correo ya está en uso." },
+
+  "NF001": { "status": 404, "mensaje": "El usuario no existe." },
+
+  "22P02": { "status": 400, "mensaje": "Uno de los valores enviados no es válido." },
+  "23505": { "status": 409, "mensaje": "Ya existe un registro con esos datos." },
+  "23503": { "status": 409, "mensaje": "La operación hace referencia a un registro que no existe." }
+}

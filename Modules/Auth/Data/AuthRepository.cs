@@ -5,17 +5,17 @@ namespace iet_bi_portal_backend.Modules.Auth.Data;
 
 public class AuthRepository
 {
-    private const string UserColumns = "id_usuario, email, password_hash, activo, bloqueado_hasta, roles";
+    private const string UserColumns = "id_usuario, email, password_hash, activo, bloqueado_hasta, roles::text[]";
 
     private readonly NpgsqlDataSource _db;
 
     public AuthRepository(NpgsqlDataSource db) => _db = db;
 
-    /// <summary> Registra un nuevo usuario con rol PROFESOR. 
+    /// <summary> Registra un nuevo usuario con rol PROFESOR_REGULAR. 
     /// Devuelve el ID del usuario si se creó correctamente, o null si el correo ya está en uso. </summary>
     public async Task<Guid?> RegisterUserAsync(string email, string passwordHash)
     {
-        await using var cmd = _db.CreateCommand("SELECT auth.fn_registrar_usuario($1, $2)");
+        await using var cmd = _db.CreateCommand("SELECT auth.fn_registrar_usuario($1::academico.citext, $2)");
         cmd.Parameters.AddWithValue(email);
         cmd.Parameters.AddWithValue(passwordHash);
         var result = await cmd.ExecuteScalarAsync();
@@ -27,7 +27,7 @@ public class AuthRepository
     /// SqlState P0001) si ya existe un admin inicial o si el correo ya está en uso. </summary>
     public async Task<Guid> CreateFirstAdminAsync(string email, string passwordHash)
     {
-        await using var cmd = _db.CreateCommand("SELECT auth.fn_crear_primer_admin($1, $2)");
+        await using var cmd = _db.CreateCommand("SELECT auth.fn_crear_primer_admin($1::academico.citext, $2)");
         cmd.Parameters.AddWithValue(email);
         cmd.Parameters.AddWithValue(passwordHash);
         var result = await cmd.ExecuteScalarAsync();
@@ -38,7 +38,7 @@ public class AuthRepository
 
     /// <summary> Obtiene un usuario por su correo electrónico. </summary>
     public Task<UserRecord?> GetUserByEmailAsync(string email) =>
-        QueryUserAsync($"SELECT {UserColumns} FROM auth.fn_obtener_usuario_por_email($1)", email);
+        QueryUserAsync($"SELECT {UserColumns} FROM auth.fn_obtener_usuario_por_email($1::academico.citext)", email);
 
     /// <summary> Obtiene un usuario por su ID. </summary>
     public Task<UserRecord?> GetUserByIdAsync(Guid id) =>
@@ -56,14 +56,6 @@ public class AuthRepository
     public Task ChangePasswordAsync(Guid userId, string newPasswordHash) =>
         CallAsync("CALL auth.sp_cambiar_contrasena($1, $2)", userId, newPasswordHash);
 
-    /// <summary> Otorga un rol adicional. Devuelve 'OK' o 'SIN_CAMBIOS'; lanza PostgresException si el actor no es ADMIN o el objetivo no existe. </summary>
-    public Task<string> AssignRoleAsync(Guid actorUserId, Guid targetUserId, string role) =>
-        CallRoleFunctionAsync("auth.fn_asignar_rol", actorUserId, targetUserId, role);
-
-    /// <summary> Quita un rol. Devuelve 'OK' o 'SIN_CAMBIOS'; lanza PostgresException si el actor no es ADMIN, el objetivo no existe, o sería el último rol del usuario. </summary>
-    public Task<string> RevokeRoleAsync(Guid actorUserId, Guid targetUserId, string role) =>
-        CallRoleFunctionAsync("auth.fn_revocar_rol", actorUserId, targetUserId, role);
-
     /// <summary> Crea una nueva sesión para el usuario. </summary>
     public Task CreateSessionAsync(Guid userId, string tokenHash, DateTime expiresAtUtc, string? ip, string? userAgent) =>
         CallAsync("CALL auth.sp_crear_sesion($1, $2, $3, $4::text, $5::text)", userId, tokenHash, expiresAtUtc, ip, userAgent);
@@ -72,7 +64,7 @@ public class AuthRepository
     public async Task<RotateResult> RotateSessionAsync(string oldTokenHash, string newTokenHash, DateTime newExpiresAtUtc, string? ip, string? userAgent)
     {
         await using var cmd = _db.CreateCommand(
-            "SELECT out_status, out_user_id, out_email, out_roles " +
+            "SELECT out_status, out_user_id, out_email, out_roles::text[] " +
             "FROM auth.fn_rotar_sesion($1, $2, $3, $4::text, $5::text)");
         cmd.Parameters.AddWithValue(oldTokenHash);
         cmd.Parameters.AddWithValue(newTokenHash);
@@ -111,17 +103,6 @@ public class AuthRepository
         cmd.Parameters.AddWithValue(userId);
         var result = await cmd.ExecuteScalarAsync();
         return result is DateTime dt ? dt : null;
-    }
-
-    /// <summary> Llama a una función de rol y devuelve su resultado. </summary>
-    private async Task<string> CallRoleFunctionAsync(string function, Guid actorUserId, Guid targetUserId, string role)
-    {
-        await using var cmd = _db.CreateCommand($"SELECT {function}($1, $2, $3::api.roles)");
-        cmd.Parameters.AddWithValue(actorUserId);
-        cmd.Parameters.AddWithValue(targetUserId);
-        cmd.Parameters.AddWithValue(role);
-        var result = await cmd.ExecuteScalarAsync();
-        return result as string ?? throw new InvalidOperationException($"Respuesta inesperada de {function}.");
     }
 
     /// <summary> Consulta un usuario y devuelve un UserRecord o null si no existe. </summary>

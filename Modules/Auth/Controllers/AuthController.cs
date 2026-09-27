@@ -1,6 +1,7 @@
 ﻿using iet_bi_portal_backend.Modules.Auth.Models;
 using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Services;
+using iet_bi_portal_backend.Modules.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -17,23 +18,9 @@ public class AuthController : ControllerBase
 
     public AuthController(AuthService auth) => _auth = auth;
 
-    /// <summary> Registra un nuevo usuario con rol PROFESOR. 
-    /// Devuelve 201 Created con el access token y refresh token si se creó correctamente, 
-    /// o 409 Conflict si el correo ya está en uso. </summary>
-    [AllowAnonymous]
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
-    {
-        var result = await _auth.RegisterAsync(request.Email, request.Password, GetClientInfo());
-
-        return result is null
-            ? Conflict(new { error = "No se pudo completar el registro. Verifica los datos o intenta iniciar sesión." })
-            : StatusCode(StatusCodes.Status201Created, result);
-    }
-
     /// <summary> Inicia sesión con correo y contraseña. 
     /// Devuelve 200 OK con el access token y refresh token si las credenciales son correctas, 
-    /// o 401 Unauthorized si no lo son. </summary>
+    /// o 401 Unauthorized (AU006) si no lo son. </summary>
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
@@ -41,13 +28,13 @@ public class AuthController : ControllerBase
         var result = await _auth.LoginAsync(request.Email, request.Password, GetClientInfo());
 
         return result is null
-            ? Unauthorized(new { error = "Credenciales inválidas." })
+            ? this.ApiError("AU006")
             : Ok(result);
     }
 
     /// <summary> Renueva el access token usando el refresh token. 
     /// Devuelve 200 OK con el nuevo access token y refresh token si la operación es exitosa,
-    /// o 401 Unauthorized si el refresh token es inválido o ha expirado. </summary>
+    /// o 401 Unauthorized (AU007) si el refresh token es inválido o ha expirado. </summary>
     [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh(RefreshRequest request)
@@ -55,7 +42,7 @@ public class AuthController : ControllerBase
         var result = await _auth.RefreshAsync(request.RefreshToken, GetClientInfo());
 
         return result is null
-            ? Unauthorized(new { error = "Sesión inválida o expirada. Inicia sesión de nuevo." })
+            ? this.ApiError("AU007")
             : Ok(result);
     }
 
@@ -79,7 +66,8 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
-    /// <summary> Cambia la contraseña del usuario. </summary>
+    /// <summary> Cambia la contraseña del usuario. 
+    /// Devuelve 400 BadRequest (AU008) si la contraseña actual es incorrecta. </summary>
     [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
@@ -90,7 +78,7 @@ public class AuthController : ControllerBase
 
         return ok
             ? NoContent()
-            : BadRequest(new { error = "La contraseña actual es incorrecta." });
+            : this.ApiError("AU008");
     }
 
     /// <summary> Endpoint de prueba para verificar que el JWT funciona. 
@@ -104,7 +92,6 @@ public class AuthController : ControllerBase
         email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value,
         roles = User.FindAll(AuthClaims.Role).Select(c => c.Value).ToArray()
     });
-
 
     /// <summary> Obtiene la información del cliente. </summary>
     private ClientInfo GetClientInfo()

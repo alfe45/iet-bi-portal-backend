@@ -4,6 +4,7 @@ using iet_bi_portal_backend.Modules.Auth.Data;
 using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Models;
 using iet_bi_portal_backend.Modules.Auth.Settings;
+using iet_bi_portal_backend.Modules.Logs.Services;
 
 namespace iet_bi_portal_backend.Modules.Auth.Services;
 
@@ -14,28 +15,22 @@ public class AuthService
     private readonly ITokenService _tokens;
     private readonly JwtOptions _jwt;
     private readonly AuthPolicyOptions _policy;
+    private readonly ILogsService _logs;
 
     public AuthService(
         AuthRepository repo,
         IPasswordService passwords,
         ITokenService tokens,
         IOptions<JwtOptions> jwt,
-        IOptions<AuthPolicyOptions> policy)
+        IOptions<AuthPolicyOptions> policy,
+        ILogsService logs)
     {
         _repo = repo;
         _passwords = passwords;
         _tokens = tokens;
         _jwt = jwt.Value;
         _policy = policy.Value;
-    }
-
-    public async Task<AuthResponse?> RegisterAsync(string email, string password, ClientInfo client)
-    {
-        email = NormalizeEmail(email);
-        var userId = await _repo.RegisterUserAsync(email, _passwords.Hash(password));
-        if (userId is null) return null;
-
-        return await IssueSessionAsync(userId.Value, email, new[] { Roles.Profesor }, client);
+        _logs = logs;
     }
 
     public async Task<AuthResponse?> LoginAsync(string email, string password, ClientInfo client)
@@ -59,6 +54,7 @@ public class AuthService
         }
 
         await _repo.RegisterSuccessfulLoginAsync(user.Id);
+        await _logs.RegisterLogAsync(user.Id, "LOGIN", ip: client.Ip, userAgent: client.UserAgent);
         return await IssueSessionAsync(user.Id, user.Email, user.Roles, client);
     }
 
@@ -79,9 +75,18 @@ public class AuthService
         return new AuthResponse(access.Token, access.ExpiresAt, newRefreshToken);
     }
 
-    public Task LogoutAsync(string refreshToken) => _repo.LogoutAsync(_tokens.Hash(refreshToken));
+    public async Task LogoutAsync(string refreshToken)
+    {
+        await _repo.LogoutAsync(_tokens.Hash(refreshToken));
+        // actorUserId null: este endpoint es anónimo, no tenemos el id_usuario sin una consulta extra.
+        await _logs.RegisterLogAsync(null, "LOGOUT");
+    }
 
-    public Task LogoutAllAsync(Guid userId) => _repo.LogoutAllAsync(userId);
+    public async Task LogoutAllAsync(Guid userId)
+    {
+        await _repo.LogoutAllAsync(userId);
+        await _logs.RegisterLogAsync(userId, "LOGOUT_ALL", "api.usuarios", userId.ToString());
+    }
 
     public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
     {
@@ -90,24 +95,20 @@ public class AuthService
             return false;
 
         await _repo.ChangePasswordAsync(userId, _passwords.Hash(newPassword));
+        // Nunca se loguea el hash ni la contraseña, solo el hecho de que cambió.
+        await _logs.RegisterLogAsync(userId, "CHANGE_PASSWORD", "api.usuarios", userId.ToString());
         return true;
     }
 
     /// <summary>Crea el primer administrador. Si ya existe o el correo está en uso, la
-    /// excepción de Postgres (AP004/AP005) sube tal cual — la traduce GlobalExceptionHandler.</summary>
-    public Task<Guid> BootstrapAdminAsync(string email, string password)
+    /// excepción de Postgres (AU001/TA001) sube tal cual — la traduce GlobalExceptionHandler.</summary>
+    public async Task<Guid> BootstrapAdminAsync(string email, string password)
     {
         email = NormalizeEmail(email);
-        return _repo.CreateFirstAdminAsync(email, _passwords.Hash(password));
+        var userId = await _repo.CreateFirstAdminAsync(email, _passwords.Hash(password));
+        await _logs.RegisterLogAsync(userId, "BOOTSTRAP_ADMIN", "api.usuarios", userId.ToString());
+        return userId;
     }
-
-    /// <summary>Otorga un rol. Requiere que el actor sea ADMIN activo (lo valida la DB, AP001/AP002).</summary>
-    public Task<string> AssignRoleAsync(Guid actorUserId, Guid targetUserId, string role) =>
-        _repo.AssignRoleAsync(actorUserId, targetUserId, role);
-
-    /// <summary>Quita un rol. No permite dejar al usuario sin roles (AP001/AP002/AP003).</summary>
-    public Task<string> RevokeRoleAsync(Guid actorUserId, Guid targetUserId, string role) =>
-        _repo.RevokeRoleAsync(actorUserId, targetUserId, role);
 
     private async Task<AuthResponse> IssueSessionAsync(Guid userId, string email, IReadOnlyList<string> roles, ClientInfo client)
     {

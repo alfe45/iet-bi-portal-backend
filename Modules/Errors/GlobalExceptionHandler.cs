@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Npgsql;
 
+namespace iet_bi_portal_backend.Modules.Errors;
+
 /// <summary>
 /// Único punto de manejo de excepciones no capturadas. Respuesta siempre con
 /// forma { codigo, mensaje }. Solo se exponen al cliente los códigos que están
