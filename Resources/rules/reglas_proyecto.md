@@ -15,7 +15,8 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 ## Identificadores
 - RP-07: Profesores y estudiantes se buscan y operan por cédula; su id interno nunca se expone en la API.
 - RP-08: Los usuarios se identifican por id (UUID).
-- RP-53: Las lecciones se identifican por id (idLeccion): no tienen una clave natural estable, porque su fecha y hora se pueden corregir.
+- RP-53: Las lecciones se identifican por id (idLeccion): no tienen una clave natural estable, porque su fecha y hora se pueden corregir. Igual los seguimientos de monografía (idSeguimiento).
+- RP-54: Las notas se operan por la asignación (año, nivel, número, código), el semestre y la cédula del estudiante; las monografías, por la cédula del estudiante (una por estudiante); los informes CAS, por (año, semestre, cédula del estudiante); las prórrogas, por (año, semestre, cédula del profesor).
 
 ## Roles y autorización
 - RP-09: Un usuario tiene varios roles mediante la tabla `api.usuario_roles`.
@@ -42,7 +43,7 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-24: El login hace una verificación dummy cuando el correo no existe.
 
 ## SQL
-- RP-25: Orden de scripts: 01 roles/esquemas, 02 helpers, 03 auth, 04 logs, 05 admin usuarios, 06 tablas académico, 07 admin profesores, 08 admin estudiantes, 09 admin periodos, 10 admin secciones, 11 admin asignaturas, 12 admin asignaciones, 13 admin matrículas, 14 ausentismo, 15 views.
+- RP-25: Orden de scripts: 01 roles/esquemas, 02 helpers, 03 auth, 04 logs, 05 admin usuarios, 06 tablas académico, 07 admin profesores, 08 admin estudiantes, 09 admin periodos, 10 admin secciones, 11 admin asignaturas, 12 admin asignaciones, 13 admin matrículas, 14 ausentismo, 15 evaluaciones, 16 monografías, 17 CAS, 18 informes, 19 views; 20 catálogo de asignaturas del Instituto (opcional, para una base nueva; las pruebas no lo ejecutan).
 - RP-26: Lógica repetida en 2 o más funciones va a `02_helpers.sql`.
 - RP-27: Los scripts se escriben para crear desde cero; no se cuidan datos previos. Después de ejecutarlos hay que reiniciar la API: Npgsql guarda en caché los OID de los tipos (citext, enums) y los recrea el script.
 - RP-28: Las reglas que dependen de la fecha actual se validan en función; las demás, con CHECK en la tabla.
@@ -54,6 +55,8 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-51: Los estados que dependen de la fecha (periodo, matrícula) se derivan en funciones; no se guardan en columnas.
 - RP-52: Los filtros por enum (estado, tipo, rol) aceptan cualquier combinación de mayúsculas y se normalizan antes de ir a la DB.
 - RP-50: Las funciones `LANGUAGE sql` validan las tablas al crearse: si referencian tablas de un script posterior deben ser plpgsql.
+- RP-55: Las listas que se guardan de una vez (notas de una asignación, experiencias CAS) viajan a la función SQL como JSONB (`$n::jsonb`, serializado en camelCase); las listas de cédulas, como `text[]`.
+- RP-56: Los informes (reporte de bandas, informe CAS) se devuelven como datos JSON; el PDF lo arma el front.
 - RP-49: Las secciones se referencian desde otros módulos con `academico.fn_obtener_id_seccion(año, nivel, número)` (NF006) y las asignaturas con `academico.fn_obtener_id_asignatura(código)` (NF007).
 
 ## C#
@@ -65,7 +68,7 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-37: El namespace refleja la carpeta.
 
 ## Módulos
-- RP-40: Los módulos de negocio (Auth, Usuarios, Profesores, Estudiantes, Periodos, Secciones, Asignaturas, Asignaciones, Matrículas, Ausentismo) solo dependen de Common, Config, Errors y Logs; nunca entre sí.
+- RP-40: Los módulos de negocio (Auth, Usuarios, Profesores, Estudiantes, Periodos, Secciones, Asignaturas, Asignaciones, Matrículas, Ausentismo, Evaluaciones, Monografias, Cas, Informes) solo dependen de Common, Config, Errors y Logs; nunca entre sí.
 - RP-41: Todo lo que usen 2 o más módulos vive en Common (roles, claims, contraseñas, paginación, base de controllers, texto, acceso a datos).
 - RP-42: Todo controller hereda de `ApiControllerBase`; los de administración, de `AdminControllerBase` (exige ADMIN).
 - RP-43: El id del usuario autenticado se lee con `ActorId`; no se repite la validación del claim en cada endpoint.

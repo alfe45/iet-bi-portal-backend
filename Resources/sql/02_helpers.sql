@@ -224,6 +224,30 @@ END;
 $$;
 
 -- ------------------------------------------------------------
+-- Profesores: AD005 si el usuario no es el guía de la sección (RN-71). Devuelve el id de la sección.
+-- Lo usan las consultas del guía (ausentismo, monografías, reporte de bandas). plpgsql (RP-50).
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION academico.fn_validar_guia_seccion(p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER)
+RETURNS BIGINT
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_id_seccion BIGINT := academico.fn_obtener_id_seccion(p_anio, p_nivel, p_numero);
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM academico.secciones s
+        JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
+        WHERE s.id_seccion = v_id_seccion AND pr.id_usuario = p_id_usuario
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AD005', 'No eres el guía de esa sección.');
+    END IF;
+
+    RETURN v_id_seccion;
+END;
+$$;
+
+-- ------------------------------------------------------------
 -- Fecha de nacimiento coherente (no futura ni anterior a 1900). Depende de "hoy", por eso es
 -- función y no CHECK (RP-28). Cada módulo pasa su código (ES004 estudiantes, PR005 profesores).
 -- ------------------------------------------------------------

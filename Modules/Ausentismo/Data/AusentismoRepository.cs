@@ -11,24 +11,24 @@ namespace iet_bi_portal_backend.Modules.Ausentismo.Data;
 public class AusentismoRepository(NpgsqlDataSource db)
 {
     private const string ColumnasLeccion =
-        "id_leccion, anio, nivel::int, numero::int, seccion, codigo_asignatura, asignatura, fecha, hora, tema, semestre::text, ausentes, justificadas";
+        "id_leccion, anio, nivel::int, numero::int, seccion, codigo_asignatura, asignatura, fecha, hora, tema, semestre::text, ausentes, justificadas, tardias";
 
     private const string ColumnasResumen =
         "cedula_estudiante, nombre_estudiante, estado_matricula::text, codigo_asignatura, asignatura, nombre_profesor, " +
-        "lecciones, ausencias, justificadas, injustificadas, porcentaje_ausentismo";
+        "lecciones, ausencias, justificadas, injustificadas, tardias, porcentaje_ausentismo";
 
-    /// <summary>Devuelve el id de la lección. Errores: NF006, NF007, AD004, LE001, LE002, LE003, PA004.</summary>
+    /// <summary>Devuelve el id de la lección. Errores: NF006, NF007, AD004, LE001, LE002, LE003, LE004, PA004.</summary>
     public Task<long> RegistrarLeccionAsync(Guid idUsuario, RegistrarLeccionRequest r) =>
         db.EscalarAsync<long>(
-            "SELECT academico.fn_profesor_registrar_leccion($1, $2::integer, $3::integer, $4::integer, $5::text, $6::date, $7::time, $8::text, $9::text[])",
-            idUsuario, r.Anio, r.Nivel, r.Numero, r.CodigoAsignatura, r.Fecha, r.Hora, r.Tema, r.Ausentes.ToArray());
+            "SELECT academico.fn_profesor_registrar_leccion($1, $2::integer, $3::integer, $4::integer, $5::text, $6::date, $7::time, $8::text, $9::text[], $10::text[])",
+            idUsuario, r.Anio, r.Nivel, r.Numero, r.CodigoAsignatura, r.Fecha, r.Hora, r.Tema, r.Ausentes.ToArray(), r.Tardias.ToArray());
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF010, AD004, LE001, LE002, LE003, PA004.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF010, AD004, LE001, LE002, LE003, LE004, PA004.</summary>
     public Task<(string Estado, string? Anteriores)> ModificarLeccionAsync(Guid idUsuario, long idLeccion, ModificarLeccionRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +
-            "FROM academico.fn_profesor_modificar_leccion($1, $2, $3::date, $4::time, $5::text, $6::text[])",
-            LeerEstado, idUsuario, idLeccion, r.Fecha, r.Hora, r.Tema, r.Ausentes.ToArray());
+            "FROM academico.fn_profesor_modificar_leccion($1, $2, $3::date, $4::time, $5::text, $6::text[], $7::text[])",
+            LeerEstado, idUsuario, idLeccion, r.Fecha, r.Hora, r.Tema, r.Ausentes.ToArray(), r.Tardias.ToArray());
 
     /// <summary>Elimina la lección con sus ausencias y devuelve el snapshot previo. Errores: NF010, AD004, PA004.</summary>
     public Task<string> EliminarLeccionAsync(Guid idUsuario, long idLeccion) =>
@@ -61,8 +61,8 @@ public class AusentismoRepository(NpgsqlDataSource db)
         var leccion = await db.PrimeroAsync(
             $"SELECT {ColumnasLeccion} FROM academico.fn_profesor_obtener_leccion($1, $2)", LeerLeccion, idUsuario, idLeccion);
         var ausentes = await db.ListarAsync(
-            "SELECT cedula_estudiante, nombre_estudiante, justificada, justificacion FROM academico.fn_profesor_listar_ausencias_leccion($1, $2)",
-            r => new Ausencia(r.GetString(0), r.GetString(1), r.GetBoolean(2), r.IsDBNull(3) ? null : r.GetString(3)),
+            "SELECT cedula_estudiante, nombre_estudiante, tardia, justificada, justificacion FROM academico.fn_profesor_listar_ausencias_leccion($1, $2)",
+            r => new Ausencia(r.GetString(0), r.GetString(1), r.GetBoolean(2), r.GetBoolean(3), r.IsDBNull(4) ? null : r.GetString(4)),
             idUsuario, idLeccion);
         return new LeccionConAusentes(leccion, ausentes);
     }
@@ -96,7 +96,8 @@ public class AusentismoRepository(NpgsqlDataSource db)
         r.IsDBNull(9) ? null : r.GetString(9),
         r.GetString(10),
         r.GetInt32(11),
-        r.GetInt32(12));
+        r.GetInt32(12),
+        r.GetInt32(13));
 
     private static ResumenAusentismo LeerResumen(NpgsqlDataReader r) => new(
         r.GetString(0),
@@ -109,5 +110,6 @@ public class AusentismoRepository(NpgsqlDataSource db)
         r.GetInt32(7),
         r.GetInt32(8),
         r.GetInt32(9),
-        r.IsDBNull(10) ? null : r.GetDecimal(10));
+        r.GetInt32(10),
+        r.IsDBNull(11) ? null : r.GetDecimal(11));
 }

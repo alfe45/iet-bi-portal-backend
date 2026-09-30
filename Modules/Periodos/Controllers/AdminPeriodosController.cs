@@ -34,7 +34,7 @@ public class AdminPeriodosController(PeriodosService periodos) : AdminController
     }
 
     /// <summary>CU16: reemplaza las fechas. 404 (NF004); 400 (PA002/PA005); 409 (PA004) semestre cerrado;
-    /// 409 (PA007) reabrir un periodo finalizado.</summary>
+    /// 409 (PA007) reabrir un periodo finalizado; 409 (PA008) las fechas dejan fuera lecciones, matrículas u otros registros.</summary>
     [HttpPut("{anio:int}")]
     public async Task<IActionResult> Actualizar(int anio, ActualizarPeriodoRequest request)
     {

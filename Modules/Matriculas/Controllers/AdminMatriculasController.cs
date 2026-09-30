@@ -43,7 +43,8 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return matricula is null ? this.ApiError("NF009") : Ok(matricula);
     }
 
-    /// <summary>CU23: traslado a otra sección del mismo año. 404 (NF009/NF006).</summary>
+    /// <summary>CU23: traslado a otra sección del mismo año. 404 (NF009/NF006); 409 (MA006) fuera del nivel 10 o con
+    /// continuidad; 409 (MA008) la matrícula ya tiene ausencias, notas o informes CAS.</summary>
     [HttpPut(RutaMatricula + "/seccion")]
     public async Task<IActionResult> CambiarSeccion(int anio, string cedula, CambiarSeccionRequest request)
     {
@@ -51,7 +52,8 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return NoContent();
     }
 
-    /// <summary>CU23: registra o corrige el retiro. 404 (NF009); 400 (MA003) fecha inválida.</summary>
+    /// <summary>CU23: registra o corrige el retiro. 404 (NF009); 400 (MA003) fecha inválida; 409 (MA007) con continuidad;
+    /// 409 (MA009) la fecha deja fuera ausencias, notas o informes CAS ya registrados.</summary>
     [HttpPut(RutaMatricula + "/retiro")]
     public async Task<IActionResult> RegistrarRetiro(int anio, string cedula, RegistrarRetiroRequest request)
     {

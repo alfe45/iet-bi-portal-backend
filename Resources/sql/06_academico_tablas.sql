@@ -4,11 +4,9 @@
 -- ============================================================
 SET search_path = academico, auth, api, public, pg_catalog;
 
-CREATE TYPE academico.tipo_banda AS ENUM ('NUMERICA_1_7','LETRA_A_E','NUMERICA_0_100');
+-- El tipo de asignatura define la escala de la nota (RN-73): SUPERIOR y MEDIO bandas 1 a 7, TRONCAL letras A a E, MEP 0 a 100.
 CREATE TYPE academico.tipo_asignatura AS ENUM ('TRONCAL','SUPERIOR','MEDIO','MEP');
 CREATE TYPE academico.estado_monografia AS ENUM ('CAPACITACION','INVESTIGACION','TERMINADA');
-CREATE TYPE academico.estado_asistencia AS ENUM ('PRESENTE','AUSENTE','TARDIA','JUSTIFICADA');
-CREATE TYPE academico.tipo_reporte AS ENUM ('REPORTE_SECCION','REPORTE_ESTUDIANTE');
 CREATE TYPE academico.numero_semestre AS ENUM ('I_SEMESTRE','II_SEMESTRE');
 -- Estado derivado (no se guarda): RETIRADA si tiene retiro; si no, según el estado del periodo.
 CREATE TYPE academico.estado_matricula AS ENUM ('PROGRAMADA','ACTIVA','FINALIZADA','RETIRADA');
@@ -168,17 +166,153 @@ CREATE TABLE academico.lecciones (
     CONSTRAINT uq_lecciones_asignacion_fecha_hora UNIQUE (id_asignacion, fecha, hora)
 );
 
--- AUSENCIAS: solo se guardan los ausentes de cada lección (el resto de los matriculados estuvo presente).
--- justificacion NULL = injustificada. Borrar la lección borra sus ausencias; una matrícula con ausencias no se borra.
+-- AUSENCIAS: solo se guardan los ausentes y las llegadas tardías de cada lección (el resto de los matriculados
+-- estuvo presente). tardia = llegó tarde (no se justifica); si no, es ausencia y justificacion NULL = injustificada.
+-- Borrar la lección borra sus ausencias; una matrícula con ausencias no se borra.
 CREATE TABLE academico.ausencias (
     id_leccion BIGINT NOT NULL,
     id_matricula BIGINT NOT NULL,
+    tardia BOOLEAN NOT NULL DEFAULT FALSE,
     justificacion VARCHAR(255) NULL,
     justificada_en TIMESTAMPTZ NULL,
     CONSTRAINT pk_ausencias PRIMARY KEY (id_leccion, id_matricula),
     CONSTRAINT fk_ausencias_leccion FOREIGN KEY (id_leccion) REFERENCES academico.lecciones(id_leccion) ON DELETE CASCADE,
     CONSTRAINT fk_ausencias_matricula FOREIGN KEY (id_matricula) REFERENCES academico.matriculas(id_matricula) ON DELETE RESTRICT,
     CONSTRAINT ck_ausencias_justificacion CHECK (justificacion IS NULL OR length(trim(justificacion)) >= 3),
-    CONSTRAINT ck_ausencias_justificada_en CHECK ((justificacion IS NULL) = (justificada_en IS NULL))
+    CONSTRAINT ck_ausencias_justificada_en CHECK ((justificacion IS NULL) = (justificada_en IS NULL)),
+    CONSTRAINT ck_ausencias_tardia_sin_justificacion CHECK (NOT tardia OR justificacion IS NULL)
 );
 CREATE INDEX ix_ausencias_matricula ON academico.ausencias(id_matricula);
+
+-- EVALUACIONES: nota semestral de un estudiante (matrícula) en una asignación (RN-73). La nota se guarda como
+-- texto normalizado ('1'..'7', 'A'..'E' o '0'..'100'); la escala según el tipo de asignatura la valida
+-- 15_evaluaciones.sql (EV001). observaciones = observaciones del profesor (Profesor Regular CU09).
+CREATE TABLE academico.evaluaciones (
+    id_evaluacion BIGINT GENERATED ALWAYS AS IDENTITY,
+    id_asignacion BIGINT NOT NULL,
+    id_matricula BIGINT NOT NULL,
+    semestre academico.numero_semestre NOT NULL,
+    nota VARCHAR(3) NOT NULL,
+    observaciones VARCHAR(500) NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modificado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_evaluaciones PRIMARY KEY (id_evaluacion),
+    CONSTRAINT fk_evaluaciones_asignacion FOREIGN KEY (id_asignacion) REFERENCES academico.asignaciones_docentes(id_asignacion) ON DELETE RESTRICT,
+    CONSTRAINT fk_evaluaciones_matricula FOREIGN KEY (id_matricula) REFERENCES academico.matriculas(id_matricula) ON DELETE RESTRICT,
+    CONSTRAINT uq_evaluaciones_asignacion_matricula_semestre UNIQUE (id_asignacion, id_matricula, semestre),
+    CONSTRAINT ck_evaluaciones_nota CHECK (nota ~ '^([A-E]|[0-9]|[1-9][0-9]|100)$'),
+    CONSTRAINT ck_evaluaciones_observaciones CHECK (observaciones IS NULL OR length(trim(observaciones)) >= 3)
+);
+CREATE INDEX ix_evaluaciones_matricula ON academico.evaluaciones(id_matricula);
+
+-- ENVÍOS DE NOTAS: el profesor envió al guía las notas de su asignación en el semestre (RN-75). El guía y el
+-- reporte de bandas solo ven notas enviadas. Es una marca de la asignación: se borra con ella.
+CREATE TABLE academico.envios_notas (
+    id_asignacion BIGINT NOT NULL,
+    semestre academico.numero_semestre NOT NULL,
+    enviado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_envios_notas PRIMARY KEY (id_asignacion, semestre),
+    CONSTRAINT fk_envios_notas_asignacion FOREIGN KEY (id_asignacion) REFERENCES academico.asignaciones_docentes(id_asignacion) ON DELETE CASCADE
+);
+
+-- PRÓRROGAS: más tiempo que el ADMIN da a un profesor para enviar y corregir notas de un semestre (RN-74).
+-- Sin prórroga, el cierre es la fecha de fin del semestre.
+CREATE TABLE academico.prorrogas (
+    id_profesor BIGINT NOT NULL,
+    id_periodo BIGINT NOT NULL,
+    semestre academico.numero_semestre NOT NULL,
+    fecha_limite DATE NOT NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_prorrogas PRIMARY KEY (id_profesor, id_periodo, semestre),
+    CONSTRAINT fk_prorrogas_profesor FOREIGN KEY (id_profesor) REFERENCES academico.profesores(id_profesor) ON DELETE CASCADE,
+    CONSTRAINT fk_prorrogas_periodo FOREIGN KEY (id_periodo) REFERENCES academico.periodos_academicos(id_periodo) ON DELETE CASCADE
+);
+
+-- MONOGRAFÍAS: una por estudiante; empieza con su matrícula de nivel 10 y sigue en su nivel 11 (RN-78). Un
+-- coordinador la tutela en una materia SUPERIOR o MEDIO. Se opera por la cédula del estudiante.
+CREATE TABLE academico.monografias (
+    id_monografia BIGINT GENERATED ALWAYS AS IDENTITY,
+    id_estudiante BIGINT NOT NULL,
+    id_matricula_inicio BIGINT NOT NULL,
+    id_coordinador BIGINT NOT NULL,
+    id_asignatura BIGINT NOT NULL,
+    estado academico.estado_monografia NOT NULL DEFAULT 'CAPACITACION',
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_monografias PRIMARY KEY (id_monografia),
+    CONSTRAINT fk_monografias_estudiante FOREIGN KEY (id_estudiante) REFERENCES academico.estudiantes(id_estudiante) ON DELETE RESTRICT,
+    CONSTRAINT fk_monografias_matricula FOREIGN KEY (id_matricula_inicio) REFERENCES academico.matriculas(id_matricula) ON DELETE RESTRICT,
+    CONSTRAINT fk_monografias_coordinador FOREIGN KEY (id_coordinador) REFERENCES academico.profesores(id_profesor) ON DELETE RESTRICT,
+    CONSTRAINT fk_monografias_asignatura FOREIGN KEY (id_asignatura) REFERENCES academico.asignaturas(id_asignatura) ON DELETE RESTRICT,
+    CONSTRAINT uq_monografias_estudiante UNIQUE (id_estudiante)
+);
+CREATE INDEX ix_monografias_coordinador ON academico.monografias(id_coordinador);
+
+-- SEGUIMIENTO DE MONOGRAFÍAS: observaciones fechadas del coordinador (RN-80). Se identifican por id.
+CREATE TABLE academico.seguimientos_monografia (
+    id_seguimiento BIGINT GENERATED ALWAYS AS IDENTITY,
+    id_monografia BIGINT NOT NULL,
+    fecha DATE NOT NULL,
+    observacion VARCHAR(1000) NOT NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_seguimientos_monografia PRIMARY KEY (id_seguimiento),
+    CONSTRAINT fk_seguimientos_monografia FOREIGN KEY (id_monografia) REFERENCES academico.monografias(id_monografia) ON DELETE RESTRICT,
+    CONSTRAINT ck_seguimientos_observacion CHECK (length(trim(observacion)) >= 3)
+);
+CREATE INDEX ix_seguimientos_monografia ON academico.seguimientos_monografia(id_monografia);
+
+-- REPORTES DE MONOGRAFÍA: observaciones semestrales que el coordinador envía al guía (RN-81); salen en el
+-- reporte de bandas del estudiante.
+CREATE TABLE academico.reportes_monografia (
+    id_monografia BIGINT NOT NULL,
+    id_periodo BIGINT NOT NULL,
+    semestre academico.numero_semestre NOT NULL,
+    observaciones VARCHAR(1000) NOT NULL,
+    enviado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_reportes_monografia PRIMARY KEY (id_monografia, id_periodo, semestre),
+    CONSTRAINT fk_reportes_monografia FOREIGN KEY (id_monografia) REFERENCES academico.monografias(id_monografia) ON DELETE RESTRICT,
+    CONSTRAINT fk_reportes_monografia_periodo FOREIGN KEY (id_periodo) REFERENCES academico.periodos_academicos(id_periodo) ON DELETE RESTRICT,
+    CONSTRAINT ck_reportes_monografia_observaciones CHECK (length(trim(observaciones)) >= 3)
+);
+
+-- INFORMES CAS: informe semestral del profesor CAS por estudiante (RN-83). Comparte la clave de la nota
+-- (asignación CAS, matrícula, semestre): así el informe "apunta" a la nota CAS del estudiante.
+-- perfil y entrevistas: lo que el estudiante lleva cumplido hasta ese semestre.
+CREATE TABLE academico.informes_cas (
+    id_informe BIGINT GENERATED ALWAYS AS IDENTITY,
+    id_asignacion BIGINT NOT NULL,
+    id_matricula BIGINT NOT NULL,
+    semestre academico.numero_semestre NOT NULL,
+    perfil BOOLEAN NOT NULL DEFAULT FALSE,
+    entrevista_1 BOOLEAN NOT NULL DEFAULT FALSE,
+    entrevista_2 BOOLEAN NOT NULL DEFAULT FALSE,
+    entrevista_final BOOLEAN NOT NULL DEFAULT FALSE,
+    observaciones VARCHAR(2000) NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modificado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_informes_cas PRIMARY KEY (id_informe),
+    CONSTRAINT fk_informes_cas_asignacion FOREIGN KEY (id_asignacion) REFERENCES academico.asignaciones_docentes(id_asignacion) ON DELETE RESTRICT,
+    CONSTRAINT fk_informes_cas_matricula FOREIGN KEY (id_matricula) REFERENCES academico.matriculas(id_matricula) ON DELETE RESTRICT,
+    CONSTRAINT uq_informes_cas_asignacion_matricula_semestre UNIQUE (id_asignacion, id_matricula, semestre)
+);
+CREATE INDEX ix_informes_cas_matricula ON academico.informes_cas(id_matricula);
+
+-- EXPERIENCIAS CAS: filas del informe (proyecto, serie de experiencias o experiencia), en el orden del formato.
+-- resultados_aprendizaje: cuáles de los 7 resultados de aprendizaje CAS cumple.
+CREATE TABLE academico.experiencias_cas (
+    id_informe BIGINT NOT NULL,
+    orden SMALLINT NOT NULL,
+    descripcion VARCHAR(255) NOT NULL,
+    fecha DATE NULL,
+    creatividad BOOLEAN NOT NULL DEFAULT FALSE,
+    actividad BOOLEAN NOT NULL DEFAULT FALSE,
+    servicio BOOLEAN NOT NULL DEFAULT FALSE,
+    resultados_aprendizaje SMALLINT[] NOT NULL DEFAULT '{}',
+    carpeta BOOLEAN NOT NULL DEFAULT FALSE,
+    reflexion BOOLEAN NOT NULL DEFAULT FALSE,
+    pruebas BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT pk_experiencias_cas PRIMARY KEY (id_informe, orden),
+    CONSTRAINT fk_experiencias_cas_informe FOREIGN KEY (id_informe) REFERENCES academico.informes_cas(id_informe) ON DELETE CASCADE,
+    CONSTRAINT ck_experiencias_cas_orden CHECK (orden BETWEEN 1 AND 30),
+    CONSTRAINT ck_experiencias_cas_descripcion CHECK (length(trim(descripcion)) >= 3),
+    CONSTRAINT ck_experiencias_cas_resultados CHECK (resultados_aprendizaje <@ ARRAY[1,2,3,4,5,6,7]::SMALLINT[])
+);

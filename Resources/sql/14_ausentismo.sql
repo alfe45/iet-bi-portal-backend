@@ -1,7 +1,7 @@
 -- ============================================================
 -- 14_ausentismo.sql: ausentismo por lección (Profesor Regular CU10 a CU12, Guía CU05). Tablas en 06.
 -- Una lección es una clase que el profesor de una asignación registra cuando la imparte (fecha, hora y
--- tema); no depende de un horario (RN-66). Solo se guardan los ausentes (RN-68).
+-- tema); no depende de un horario (RN-66). Solo se guardan los ausentes y las llegadas tardías (RN-68, RN-86).
 -- Solo el profesor de la asignación opera sus lecciones (AD004). La fecha cae en un semestre del periodo
 -- y no es futura (LE001); cuando el semestre de la lección terminó, queda cerrada (PA004, RP-48).
 -- Las lecciones se identifican por id (RP-53).
@@ -21,12 +21,14 @@ CREATE TYPE academico.leccion_detalle AS (
     tema VARCHAR(255),
     semestre academico.numero_semestre,
     ausentes INTEGER,
-    justificadas INTEGER
+    justificadas INTEGER,
+    tardias INTEGER
 );
 
 CREATE TYPE academico.ausencia_detalle AS (
     cedula_estudiante VARCHAR(20),
     nombre_estudiante TEXT,      -- "Apellido1 Apellido2, Nombre"
+    tardia BOOLEAN,              -- TRUE = llegó tarde; FALSE = ausente
     justificada BOOLEAN,
     justificacion VARCHAR(255)
 );
@@ -43,6 +45,7 @@ CREATE TYPE academico.resumen_ausentismo AS (
     ausencias INTEGER,
     justificadas INTEGER,
     injustificadas INTEGER,
+    tardias INTEGER,
     porcentaje_ausentismo NUMERIC(5,2)
 );
 
@@ -59,8 +62,9 @@ AS $$
            ROW(l.id_leccion, p.anio, s.nivel, s.numero, s.nivel || '-' || s.numero,
                asg.codigo, asg.nombre::TEXT, l.fecha, l.hora, l.tema,
                academico.fn_semestre_en_fecha(p, l.fecha),
-               (SELECT COUNT(*)::INTEGER FROM academico.ausencias au WHERE au.id_leccion = l.id_leccion),
-               (SELECT COUNT(*)::INTEGER FROM academico.ausencias au WHERE au.id_leccion = l.id_leccion AND au.justificacion IS NOT NULL)
+               (SELECT COUNT(*)::INTEGER FROM academico.ausencias au WHERE au.id_leccion = l.id_leccion AND NOT au.tardia),
+               (SELECT COUNT(*)::INTEGER FROM academico.ausencias au WHERE au.id_leccion = l.id_leccion AND au.justificacion IS NOT NULL),
+               (SELECT COUNT(*)::INTEGER FROM academico.ausencias au WHERE au.id_leccion = l.id_leccion AND au.tardia)
               )::academico.leccion_detalle
     FROM academico.lecciones l
     JOIN academico.asignaciones_docentes a ON a.id_asignacion = l.id_asignacion
@@ -186,10 +190,22 @@ BEGIN
 END;
 $$;
 
--- RN-68: deja como ausentes de la lección exactamente a p_cedulas (sin repetidos). Cada uno debe estar
--- matriculado en la sección a la fecha de la lección (LE003). Conserva la justificación de quien sigue ausente.
--- Devuelve TRUE si cambió la lista.
-CREATE OR REPLACE FUNCTION academico.fn_guardar_ausentes(p_id_leccion BIGINT, p_cedulas TEXT[])
+-- Cédulas sin espacios, vacíos ni repetidos.
+CREATE OR REPLACE FUNCTION academico.fn_limpiar_cedulas(p_cedulas TEXT[])
+RETURNS TEXT[]
+LANGUAGE sql IMMUTABLE
+SET search_path = academico, auth, api, public
+AS $$
+    SELECT COALESCE(array_agg(DISTINCT c), ARRAY[]::TEXT[])
+    FROM (SELECT api.fn_limpiar(x) AS c FROM unnest(COALESCE(p_cedulas, ARRAY[]::TEXT[])) x) t
+    WHERE c IS NOT NULL;
+$$;
+
+-- RN-68 / RN-86: deja como ausentes de la lección exactamente a p_ausentes y como tardíos a p_tardias (sin
+-- repetidos; LE004 si un estudiante está en las dos listas). Cada uno debe estar matriculado en la sección a la
+-- fecha de la lección (LE003). Conserva la justificación de quien sigue ausente; quien pasa a tardío la pierde.
+-- Devuelve TRUE si cambió algo.
+CREATE OR REPLACE FUNCTION academico.fn_guardar_ausentes(p_id_leccion BIGINT, p_ausentes TEXT[], p_tardias TEXT[])
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
@@ -197,19 +213,24 @@ AS $$
 DECLARE
     v_leccion academico.lecciones%ROWTYPE;
     v_id_seccion BIGINT;
+    v_ausentes TEXT[] := academico.fn_limpiar_cedulas(p_ausentes);
+    v_tardias TEXT[] := academico.fn_limpiar_cedulas(p_tardias);
     v_cedulas TEXT[];
-    v_ids BIGINT[];
-    v_borradas INTEGER;
-    v_insertadas INTEGER;
+    v_registros JSONB;
+    v_cambios INTEGER;
+    v_total INTEGER := 0;
 BEGIN
+    IF v_ausentes && v_tardias THEN
+        PERFORM api.fn_lanzar_excepcion('LE004', 'Un estudiante no puede estar ausente y tardío en la misma lección.');
+    END IF;
+    v_cedulas := v_ausentes || v_tardias;
+
     SELECT * INTO v_leccion FROM academico.lecciones WHERE id_leccion = p_id_leccion;
     SELECT id_seccion INTO v_id_seccion FROM academico.asignaciones_docentes WHERE id_asignacion = v_leccion.id_asignacion;
 
-    SELECT COALESCE(array_agg(DISTINCT c), ARRAY[]::TEXT[]) INTO v_cedulas
-    FROM (SELECT api.fn_limpiar(x) AS c FROM unnest(COALESCE(p_cedulas, ARRAY[]::TEXT[])) x) t
-    WHERE c IS NOT NULL;
-
-    SELECT COALESCE(array_agg(m.id_matricula), ARRAY[]::BIGINT[]) INTO v_ids
+    -- Matrículas vigentes a la fecha de la lección de los estudiantes indicados: [{id_matricula, tardia}].
+    SELECT COALESCE(jsonb_agg(jsonb_build_object('id_matricula', m.id_matricula, 'tardia', e.cedula = ANY (v_tardias))), '[]'::jsonb)
+    INTO v_registros
     FROM academico.matriculas m
     JOIN academico.estudiantes e ON e.id_estudiante = m.id_estudiante
     WHERE m.id_seccion = v_id_seccion
@@ -217,19 +238,35 @@ BEGIN
       AND m.fecha_matricula <= v_leccion.fecha
       AND (m.fecha_retiro IS NULL OR m.fecha_retiro > v_leccion.fecha);
 
-    IF cardinality(v_ids) <> cardinality(v_cedulas) THEN
-        PERFORM api.fn_lanzar_excepcion('LE003', 'Un estudiante marcado como ausente no estaba matriculado en la sección en la fecha de la lección.');
+    IF jsonb_array_length(v_registros) <> cardinality(v_cedulas) THEN
+        PERFORM api.fn_lanzar_excepcion('LE003', 'Un estudiante marcado como ausente o tardío no estaba matriculado en la sección en la fecha de la lección.');
     END IF;
 
-    DELETE FROM academico.ausencias WHERE id_leccion = p_id_leccion AND NOT (id_matricula = ANY (v_ids));
-    GET DIAGNOSTICS v_borradas = ROW_COUNT;
+    WITH r AS (SELECT * FROM jsonb_to_recordset(v_registros) AS x(id_matricula BIGINT, tardia BOOLEAN))
+    DELETE FROM academico.ausencias au
+    WHERE au.id_leccion = p_id_leccion
+      AND NOT EXISTS (SELECT 1 FROM r WHERE r.id_matricula = au.id_matricula);
+    GET DIAGNOSTICS v_cambios = ROW_COUNT;
+    v_total := v_total + v_cambios;
 
-    INSERT INTO academico.ausencias (id_leccion, id_matricula)
-    SELECT p_id_leccion, unnest(v_ids)
+    WITH r AS (SELECT * FROM jsonb_to_recordset(v_registros) AS x(id_matricula BIGINT, tardia BOOLEAN))
+    UPDATE academico.ausencias au
+    SET tardia = r.tardia,
+        justificacion = CASE WHEN r.tardia THEN NULL ELSE au.justificacion END,
+        justificada_en = CASE WHEN r.tardia THEN NULL ELSE au.justificada_en END
+    FROM r
+    WHERE au.id_leccion = p_id_leccion AND au.id_matricula = r.id_matricula AND au.tardia <> r.tardia;
+    GET DIAGNOSTICS v_cambios = ROW_COUNT;
+    v_total := v_total + v_cambios;
+
+    INSERT INTO academico.ausencias (id_leccion, id_matricula, tardia)
+    SELECT p_id_leccion, x.id_matricula, x.tardia
+    FROM jsonb_to_recordset(v_registros) AS x(id_matricula BIGINT, tardia BOOLEAN)
     ON CONFLICT (id_leccion, id_matricula) DO NOTHING;
-    GET DIAGNOSTICS v_insertadas = ROW_COUNT;
+    GET DIAGNOSTICS v_cambios = ROW_COUNT;
+    v_total := v_total + v_cambios;
 
-    RETURN v_borradas + v_insertadas > 0;
+    RETURN v_total > 0;
 END;
 $$;
 
@@ -239,12 +276,12 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT e.cedula, concat_ws(' ', e.primer_apellido, e.segundo_apellido) || ', ' || e.nombre,
-           au.justificacion IS NOT NULL, au.justificacion
+           au.tardia, au.justificacion IS NOT NULL, au.justificacion
     FROM academico.ausencias au
     JOIN academico.matriculas m ON m.id_matricula = au.id_matricula
     JOIN academico.estudiantes e ON e.id_estudiante = m.id_estudiante
     WHERE au.id_leccion = p_id_leccion
-    ORDER BY e.primer_apellido, e.segundo_apellido, e.nombre;
+    ORDER BY au.tardia, e.primer_apellido, e.segundo_apellido, e.nombre;
 $$;
 
 -- Snapshot para auditoría: la lección con la lista de ausentes.
@@ -259,41 +296,50 @@ AS $$
     WHERE d.id_leccion = p_id_leccion;
 $$;
 
--- RN-70: resumen por estudiante y asignación. Las lecciones que cuentan para un estudiante son las
--- registradas mientras estuvo matriculado (desde su matrícula y antes de su retiro). p_semestre NULL = todo el año.
+-- RN-70: conteo por estudiante (matrícula) y asignación de la sección. Las lecciones que cuentan para un
+-- estudiante son las registradas mientras estuvo matriculado (desde su matrícula y antes de su retiro). Las
+-- llegadas tardías se cuentan aparte (RN-86). p_id_asignacion NULL = todas; p_semestre NULL = todo el año.
+-- Lo usan el resumen de ausentismo y el reporte de bandas.
+CREATE OR REPLACE FUNCTION academico.fn_conteo_ausentismo(p_id_seccion BIGINT, p_id_asignacion BIGINT, p_semestre academico.numero_semestre)
+RETURNS TABLE(id_matricula BIGINT, id_asignacion BIGINT, lecciones INTEGER, ausencias INTEGER, justificadas INTEGER, tardias INTEGER)
+LANGUAGE sql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+    SELECT m.id_matricula, a.id_asignacion,
+           COUNT(l.id_leccion)::INTEGER,
+           (COUNT(au.id_leccion) FILTER (WHERE NOT au.tardia))::INTEGER,
+           COUNT(au.justificacion)::INTEGER,
+           (COUNT(au.id_leccion) FILTER (WHERE au.tardia))::INTEGER
+    FROM academico.matriculas m
+    JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
+    JOIN academico.asignaciones_docentes a ON a.id_seccion = m.id_seccion
+    LEFT JOIN academico.lecciones l ON l.id_asignacion = a.id_asignacion
+         AND l.fecha >= m.fecha_matricula
+         AND (m.fecha_retiro IS NULL OR l.fecha < m.fecha_retiro)
+         AND (p_semestre IS NULL OR academico.fn_semestre_en_fecha(p, l.fecha) = p_semestre)
+    LEFT JOIN academico.ausencias au ON au.id_leccion = l.id_leccion AND au.id_matricula = m.id_matricula
+    WHERE m.id_seccion = p_id_seccion AND (p_id_asignacion IS NULL OR a.id_asignacion = p_id_asignacion)
+    GROUP BY m.id_matricula, a.id_asignacion;
+$$;
+
+-- RN-70: resumen por estudiante y asignación (porcentaje = ausencias / lecciones; NULL si no hubo lecciones).
 CREATE OR REPLACE FUNCTION academico.fn_resumen_ausentismo(p_id_seccion BIGINT, p_id_asignacion BIGINT, p_semestre academico.numero_semestre)
 RETURNS SETOF academico.resumen_ausentismo
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    WITH conteo AS (
-        SELECT m.id_matricula, a.id_asignacion,
-               COUNT(l.id_leccion)::INTEGER AS lecciones,
-               COUNT(au.id_leccion)::INTEGER AS ausencias,
-               COUNT(au.justificacion)::INTEGER AS justificadas
-        FROM academico.matriculas m
-        JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
-        JOIN academico.asignaciones_docentes a ON a.id_seccion = m.id_seccion
-        LEFT JOIN academico.lecciones l ON l.id_asignacion = a.id_asignacion
-             AND l.fecha >= m.fecha_matricula
-             AND (m.fecha_retiro IS NULL OR l.fecha < m.fecha_retiro)
-             AND (p_semestre IS NULL OR academico.fn_semestre_en_fecha(p, l.fecha) = p_semestre)
-        LEFT JOIN academico.ausencias au ON au.id_leccion = l.id_leccion AND au.id_matricula = m.id_matricula
-        WHERE m.id_seccion = p_id_seccion AND (p_id_asignacion IS NULL OR a.id_asignacion = p_id_asignacion)
-        GROUP BY m.id_matricula, a.id_asignacion
-    )
     SELECT (d.fila).cedula_estudiante, (d.fila).nombre_estudiante, (d.fila).estado,
            (ad.fila).codigo_asignatura, (ad.fila).asignatura, (ad.fila).nombre_profesor,
-           c.lecciones, c.ausencias, c.justificadas, c.ausencias - c.justificadas,
+           c.lecciones, c.ausencias, c.justificadas, c.ausencias - c.justificadas, c.tardias,
            CASE WHEN c.lecciones > 0 THEN round(100.0 * c.ausencias / c.lecciones, 2) END
-    FROM conteo c
+    FROM academico.fn_conteo_ausentismo(p_id_seccion, p_id_asignacion, p_semestre) c
     JOIN academico.fn_matriculas_detalle() d ON d.id_matricula = c.id_matricula
     JOIN academico.fn_asignaciones_detalle() ad ON ad.id_asignacion = c.id_asignacion
     ORDER BY d.apellidos_nombre, (ad.fila).asignatura, (ad.fila).nombre_profesor;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU10 - Registrar ausentismo: registra la lección y sus ausentes. Devuelve el id.
+-- Profesor Regular CU10 - Registrar ausentismo: registra la lección con sus ausentes y tardíos. Devuelve el id.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_registrar_leccion(
     p_id_usuario UUID,
@@ -304,7 +350,8 @@ CREATE OR REPLACE FUNCTION academico.fn_profesor_registrar_leccion(
     p_fecha DATE,
     p_hora TIME,
     p_tema TEXT,
-    p_ausentes TEXT[]
+    p_ausentes TEXT[],
+    p_tardias TEXT[]
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
@@ -321,13 +368,13 @@ BEGIN
     VALUES (v_id_asignacion, p_fecha, p_hora, api.fn_limpiar(p_tema))
     RETURNING id_leccion INTO v_id_leccion;
 
-    PERFORM academico.fn_guardar_ausentes(v_id_leccion, p_ausentes);
+    PERFORM academico.fn_guardar_ausentes(v_id_leccion, p_ausentes, p_tardias);
     RETURN v_id_leccion;
 END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU11 - Modificar ausentismo: corrige fecha, hora y tema y reemplaza la lista de ausentes.
+-- Profesor Regular CU11 - Modificar ausentismo: corrige fecha, hora y tema y reemplaza las listas de ausentes y tardíos.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_modificar_leccion(
@@ -337,6 +384,7 @@ CREATE OR REPLACE FUNCTION academico.fn_profesor_modificar_leccion(
     p_hora TIME,
     p_tema TEXT,
     p_ausentes TEXT[],
+    p_tardias TEXT[],
     OUT out_status TEXT,
     OUT out_datos_anteriores JSONB
 )
@@ -360,7 +408,7 @@ BEGIN
         UPDATE academico.lecciones SET fecha = p_fecha, hora = p_hora, tema = v_tema WHERE id_leccion = p_id_leccion;
     END IF;
 
-    v_cambio_ausentes := academico.fn_guardar_ausentes(p_id_leccion, p_ausentes);
+    v_cambio_ausentes := academico.fn_guardar_ausentes(p_id_leccion, p_ausentes, p_tardias);
     out_status := CASE WHEN v_cambio_datos OR v_cambio_ausentes THEN 'OK' ELSE 'SIN_CAMBIOS' END;
 END;
 $$;
@@ -384,7 +432,7 @@ $$;
 
 -- ------------------------------------------------------------
 -- Profesor Regular CU11 - Justificar una ausencia (RN-69). Devuelve 'OK' o 'SIN_CAMBIOS' y la ausencia previa.
--- NF003 si el estudiante no existe; NF011 si no tiene ausencia en la lección.
+-- NF003 si el estudiante no existe; NF011 si no tiene ausencia en la lección (una llegada tardía no se justifica).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_justificar_ausencia(
     p_id_usuario UUID,
@@ -408,7 +456,7 @@ BEGIN
     SELECT au.* INTO v_ausencia
     FROM academico.ausencias au
     JOIN academico.matriculas m ON m.id_matricula = au.id_matricula
-    WHERE au.id_leccion = p_id_leccion AND m.id_estudiante = v_id_estudiante
+    WHERE au.id_leccion = p_id_leccion AND m.id_estudiante = v_id_estudiante AND NOT au.tardia
     FOR UPDATE OF au;
 
     IF NOT FOUND THEN
@@ -527,16 +575,8 @@ LANGUAGE plpgsql STABLE
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
-    v_id_seccion BIGINT := academico.fn_obtener_id_seccion(p_anio, p_nivel, p_numero);
+    v_id_seccion BIGINT := academico.fn_validar_guia_seccion(p_id_usuario, p_anio, p_nivel, p_numero);
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM academico.secciones s
-        JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
-        WHERE s.id_seccion = v_id_seccion AND pr.id_usuario = p_id_usuario
-    ) THEN
-        PERFORM api.fn_lanzar_excepcion('AD005', 'No eres el guía de esa sección.');
-    END IF;
-
     RETURN QUERY SELECT * FROM academico.fn_resumen_ausentismo(v_id_seccion, NULL, p_semestre);
 END;
 $$;

@@ -68,3 +68,30 @@ MODIFICAR_LECCION               // Corrección de fecha, hora, tema o ausentes (
 ELIMINAR_LECCION                // Eliminación de la lección y sus ausencias (datos_anteriores = snapshot previo).
 JUSTIFICAR_AUSENCIA             // Se justificó o se cambió la justificación de una ausencia (datos_anteriores / datos_nuevos).
 ANULAR_JUSTIFICACION_AUSENCIA   // La ausencia vuelve a quedar injustificada (datos_anteriores = justificación previa).
+
+# Evaluaciones (id_registro_afectado = "año/nivel-número/código/semestre", ej. "2026/10-1/MAT/II_SEMESTRE";
+# prórrogas = "año/semestre/cédula del profesor")
+REGISTRAR_NOTAS     // Registro o corrección de notas y observaciones (datos_anteriores = [{cedulaEstudiante, nota, observaciones}]
+                    // previos de lo que cambió, nota null si era nueva; datos_nuevos = notas enviadas). No se registra si no hubo cambios.
+ELIMINAR_NOTA       // Corrección: se eliminó la nota de un estudiante (id = ".../cédula"; datos_anteriores = nota previa y
+                    // envioAnulado: si anuló el envío de la asignación).
+ENVIAR_NOTAS        // El profesor envió al guía las notas del semestre (solo la primera vez).
+OTORGAR_PRORROGA    // El ADMIN otorgó o cambió una prórroga (datos_anteriores = prórroga previa, datos_nuevos = fechaLimite).
+QUITAR_PRORROGA     // El ADMIN quitó la prórroga (datos_anteriores = prórroga previa).
+
+# Monografías (id_registro_afectado = cédula del estudiante; seguimientos = id del seguimiento;
+# reportes = "cédula/año/semestre")
+REGISTRAR_MONOGRAFIA              // Asignación del estudiante a un coordinador y materia (datos_nuevos = request).
+MODIFICAR_MONOGRAFIA              // Cambio de coordinador o materia (datos_anteriores = monografía previa).
+ELIMINAR_MONOGRAFIA               // Eliminación (datos_anteriores = snapshot previo).
+CAMBIAR_ESTADO_MONOGRAFIA         // El coordinador cambió el estado (datos_anteriores = monografía previa, datos_nuevos = estado).
+REGISTRAR_SEGUIMIENTO_MONOGRAFIA  // Observación de seguimiento (datos_nuevos = request).
+MODIFICAR_SEGUIMIENTO_MONOGRAFIA  // Corrección de fecha u observación (datos_anteriores = seguimiento previo).
+ELIMINAR_SEGUIMIENTO_MONOGRAFIA   // Eliminación (datos_anteriores = seguimiento previo).
+ENVIAR_REPORTE_MONOGRAFIA         // Reporte semestral al guía, o su corrección (datos_anteriores = observaciones previas).
+ELIMINAR_REPORTE_MONOGRAFIA       // El coordinador retiró el reporte del semestre (datos_anteriores = reporte previo).
+
+# CAS (id_registro_afectado = "año/semestre/cédula del estudiante")
+REGISTRAR_INFORME_CAS   // Primer informe CAS del estudiante en el semestre (datos_nuevos = request).
+MODIFICAR_INFORME_CAS   // Cambio del informe (datos_anteriores = informe previo con sus experiencias). No se registra si no hubo cambios.
+ELIMINAR_INFORME_CAS    // Eliminación (datos_anteriores = informe previo).

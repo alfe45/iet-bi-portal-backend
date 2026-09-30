@@ -45,6 +45,7 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-31: El ADMIN puede registrar y corregir periodos pasados y sus datos, para digitalizar información en papel; un periodo finalizado no se puede reabrir (PA007).
 - RN-32: La fecha de fin de un semestre no finalizado no puede quedar en el pasado (PA005).
 - RN-33: Un periodo con secciones no se elimina (PA006).
+- RN-87: Modificar las fechas de un periodo no puede dejar fuera registros ya hechos: lecciones fuera de un semestre, matrículas o retiros posteriores al fin del periodo, experiencias CAS fuera del periodo ni seguimientos de monografía anteriores a su inicio (PA008).
 
 ## Secciones
 - RN-36: Una sección tiene como máximo un profesor guía, y un profesor es guía de una sola sección por periodo (SE004).
@@ -55,7 +56,7 @@ Entre paréntesis: el código de error que devuelve la API.
 
 ## Asignaturas
 - RN-41: Una asignatura se identifica por un código de 2 a 10 letras o dígitos (en mayúsculas, inmutable) y tiene un nombre único sin distinguir mayúsculas (AS001, AS002, AS004).
-- RN-43: Cada asignatura indica en qué niveles se imparte (al menos uno, AS003); una asignatura no se asigna a una sección de un nivel donde no se imparte (AS005).
+- RN-43: Cada asignatura indica en qué niveles se imparte (al menos uno, AS003); una asignatura no se asigna a una sección de un nivel donde no se imparte (AS005), y no se le quita un nivel en el que ya está asignada (AS007).
 
 ## Asignaciones docentes
 - RN-44: Una asignación es un profesor que imparte una asignatura en una sección; se identifica por año, nivel, número, código de asignatura y cédula del profesor.
@@ -71,7 +72,7 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-53: Un estudiante tiene como máximo una matrícula por periodo (MA001); se identifica por año y cédula del estudiante.
 - RN-55: La fecha de matrícula no puede ser futura, posterior al fin del periodo ni más de un año anterior a su inicio (MA002). Por defecto es hoy, o el inicio del periodo si ya finalizó (digitalización).
 - RN-56: El estado de la matrícula no se guarda: es RETIRADA si tiene retiro; si no, PROGRAMADA / ACTIVA / FINALIZADA según el estado del periodo.
-- RN-57: Modificar una matrícula es trasladarla a otra sección del mismo año (con las limitaciones de RN-58) o registrar/anular su retiro. La fecha de retiro no puede ser futura, anterior a la matrícula ni posterior al fin del periodo (MA003).
+- RN-57: Modificar una matrícula es trasladarla a otra sección del mismo año (con las limitaciones de RN-58) o registrar/anular su retiro. La fecha de retiro no puede ser futura, anterior a la matrícula ni posterior al fin del periodo (MA003), ni dejar fuera registros ya hechos: debe ser posterior a su última ausencia o tardía y al fin de los semestres en que ya tiene nota o informe CAS (MA009).
 - RN-59: Un profesor solo consulta los estudiantes de una sección si imparte en ella o es su guía (AD003).
 - RN-60: No se elimina un estudiante o una sección con matrículas (23001).
 - RN-65: Con el mismo acceso de RN-59, el profesor consulta la ficha de un estudiante de la sección: sus datos personales y su matrícula, incluido el motivo de retiro, que puede ver cualquier profesor con acceso a la sección (NF009 si no está matriculado en ella).

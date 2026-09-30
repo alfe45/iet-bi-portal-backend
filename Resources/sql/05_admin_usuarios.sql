@@ -307,6 +307,30 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('AU017', 'El usuario tiene asignaciones docentes en un periodo no finalizado.');
     END IF;
 
+    -- PROFESOR_CAS: un profesor que imparte CAS en un periodo no finalizado lo conserva (RN-82).
+    IF p_rol = 'PROFESOR_CAS' AND EXISTS (
+        SELECT 1
+        FROM academico.asignaciones_docentes a
+        JOIN academico.asignaturas asg ON asg.id_asignatura = a.id_asignatura
+        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
+        JOIN academico.secciones s ON s.id_seccion = a.id_seccion
+        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+        WHERE pr.id_usuario = p_id_usuario_objetivo AND asg.codigo = 'CAS'
+          AND academico.fn_estado_periodo(p) <> 'FINALIZADO'
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AU018', 'El usuario imparte CAS en un periodo no finalizado.');
+    END IF;
+
+    -- COORD_MONOGRAFIA: un coordinador con monografías sin terminar lo conserva (RN-78).
+    IF p_rol = 'COORD_MONOGRAFIA' AND EXISTS (
+        SELECT 1
+        FROM academico.monografias mo
+        JOIN academico.profesores pr ON pr.id_profesor = mo.id_coordinador
+        WHERE pr.id_usuario = p_id_usuario_objetivo AND mo.estado <> 'TERMINADA'
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AU019', 'El usuario coordina monografías sin terminar.');
+    END IF;
+
     DELETE FROM api.usuario_roles WHERE id_usuario = p_id_usuario_objetivo AND rol = p_rol;
     CALL api.sp_revocar_acceso(p_id_usuario_objetivo);
 

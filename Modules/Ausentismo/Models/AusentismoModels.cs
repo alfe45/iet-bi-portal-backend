@@ -3,9 +3,10 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Ausentismo.Models;
 
-/// <summary>Datos editables de una lección (Profesor Regular CU11). Ausentes: cédulas de los estudiantes que
-/// faltaron (lista vacía = asistieron todos); reemplaza la lista anterior. Fecha (LE001, PA004), fecha y hora
-/// repetidas (LE002) y ausentes no matriculados (LE003) los valida la DB.</summary>
+/// <summary>Datos editables de una lección (Profesor Regular CU11). Ausentes y Tardias: cédulas de los estudiantes
+/// que faltaron y de los que llegaron tarde (listas vacías = asistieron todos a tiempo); reemplazan las anteriores.
+/// Fecha (LE001, PA004), fecha y hora repetidas (LE002), estudiantes no matriculados (LE003) y un estudiante en las
+/// dos listas (LE004) los valida la DB.</summary>
 public class ModificarLeccionRequest
 {
     [Required]
@@ -19,6 +20,9 @@ public class ModificarLeccionRequest
 
     [MaxLength(100, ErrorMessage = "No se pueden marcar más de 100 ausentes.")]
     public List<string> Ausentes { get; set; } = [];
+
+    [MaxLength(100, ErrorMessage = "No se pueden marcar más de 100 llegadas tardías.")]
+    public List<string> Tardias { get; set; } = [];
 }
 
 /// <summary>Profesor Regular CU10: registra una lección de su asignación (año, nivel, número, código) con sus ausentes.</summary>
@@ -89,14 +93,7 @@ public class ConsultaAusentismoGuia
     public string? Semestre { get; set; }
 }
 
-/// <summary>Valores del enum academico.numero_semestre (deben coincidir con la DB).</summary>
-public static class Semestres
-{
-    public const string Patron = "(?i)^(I_SEMESTRE|II_SEMESTRE)$";   // sin distinguir mayúsculas
-    public const string Mensaje = "El semestre debe ser I_SEMESTRE o II_SEMESTRE.";
-}
-
-/// <summary>Lección tal como la devuelve academico.fn_profesor_*_leccion*. Ausentes y Justificadas son conteos.</summary>
+/// <summary>Lección tal como la devuelve academico.fn_profesor_*_leccion*. Ausentes, Justificadas y Tardias son conteos.</summary>
 public record Leccion(
     long IdLeccion,
     int Anio,
@@ -110,16 +107,17 @@ public record Leccion(
     string? Tema,
     string Semestre,
     int Ausentes,
-    int Justificadas);
+    int Justificadas,
+    int Tardias);
 
-/// <summary>Ausencia de un estudiante en una lección.</summary>
-public record Ausencia(string CedulaEstudiante, string NombreEstudiante, bool Justificada, string? Justificacion);
+/// <summary>Ausencia o llegada tardía (Tardia = true) de un estudiante en una lección. Las tardías no se justifican.</summary>
+public record Ausencia(string CedulaEstudiante, string NombreEstudiante, bool Tardia, bool Justificada, string? Justificacion);
 
-/// <summary>Detalle de una lección con la lista de ausentes.</summary>
+/// <summary>Detalle de una lección con sus ausentes y llegadas tardías.</summary>
 public record LeccionConAusentes(Leccion Leccion, List<Ausencia> Ausentes);
 
 /// <summary>RN-70: ausencias de un estudiante en una asignación contra las lecciones registradas mientras estuvo
-/// matriculado. PorcentajeAusentismo es null si no hubo lecciones.</summary>
+/// matriculado; las llegadas tardías van aparte (RN-86). PorcentajeAusentismo es null si no hubo lecciones.</summary>
 public record ResumenAusentismo(
     string CedulaEstudiante,
     string NombreEstudiante,
@@ -131,4 +129,5 @@ public record ResumenAusentismo(
     int Ausencias,
     int Justificadas,
     int Injustificadas,
+    int Tardias,
     decimal? PorcentajeAusentismo);

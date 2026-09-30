@@ -68,4 +68,27 @@ public static class AccionesLog
     public const string EliminarLeccion = "ELIMINAR_LECCION";
     public const string JustificarAusencia = "JUSTIFICAR_AUSENCIA";
     public const string AnularJustificacionAusencia = "ANULAR_JUSTIFICACION_AUSENCIA";
+
+    // Evaluaciones
+    public const string RegistrarNotas = "REGISTRAR_NOTAS";
+    public const string EliminarNota = "ELIMINAR_NOTA";
+    public const string EnviarNotas = "ENVIAR_NOTAS";
+    public const string OtorgarProrroga = "OTORGAR_PRORROGA";
+    public const string QuitarProrroga = "QUITAR_PRORROGA";
+
+    // Monografías
+    public const string RegistrarMonografia = "REGISTRAR_MONOGRAFIA";
+    public const string ModificarMonografia = "MODIFICAR_MONOGRAFIA";
+    public const string EliminarMonografia = "ELIMINAR_MONOGRAFIA";
+    public const string CambiarEstadoMonografia = "CAMBIAR_ESTADO_MONOGRAFIA";
+    public const string RegistrarSeguimientoMonografia = "REGISTRAR_SEGUIMIENTO_MONOGRAFIA";
+    public const string ModificarSeguimientoMonografia = "MODIFICAR_SEGUIMIENTO_MONOGRAFIA";
+    public const string EliminarSeguimientoMonografia = "ELIMINAR_SEGUIMIENTO_MONOGRAFIA";
+    public const string EnviarReporteMonografia = "ENVIAR_REPORTE_MONOGRAFIA";
+    public const string EliminarReporteMonografia = "ELIMINAR_REPORTE_MONOGRAFIA";
+
+    // CAS
+    public const string RegistrarInformeCas = "REGISTRAR_INFORME_CAS";
+    public const string ModificarInformeCas = "MODIFICAR_INFORME_CAS";
+    public const string EliminarInformeCas = "ELIMINAR_INFORME_CAS";
 }
