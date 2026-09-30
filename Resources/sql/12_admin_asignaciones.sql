@@ -1,5 +1,5 @@
 -- ============================================================
--- 12_admin_asignaciones.sql: CU 33 a 36 (admin) + consulta de mis asignaciones (profesor).
+-- 12_admin_asignaciones.sql: CU 30 a 33 (admin) + consulta de mis asignaciones (profesor).
 -- Una asignación = profesor que imparte una asignatura en una sección. Varios profesores pueden
 -- compartir la misma asignatura y sección (co-docencia). Se opera SIEMPRE por claves naturales:
 -- (año, nivel, número, código de asignatura, cédula del profesor), nunca por id_asignacion.
@@ -107,7 +107,7 @@ BEGIN
 END;
 $$;
 
--- CU 33 - Asignar a un profesor una asignatura en una sección.
+-- CU 30 - Asignar a un profesor una asignatura en una sección.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_asignacion(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -145,7 +145,7 @@ BEGIN
 END;
 $$;
 
--- CU 34 - Consultar asignaciones. Todos los filtros son opcionales (NULL = todos).
+-- CU 31 - Consultar asignaciones. Todos los filtros son opcionales (NULL = todos).
 CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaciones(
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT, p_cedula_profesor TEXT,
     p_pagina INTEGER, p_tamano_pagina INTEGER)
@@ -180,7 +180,7 @@ AS $$
       AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar(p_cedula_profesor));
 $$;
 
--- CU 35 - Modificar asignación: reemplazar al profesor (ej. sustitución de un docente). Se conserva
+-- CU 32 - Modificar asignación: reemplazar al profesor (ej. sustitución de un docente). Se conserva
 -- la asignación para que sus registros futuros (evaluaciones, asistencia) sigan asociados.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_cambiar_profesor_asignacion(
@@ -231,7 +231,7 @@ BEGIN
 END;
 $$;
 
--- CU 36 - Eliminar asignación. Devuelve el snapshot previo. Si otras entidades la referencian
+-- CU 33 - Eliminar asignación. Devuelve el snapshot previo. Si otras entidades la referencian
 -- (evaluaciones, asistencia) con FK RESTRICT, Postgres lanza 23001.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_asignacion(
     p_id_usuario_actor UUID,

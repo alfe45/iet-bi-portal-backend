@@ -8,7 +8,7 @@ using iet_bi_portal_backend.Modules.Usuarios.Services;
 
 namespace iet_bi_portal_backend.Modules.Usuarios.Controllers;
 
-/// <summary>CU02 a CU05. Exige rol ADMIN (AdminControllerBase).</summary>
+/// <summary>Administrador CU02 a CU05 (registrar, consultar, modificar y eliminar usuarios) y CU39 (asignar coordinadores = otorgar el rol). Exige rol ADMIN (AdminControllerBase).</summary>
 [Route("api/admin/usuarios")]
 public class AdminUsuariosController(UsuariosService usuarios) : AdminControllerBase
 {

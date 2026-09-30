@@ -7,7 +7,7 @@ using iet_bi_portal_backend.Modules.Estudiantes.Services;
 
 namespace iet_bi_portal_backend.Modules.Estudiantes.Controllers;
 
-/// <summary>CU10 a CU13. Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
+/// <summary>Administrador CU10 a CU13 (registrar, consultar, modificar y eliminar estudiantes). Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
 [Route("api/admin/estudiantes")]
 public class AdminEstudiantesController(EstudiantesService estudiantes) : AdminControllerBase
 {

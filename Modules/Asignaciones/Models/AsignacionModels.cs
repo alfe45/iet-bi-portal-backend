@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Asignaciones.Models;
 
-/// <summary>CU33: asignar a un profesor una asignatura en una sección (año, nivel, número).
+/// <summary>CU30: asignar a un profesor una asignatura en una sección (año, nivel, número).
 /// Nivel de la asignatura (AS005), rol del profesor (AD002) y duplicados (AD001) los valida la DB.</summary>
 public class RegistrarAsignacionRequest
 {
@@ -23,14 +23,14 @@ public class RegistrarAsignacionRequest
     public string CedulaProfesor { get; set; } = string.Empty;
 }
 
-/// <summary>CU35: reemplazar al profesor de una asignación (la asignación y sus registros se conservan).</summary>
+/// <summary>CU32: reemplazar al profesor de una asignación (la asignación y sus registros se conservan).</summary>
 public class CambiarProfesorRequest
 {
     [Required, RegularExpression(PatronesValidacion.Cedula, ErrorMessage = PatronesValidacion.MensajeCedula)]
     public string CedulaProfesorNuevo { get; set; } = string.Empty;
 }
 
-/// <summary>CU34: listado paginado; todos los filtros son opcionales.</summary>
+/// <summary>CU31: listado paginado; todos los filtros son opcionales.</summary>
 public class ConsultaAsignaciones : ConsultaPaginada
 {
     public int? Anio { get; set; }

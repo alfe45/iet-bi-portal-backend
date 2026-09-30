@@ -11,7 +11,7 @@ public class AsignaturasService(AsignaturasRepository repo, ILogsService logs)
 {
     private const string Tabla = "academico.asignaturas";
 
-    /// <summary>CU29: registra una asignatura. Devuelve el código normalizado.</summary>
+    /// <summary>CU26: registra una asignatura. Devuelve el código normalizado.</summary>
     public async Task<string> RegistrarAsync(Guid actorId, RegistrarAsignaturaRequest request)
     {
         var codigo = await repo.RegistrarAsync(actorId, request);
@@ -20,13 +20,13 @@ public class AsignaturasService(AsignaturasRepository repo, ILogsService logs)
         return codigo;
     }
 
-    /// <summary>CU30: listado paginado con filtros opcionales.</summary>
+    /// <summary>CU27: listado paginado con filtros opcionales.</summary>
     public Task<ResultadoPaginado<Asignatura>> ListarAsync(ConsultaAsignaturas consulta) => repo.ListarAsync(consulta);
 
-    /// <summary>CU30: detalle por código, o null si no existe.</summary>
+    /// <summary>CU27: detalle por código, o null si no existe.</summary>
     public Task<Asignatura?> ObtenerAsync(string codigo) => repo.ObtenerAsync(codigo);
 
-    /// <summary>CU31: modifica una asignatura. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
+    /// <summary>CU28: modifica una asignatura. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
     public async Task ActualizarAsync(Guid actorId, string codigo, ActualizarAsignaturaRequest request)
     {
         var (estado, anteriores) = await repo.ActualizarAsync(actorId, codigo, request);
@@ -36,7 +36,7 @@ public class AsignaturasService(AsignaturasRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU32: elimina una asignatura.</summary>
+    /// <summary>CU29: elimina una asignatura.</summary>
     public async Task EliminarAsync(Guid actorId, string codigo)
     {
         var anteriores = await repo.EliminarAsync(actorId, codigo);

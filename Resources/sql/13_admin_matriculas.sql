@@ -1,5 +1,5 @@
 -- ============================================================
--- 13_admin_matriculas.sql: CU 25 a 28 (admin) + estudiantes de una sección (profesor/guía).
+-- 13_admin_matriculas.sql: CU 22 a 25 (admin) + estudiantes de una sección (profesor/guía).
 -- Una matrícula por estudiante y periodo; se identifica por (año, cédula del estudiante).
 -- El estado se deriva: RETIRADA si tiene retiro; si no PROGRAMADA / ACTIVA / FINALIZADA según el periodo.
 -- El ADMIN puede matricular en periodos pasados (digitalización).
@@ -124,9 +124,29 @@ AS $$
     SELECT to_jsonb(d.fila) FROM academico.fn_matriculas_detalle() d WHERE d.id_matricula = p_id_matricula;
 $$;
 
--- CU 25 - Matricular estudiante en una sección. p_fecha_matricula NULL = hoy (o el inicio del periodo
+-- Fecha de matrícula efectiva: p_fecha NULL = hoy (o el inicio del periodo si ya finalizó). MA002 si es
+-- futura, posterior al fin del periodo o más de un año anterior a su inicio.
+CREATE OR REPLACE FUNCTION academico.fn_validar_fecha_matricula(p_periodo academico.periodos_academicos, p_fecha DATE)
+RETURNS DATE
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_fecha DATE := COALESCE(p_fecha,
+        CASE WHEN academico.fn_estado_periodo(p_periodo) = 'FINALIZADO' THEN p_periodo.inicio_semestre_i ELSE api.fn_hoy() END);
+BEGIN
+    IF v_fecha > api.fn_hoy() OR v_fecha > p_periodo.fin_semestre_ii
+       OR v_fecha < (p_periodo.inicio_semestre_i - INTERVAL '1 year')::DATE THEN
+        PERFORM api.fn_lanzar_excepcion('MA002', 'La fecha de matrícula no es válida.');
+    END IF;
+    RETURN v_fecha;
+END;
+$$;
+
+-- CU 22 - Matricular estudiante en una sección. p_fecha_matricula NULL = hoy (o el inicio del periodo
 -- si ya finalizó). Reglas: una matrícula por periodo (MA001), edad 16-19 al inicio del periodo (ES003),
 -- fecha de matrícula ni futura ni posterior al fin del periodo ni más de un año antes de su inicio (MA002).
+-- Para una sección completa de nivel 11, ver fn_admin_subir_seccion.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_matricula(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -181,20 +201,83 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('MA004', 'Para matricular en nivel 11 el estudiante debe haber cursado nivel 10 el año anterior en la sección con el mismo número.');
     END IF;
 
-    v_fecha := COALESCE(p_fecha_matricula,
-        CASE WHEN academico.fn_estado_periodo(v_periodo) = 'FINALIZADO' THEN v_periodo.inicio_semestre_i ELSE api.fn_hoy() END);
-
-    IF v_fecha > api.fn_hoy() OR v_fecha > v_periodo.fin_semestre_ii
-       OR v_fecha < (v_periodo.inicio_semestre_i - INTERVAL '1 year')::DATE THEN
-        PERFORM api.fn_lanzar_excepcion('MA002', 'La fecha de matrícula no es válida.');
-    END IF;
+    v_fecha := academico.fn_validar_fecha_matricula(v_periodo, p_fecha_matricula);
 
     INSERT INTO academico.matriculas (id_estudiante, id_periodo, id_seccion, fecha_matricula)
     VALUES (v_estudiante.id_estudiante, v_periodo.id_periodo, v_id_seccion, v_fecha);
 END;
 $$;
 
--- CU 27 - Consultar matrículas / historial. Filtros opcionales (NULL = todos): año, nivel, número de
+-- CU 22 - Subir la sección (RN-64): matricula en la 11-N de p_anio a todos los estudiantes de la 10-N de
+-- p_anio - 1 sin retiro, en lugar de uno por uno (la matrícula individual sigue disponible). Si la 11-N
+-- no existe se crea, sin guía (RN-63). Omite a quien ya tiene matrícula en p_anio (se puede repetir la
+-- acción tras matricular a alguno individualmente). La edad no se valida (RN-01: solo al entrar a 10).
+-- Errores: NF004 periodo, NF006 no existe la 10-N del año anterior, MA002 fecha.
+CREATE OR REPLACE FUNCTION academico.fn_admin_subir_seccion(
+    p_id_usuario_actor UUID,
+    p_anio INTEGER,
+    p_numero INTEGER,
+    p_fecha_matricula DATE
+)
+RETURNS TABLE(seccion_creada BOOLEAN, matriculados TEXT[], omitidos TEXT[])
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_periodo academico.periodos_academicos%ROWTYPE;
+    v_id_seccion_10 BIGINT;
+    v_id_seccion_11 BIGINT;
+    v_creada BOOLEAN := FALSE;
+    v_fecha DATE;
+    v_matriculados TEXT[];
+    v_omitidos TEXT[];
+BEGIN
+    PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
+
+    SELECT * INTO v_periodo FROM academico.periodos_academicos WHERE anio = p_anio;
+    IF NOT FOUND THEN
+        PERFORM api.fn_lanzar_excepcion('NF004', 'El periodo académico no existe.');
+    END IF;
+
+    v_id_seccion_10 := academico.fn_obtener_id_seccion(p_anio - 1, 10, p_numero);
+    v_fecha := academico.fn_validar_fecha_matricula(v_periodo, p_fecha_matricula);
+
+    SELECT s.id_seccion INTO v_id_seccion_11
+    FROM academico.secciones s
+    WHERE s.id_periodo = v_periodo.id_periodo AND s.nivel = 11 AND s.numero = p_numero;
+
+    IF v_id_seccion_11 IS NULL THEN
+        INSERT INTO academico.secciones (id_periodo, nivel, numero)
+        VALUES (v_periodo.id_periodo, 11, p_numero)
+        RETURNING id_seccion INTO v_id_seccion_11;
+        v_creada := TRUE;
+    END IF;
+
+    -- Quien ya tiene matrícula en el año se omite (solo puede ser su 11-N: MA004 y MA005).
+    SELECT array_agg(e.cedula ORDER BY e.cedula) INTO v_omitidos
+    FROM academico.matriculas m10
+    JOIN academico.estudiantes e ON e.id_estudiante = m10.id_estudiante
+    WHERE m10.id_seccion = v_id_seccion_10 AND m10.fecha_retiro IS NULL
+      AND EXISTS (SELECT 1 FROM academico.matriculas m
+                  WHERE m.id_estudiante = m10.id_estudiante AND m.id_periodo = v_periodo.id_periodo);
+
+    WITH nuevas AS (
+        INSERT INTO academico.matriculas (id_estudiante, id_periodo, id_seccion, fecha_matricula)
+        SELECT m10.id_estudiante, v_periodo.id_periodo, v_id_seccion_11, v_fecha
+        FROM academico.matriculas m10
+        WHERE m10.id_seccion = v_id_seccion_10 AND m10.fecha_retiro IS NULL
+          AND NOT EXISTS (SELECT 1 FROM academico.matriculas m
+                          WHERE m.id_estudiante = m10.id_estudiante AND m.id_periodo = v_periodo.id_periodo)
+        RETURNING id_estudiante
+    )
+    SELECT array_agg(e.cedula ORDER BY e.cedula) INTO v_matriculados
+    FROM nuevas n JOIN academico.estudiantes e ON e.id_estudiante = n.id_estudiante;
+
+    RETURN QUERY SELECT v_creada, COALESCE(v_matriculados, '{}'), COALESCE(v_omitidos, '{}');
+END;
+$$;
+
+-- CU 24 - Consultar matrículas / historial. Filtros opcionales (NULL = todos): año, nivel, número de
 -- sección, cédula del estudiante (historial), estado y búsqueda por nombre o cédula.
 CREATE OR REPLACE FUNCTION academico.fn_matriculas_filtradas(
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_cedula_estudiante TEXT,
@@ -247,7 +330,7 @@ AS $$
     FROM academico.fn_matriculas_filtradas(p_anio, NULL, NULL, p_cedula_estudiante, NULL, NULL) f;
 $$;
 
--- CU 26 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado).
+-- CU 23 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado).
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_cambiar_seccion_matricula(
     p_id_usuario_actor UUID,
@@ -295,7 +378,7 @@ BEGIN
 END;
 $$;
 
--- CU 26 - Modificar matrícula: registrar o corregir el retiro del estudiante. La fecha no puede ser
+-- CU 23 - Modificar matrícula: registrar o corregir el retiro del estudiante. La fecha no puede ser
 -- futura, anterior a la matrícula ni posterior al fin del periodo (MA003).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_retiro_matricula(
     p_id_usuario_actor UUID,
@@ -341,7 +424,7 @@ BEGIN
 END;
 $$;
 
--- CU 26 - Modificar matrícula: anular el retiro (reingreso o corrección). 'SIN_CAMBIOS' si no tenía.
+-- CU 23 - Modificar matrícula: anular el retiro (reingreso o corrección). 'SIN_CAMBIOS' si no tenía.
 CREATE OR REPLACE FUNCTION academico.fn_admin_anular_retiro_matricula(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -374,7 +457,7 @@ BEGIN
 END;
 $$;
 
--- CU 28 - Eliminar matrícula (corrección de errores). Devuelve el snapshot previo. Si otras entidades
+-- CU 25 - Eliminar matrícula (corrección de errores). Devuelve el snapshot previo. Si otras entidades
 -- la referencian (evaluaciones, asistencia) con FK RESTRICT, Postgres lanza 23001.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_matricula(
     p_id_usuario_actor UUID,

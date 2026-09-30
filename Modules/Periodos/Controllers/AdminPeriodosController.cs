@@ -7,7 +7,7 @@ using iet_bi_portal_backend.Modules.Periodos.Services;
 
 namespace iet_bi_portal_backend.Modules.Periodos.Controllers;
 
-/// <summary>CU14 a CU17. Se opera siempre por año. Exige rol ADMIN.</summary>
+/// <summary>Administrador CU14 a CU17 (registrar, consultar, modificar y eliminar periodos académicos). Se opera siempre por año. Exige rol ADMIN.</summary>
 [Route("api/admin/periodos")]
 public class AdminPeriodosController(PeriodosService periodos) : AdminControllerBase
 {

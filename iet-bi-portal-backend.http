@@ -10,6 +10,7 @@
 @cedulaProfe = 100000001
 @cedulaEst = 200000001
 @anio = 2026
+@anioSiguiente = 2027
 
 ### Crear primer administrador (una sola vez)
 POST {{host}}/api/setup/primer-admin
@@ -219,66 +220,90 @@ Content-Type: application/json
 
 { "cedulaProfesor": "{{cedulaProfe}}" }
 
-### CU29 - Registrar asignatura
+### CU26 - Registrar asignatura
 POST {{host}}/api/admin/asignaturas
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "codigo": "MAT", "nombre": "Matemáticas", "tipo": "MEP", "descripcion": null, "imparteNivel10": true, "imparteNivel11": true }
 
-### CU29 - Registrar asignatura solo de nivel 10 (Cívica: el nivel 11 no la recibe)
+### CU26 - Registrar asignatura solo de nivel 10 (Cívica: el nivel 11 no la recibe)
 POST {{host}}/api/admin/asignaturas
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "codigo": "CIV", "nombre": "Educación Cívica", "tipo": "MEP", "descripcion": null, "imparteNivel10": true, "imparteNivel11": false }
 
-### CU30 - Listar asignaturas (filtros opcionales: tipo, nivel)
+### CU27 - Listar asignaturas (filtros opcionales: tipo, nivel)
 GET {{host}}/api/admin/asignaturas?tipo=&nivel=&pagina=1&tamanoPagina=20
 Authorization: Bearer {{token}}
 
-### CU31 - Modificar asignatura
+### CU28 - Modificar asignatura
 PUT {{host}}/api/admin/asignaturas/MAT
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "nombre": "Matemáticas", "tipo": "MEP", "descripcion": "Programa del MEP", "imparteNivel10": true, "imparteNivel11": true }
 
-### CU33 - Asignar al profesor la asignatura y sección (se permite co-docencia)
+### CU30 - Asignar al profesor la asignatura y sección (se permite co-docencia)
 POST {{host}}/api/admin/asignaciones
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "anio": {{anio}}, "nivel": 10, "numero": 1, "codigoAsignatura": "MAT", "cedulaProfesor": "{{cedulaProfe}}" }
 
-### CU34 - Listar asignaciones (filtros opcionales)
+### CU31 - Listar asignaciones (filtros opcionales)
 GET {{host}}/api/admin/asignaciones?anio={{anio}}&nivel=&numero=&codigoAsignatura=&cedulaProfesor=
 Authorization: Bearer {{token}}
 
-### CU25 - Matricular estudiante (fechaMatricula opcional: null = hoy)
+### CU22 - Matricular estudiante (fechaMatricula opcional: null = hoy)
 POST {{host}}/api/admin/matriculas
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "anio": {{anio}}, "nivel": 10, "numero": 1, "cedulaEstudiante": "{{cedulaEst}}", "fechaMatricula": "2026-02-02" }
 
-### CU27 - Estudiantes matriculados en una sección
+### CU24 - Estudiantes matriculados en una sección
 GET {{host}}/api/admin/matriculas?anio={{anio}}&nivel=10&numero=1&estado=&busqueda=
 Authorization: Bearer {{token}}
 
-### CU27 - Historial de matrículas del estudiante
+### CU24 - Historial de matrículas del estudiante
 GET {{host}}/api/admin/matriculas?cedulaEstudiante={{cedulaEst}}
 Authorization: Bearer {{token}}
 
-### CU26 - Registrar retiro
+### CU23 - Registrar retiro
 PUT {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}/retiro
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "fechaRetiro": "2026-09-01", "motivo": "Traslado de colegio" }
 
-### CU26 - Anular retiro
+### CU23 - Anular retiro
 DELETE {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}/retiro
+Authorization: Bearer {{token}}
+
+### CU14 - Registrar el periodo siguiente (para subir la sección a nivel 11)
+POST {{host}}/api/admin/periodos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "anio": {{anioSiguiente}},
+  "inicioSemestreI": "2027-02-01",
+  "finSemestreI": "2027-06-30",
+  "inicioSemestreII": "2027-07-19",
+  "finSemestreII": "2027-11-30"
+}
+
+### CU22 - Subir la sección: matricula en 11-1 del año siguiente a los estudiantes sin retiro de 10-1 (crea la 11-1, sin guía)
+POST {{host}}/api/admin/matriculas/subir-seccion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "anio": {{anioSiguiente}}, "numero": 1, "fechaMatricula": null }
+
+### CU24 - Estudiantes de la 11-1 del año siguiente
+GET {{host}}/api/admin/matriculas?anio={{anioSiguiente}}&nivel=11&numero=1
 Authorization: Bearer {{token}}
 
 # ============================================================
@@ -311,11 +336,23 @@ Authorization: Bearer {{tokenProfe}}
 # Borrados (en este orden por las dependencias)
 # ============================================================
 
-### CU28 - Eliminar matrícula
+### CU25 - Eliminar la matrícula de nivel 11 (primero la continuidad: MA007)
+DELETE {{host}}/api/admin/matriculas/{{anioSiguiente}}/{{cedulaEst}}
+Authorization: Bearer {{token}}
+
+### CU20 - Eliminar la sección 11-1 (antes que la 10-1: SE006)
+DELETE {{host}}/api/admin/secciones/{{anioSiguiente}}/11/1
+Authorization: Bearer {{token}}
+
+### CU17 - Eliminar el periodo siguiente
+DELETE {{host}}/api/admin/periodos/{{anioSiguiente}}
+Authorization: Bearer {{token}}
+
+### CU25 - Eliminar matrícula
 DELETE {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}
 Authorization: Bearer {{token}}
 
-### CU36 - Eliminar asignación
+### CU33 - Eliminar asignación
 DELETE {{host}}/api/admin/asignaciones/{{anio}}/10/1/MAT/{{cedulaProfe}}
 Authorization: Bearer {{token}}
 
@@ -327,7 +364,7 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/admin/secciones/{{anio}}/10/1
 Authorization: Bearer {{token}}
 
-### CU32 - Eliminar asignaturas
+### CU29 - Eliminar asignaturas
 DELETE {{host}}/api/admin/asignaturas/CIV
 Authorization: Bearer {{token}}
 

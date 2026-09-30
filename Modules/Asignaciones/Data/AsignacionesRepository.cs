@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Asignaciones.Models;
 
 namespace iet_bi_portal_backend.Modules.Asignaciones.Data;
 
-/// <summary>Acceso a las funciones de asignaciones docentes (CU33 a CU36 y mis asignaciones).
+/// <summary>Acceso a las funciones de asignaciones docentes (CU30 a CU33 y mis asignaciones).
 /// Todo por claves naturales: (año, nivel, número, código de asignatura, cédula del profesor).</summary>
 public class AsignacionesRepository(NpgsqlDataSource db)
 {

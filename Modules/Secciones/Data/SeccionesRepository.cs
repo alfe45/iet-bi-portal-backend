@@ -10,7 +10,7 @@ public class SeccionesRepository(NpgsqlDataSource db)
 {
     private const string Columnas = "anio, nivel::int, numero::int, nombre, cedula_guia, nombre_guia, cantidad_estudiantes";
 
-    /// <summary>Devuelve el nombre de la sección ("10-1"). Errores de la DB: AU009, NF004, SE001, SE002.</summary>
+    /// <summary>Devuelve el nombre de la sección ("10-1"). Errores de la DB: AU009, NF004, SE001, SE002, SE005.</summary>
     public Task<string> RegistrarAsync(Guid actorId, RegistrarSeccionRequest r) =>
         db.EscalarAsync<string>(
             "SELECT academico.fn_admin_registrar_seccion($1, $2::integer, $3::integer, $4::integer)",
@@ -30,7 +30,7 @@ public class SeccionesRepository(NpgsqlDataSource db)
         db.PrimeroOpcionalAsync(
             $"SELECT {Columnas} FROM academico.fn_admin_obtener_seccion($1, $2, $3)", Leer, anio, nivel, numero);
 
-    /// <summary>Elimina la sección y devuelve el snapshot previo en JSON. Errores: NF006, 23001.</summary>
+    /// <summary>Elimina la sección y devuelve el snapshot previo en JSON. Errores: NF006, SE006, 23001.</summary>
     public Task<string> EliminarAsync(Guid actorId, int anio, int nivel, int numero) =>
         db.EscalarAsync<string>(
             "SELECT academico.fn_admin_eliminar_seccion($1, $2, $3, $4)::text", actorId, anio, nivel, numero);

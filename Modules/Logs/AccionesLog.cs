@@ -60,4 +60,5 @@ public static class AccionesLog
     public const string RegistrarRetiroMatricula = "REGISTRAR_RETIRO_MATRICULA";
     public const string AnularRetiroMatricula = "ANULAR_RETIRO_MATRICULA";
     public const string EliminarMatricula = "ELIMINAR_MATRICULA";
+    public const string SubirSeccion = "SUBIR_SECCION";
 }

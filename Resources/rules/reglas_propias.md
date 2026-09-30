@@ -13,6 +13,9 @@ Bachillerato Internacional. La numeración RN-xx es común con las reglas genera
   - Solo se traslada de sección dentro del nivel 10 y antes de pasar a 11; en nivel 11 la sección conserva su número (MA006).
   - Una matrícula de nivel 10 que ya tiene su continuidad en nivel 11 no se retira ni se elimina; primero se corrige la de nivel 11 (MA007).
   - Consecuencia para la digitalización: se carga primero el año de nivel 10 y después el de nivel 11.
+- RN-62: Una sección de nivel 11 en el año X solo se crea si existe la sección de nivel 10 con el mismo número en X-1 (SE005). Mientras exista esa 11-N, la 10-N del año anterior no se elimina (SE006).
+- RN-63: Al subir la sección a nivel 11 el profesor guía no se hereda: la 11-N nace sin guía y el ADMIN asigna uno (puede ser el mismo u otro).
+- RN-64: Matricular en nivel 11 se puede hacer de dos formas: estudiante por estudiante (CU22) o "subiendo la sección": una acción que matricula en la 11-N de X a todos los estudiantes sin retiro de la 10-N de X-1 (crea la 11-N si no existe). Quien ya tiene matrícula en X se omite, así que la acción se puede repetir y combinar con la individual.
 - RN-01: La edad es requisito de ingreso al programa: al matricularse en nivel 10, el estudiante tiene 16 años cumplidos y menos de 20 a la fecha de inicio del periodo (ES003). No se valida al registrar al estudiante ni al pasar a nivel 11 (así se pueden digitalizar estudiantes de años anteriores y quien ingresó con 19 años puede terminar el programa).
 
 ### Calendario
@@ -23,18 +26,28 @@ Bachillerato Internacional. La numeración RN-xx es común con las reglas genera
 - RN-39: El nivel 11 no recibe Educación Cívica ni Estudios Sociales: se registran solo con nivel 10, y no se asignan a secciones de nivel 11 (AS005).
 
 ### Roles
-- RN-13: Roles válidos: ADMIN, PROFESOR_REGULAR (profesor de asignatura), GUIA (profesor guía de sección), COORD_MONOGRAFIA, PROFESOR_CAS y COORD_CAS. Asignar profesores como coordinadores (CU42) es otorgarles COORD_MONOGRAFIA o COORD_CAS.
+- RN-13: Roles válidos: ADMIN, PROFESOR_REGULAR (profesor de asignatura), GUIA (profesor guía de sección), COORD_MONOGRAFIA, PROFESOR_CAS y COORD_CAS. Asignar profesores como coordinadores (CU39) es otorgarles COORD_MONOGRAFIA o COORD_CAS.
 
-## Propuestas por validar (no implementadas)
-Reglas que se deducen de la Visión, el Glosario o los borradores. Márcalas como aceptadas, corrígelas o descártalas.
+## Aceptadas, pendientes de implementar
+Reglas validadas por el usuario cuyos módulos (evaluaciones, monografía, ausentismo, CAS) aún no existen. Reciben número RN-xx al implementarse.
 
-- PR-01 (secciones): una sección de nivel 11 en el año X solo se crea si existió la sección de nivel 10 con el mismo número en X-1 (la sección sube completa). Alternativa: permitir crearla y que las matrículas la vayan llenando.
-- PR-02 (secciones): al subir la sección a 11, su profesor guía se mantiene (proponer automáticamente el mismo guía de la 10-N del año anterior).
-- PR-03 (matrícula): "subir la sección": una acción que matricule en 11-N de X a todos los estudiantes no retirados de 10-N de X-1, en lugar de uno por uno.
-- ACEPTADA - PR-04 (evaluaciones): el tipo de asignatura define la escala: SUPERIOR(aprobación mínima 4) y MEDIO(aprobación mínima 3) con Bandas 1 a 7; TRONCAL (TdC, Monografía, CAS) con letras A a E ('A' la más alta); MEP con nota 0 a 100. La Visión prohíbe escalas arbitrarias fuera de estas.
-- ACEPTADA - PR-05 (evaluaciones): las notas no se modifican después de que el profesor guía cierra o consolida el informe, salvo permiso del ADMIN.
-- ACEPTADA - PR-06 (monografía): dura 2 años: 6 meses de capacitación y 1.5 años de tutoría en la materia elegida; cada coordinador/tutor tiene grupos de 1 a 5 estudiantes por materia.
-- ACEPTADA - PR-07 (monografía): solo las asignaturas SUPERIOR y MEDIO pueden elegirse como materia de monografía.
-- ACEPTADA - PR-08 (monografía): la monografía empieza en nivel 10 y termina en nivel 11 del mismo estudiante (sigue su continuidad BI).
-- ELIMINAR los estudiantes y encargados no usan el sistema - PR-09 (usuarios): estudiantes y encargados como usuarios de solo consulta (Visión 5.2); cada uno ve únicamente su propia información (Ley 8968).  
-- ACEPTADA - PR-10 (ausentismo): la asistencia se registra por lección de una asignación docente y las ausencias pueden justificarse (Visión 5.8 y 5.9).
+### Evaluaciones
+- PR-04: El tipo de asignatura define la escala: SUPERIOR (aprobación mínima 4) y MEDIO (aprobación mínima 3) con bandas 1 a 7; TRONCAL (TdC, Monografía, CAS) con letras A a E ('A' la más alta); MEP con nota 0 a 100. No se permiten escalas fuera de estas (Visión).
+- PR-05: La nota es por semestre: cada profesor envía al guía la nota de sus estudiantes en cada asignación antes de que termine el semestre (el cierre). Después del cierre ya no se envían ni modifican notas, salvo que el ADMIN dé más tiempo (prórroga).
+- PR-11: Antes del cierre el profesor ve en su pantalla cuántos días faltan y recibe advertencias mientras tenga estudiantes sin nota.
+
+### Monografía
+- PR-06: Dura 2 años: 6 meses de capacitación y 1.5 años de tutoría en la materia elegida; cada coordinador/tutor tiene grupos de 1 a 5 estudiantes por materia.
+- PR-07: Solo las asignaturas SUPERIOR y MEDIO pueden elegirse como materia de monografía.
+- PR-08: La monografía empieza en nivel 10 y termina en nivel 11 del mismo estudiante (sigue su continuidad BI, RN-58).
+
+### Ausentismo
+- PR-10: La asistencia se registra por lección de una asignación docente (Visión 5.8 y 5.9). No depende de un horario: el profesor registra la lección cuando la imparte (fecha, hora y asignación, es decir asignatura y sección) y marca a los estudiantes ausentes.
+- PR-12: Las ausencias las justifica el mismo profesor que registró la lección.
+- PR-13: El ausentismo de cada estudiante se reporta contra la cantidad de lecciones que registró el profesor en esa asignación (ej. 3 ausencias de 40 lecciones).
+
+### CAS
+- PR-14: CAS es una asignatura TRONCAL. Lo único distinto es un informe con un formato específico que llena el profesor CAS; mientras ese formato no se defina, el módulo se modela de forma genérica para implementarlo después.
+
+## Descartadas
+- PR-09: Estudiantes y encargados no usan el sistema (no son usuarios, ni siquiera de consulta).
