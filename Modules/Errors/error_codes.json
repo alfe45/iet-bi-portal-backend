@@ -65,6 +65,10 @@
   "MA001": { "status": 409, "mensaje": "El estudiante ya está matriculado en ese periodo." },
   "MA002": { "status": 400, "mensaje": "La fecha de matrícula no es válida: no puede ser futura, posterior al fin del periodo ni más de un año anterior a su inicio." },
   "MA003": { "status": 400, "mensaje": "La fecha de retiro no es válida: no puede ser futura, anterior a la matrícula ni posterior al fin del periodo." },
+  "MA004": { "status": 409, "mensaje": "Para matricular en nivel 11 el estudiante debe haber cursado nivel 10 el año anterior en la sección con el mismo número (sin retiro)." },
+  "MA005": { "status": 409, "mensaje": "El estudiante ya tiene una matrícula en ese nivel: no se repite nivel." },
+  "MA006": { "status": 409, "mensaje": "Solo se puede trasladar de sección dentro del nivel 10 y antes de pasar a nivel 11: en 11 la sección conserva su número." },
+  "MA007": { "status": 409, "mensaje": "La matrícula de nivel 10 ya tiene continuidad en nivel 11: modifica o elimina primero la de nivel 11." },
   "NF009": { "status": 404, "mensaje": "La matrícula no existe." },
 
   "23502": { "status": 400, "mensaje": "Falta un valor obligatorio." },
