@@ -116,6 +116,20 @@ BEGIN
 END;
 $$;
 
+-- TRUE si la matrícula tiene ausencias (o tardías), notas o informes CAS. plpgsql: las tablas se crean en 06 pero la
+-- función se usa también desde módulos posteriores (RP-50).
+CREATE OR REPLACE FUNCTION academico.fn_matricula_tiene_registros(p_id_matricula BIGINT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    RETURN EXISTS (SELECT 1 FROM academico.ausencias WHERE id_matricula = p_id_matricula)
+        OR EXISTS (SELECT 1 FROM academico.evaluaciones WHERE id_matricula = p_id_matricula)
+        OR EXISTS (SELECT 1 FROM academico.informes_cas WHERE id_matricula = p_id_matricula);
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION academico.fn_snapshot_matricula(p_id_matricula BIGINT)
 RETURNS JSONB
 LANGUAGE sql STABLE
@@ -330,7 +344,8 @@ AS $$
     FROM academico.fn_matriculas_filtradas(p_anio, NULL, NULL, p_cedula_estudiante, NULL, NULL) f;
 $$;
 
--- CU 23 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado).
+-- CU 23 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado). MA006 fuera del nivel 10;
+-- MA008 si ya tiene ausencias, notas o informes CAS.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_cambiar_seccion_matricula(
     p_id_usuario_actor UUID,
@@ -370,6 +385,12 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('MA006', 'Solo se puede trasladar de sección dentro del nivel 10 y antes de pasar a nivel 11.');
     END IF;
 
+    -- MA008: las ausencias, notas e informes CAS pertenecen a las asignaciones de la sección; con registros no se
+    -- traslada (quedarían fuera de la sección nueva y de su reporte de bandas).
+    IF academico.fn_matricula_tiene_registros(v_id_matricula) THEN
+        PERFORM api.fn_lanzar_excepcion('MA008', 'La matrícula ya tiene ausencias, notas o informes CAS en su sección.');
+    END IF;
+
     v_prev := academico.fn_snapshot_matricula(v_id_matricula);
 
     UPDATE academico.matriculas SET id_seccion = v_id_seccion_nueva WHERE id_matricula = v_id_matricula;
@@ -379,7 +400,7 @@ END;
 $$;
 
 -- CU 23 - Modificar matrícula: registrar o corregir el retiro del estudiante. La fecha no puede ser
--- futura, anterior a la matrícula ni posterior al fin del periodo (MA003).
+-- futura, anterior a la matrícula ni posterior al fin del periodo (MA003), ni dejar fuera registros ya hechos (MA009).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_retiro_matricula(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -394,7 +415,7 @@ AS $$
 DECLARE
     v_id_matricula BIGINT;
     v_matricula academico.matriculas%ROWTYPE;
-    v_fin_periodo DATE;
+    v_periodo academico.periodos_academicos%ROWTYPE;
     v_motivo TEXT := api.fn_limpiar(p_motivo);
     v_prev JSONB;
 BEGIN
@@ -403,11 +424,22 @@ BEGIN
     v_id_matricula := academico.fn_obtener_id_matricula(p_anio, p_cedula_estudiante);
     SELECT * INTO v_matricula FROM academico.matriculas WHERE id_matricula = v_id_matricula FOR UPDATE;
     PERFORM academico.fn_validar_sin_continuidad(v_id_matricula);
-    SELECT fin_semestre_ii INTO v_fin_periodo FROM academico.periodos_academicos WHERE id_periodo = v_matricula.id_periodo;
+    SELECT * INTO v_periodo FROM academico.periodos_academicos WHERE id_periodo = v_matricula.id_periodo;
 
     IF p_fecha_retiro IS NULL OR p_fecha_retiro > api.fn_hoy()
-       OR p_fecha_retiro < v_matricula.fecha_matricula OR p_fecha_retiro > v_fin_periodo THEN
+       OR p_fecha_retiro < v_matricula.fecha_matricula OR p_fecha_retiro > v_periodo.fin_semestre_ii THEN
         PERFORM api.fn_lanzar_excepcion('MA003', 'La fecha de retiro no es válida.');
+    END IF;
+
+    -- MA009: el retiro no deja fuera registros ya hechos: ausencias en lecciones de esa fecha o posteriores (LE003) ni
+    -- notas o informes CAS de un semestre que termina en o después del retiro (EV004).
+    IF EXISTS (SELECT 1 FROM academico.ausencias au JOIN academico.lecciones l ON l.id_leccion = au.id_leccion
+               WHERE au.id_matricula = v_id_matricula AND l.fecha >= p_fecha_retiro)
+       OR EXISTS (SELECT 1 FROM academico.evaluaciones ev
+                  WHERE ev.id_matricula = v_id_matricula AND academico.fn_fin_semestre(v_periodo, ev.semestre) >= p_fecha_retiro)
+       OR EXISTS (SELECT 1 FROM academico.informes_cas i
+                  WHERE i.id_matricula = v_id_matricula AND academico.fn_fin_semestre(v_periodo, i.semestre) >= p_fecha_retiro) THEN
+        PERFORM api.fn_lanzar_excepcion('MA009', 'La fecha de retiro deja fuera ausencias, notas o informes CAS ya registrados.');
     END IF;
 
     IF (v_matricula.fecha_retiro, v_matricula.motivo_retiro) IS NOT DISTINCT FROM (p_fecha_retiro, v_motivo) THEN

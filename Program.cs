@@ -4,6 +4,10 @@ using iet_bi_portal_backend.Config;
 using iet_bi_portal_backend.Modules.Asignaciones;
 using iet_bi_portal_backend.Modules.Asignaturas;
 using iet_bi_portal_backend.Modules.Ausentismo;
+using iet_bi_portal_backend.Modules.Cas;
+using iet_bi_portal_backend.Modules.Evaluaciones;
+using iet_bi_portal_backend.Modules.Informes;
+using iet_bi_portal_backend.Modules.Monografias;
 using iet_bi_portal_backend.Modules.Auth;
 using iet_bi_portal_backend.Modules.Errors;
 using iet_bi_portal_backend.Modules.Estudiantes;
@@ -37,6 +41,10 @@ builder.Services.AddAsignaturasModule();
 builder.Services.AddAsignacionesModule();
 builder.Services.AddMatriculasModule();
 builder.Services.AddAusentismoModule();
+builder.Services.AddEvaluacionesModule();
+builder.Services.AddMonografiasModule();
+builder.Services.AddCasModule();
+builder.Services.AddInformesModule();
 
 var app = builder.Build();
 

@@ -11,6 +11,7 @@ Bachillerato Internacional. La numeración RN-xx es común con las reglas genera
   - Para matricular en nivel 11 debe existir su matrícula de nivel 10 del año anterior, con el mismo número de sección y sin retiro (MA004).
   - No se repite un nivel: una sola matrícula de nivel 10 y una de nivel 11 por estudiante (MA005).
   - Solo se traslada de sección dentro del nivel 10 y antes de pasar a 11; en nivel 11 la sección conserva su número (MA006).
+  - No se traslada una matrícula que ya tiene ausencias, notas o informes CAS: pertenecen a las asignaciones de su sección y quedarían fuera de la nueva (MA008).
   - Una matrícula de nivel 10 que ya tiene su continuidad en nivel 11 no se retira ni se elimina; primero se corrige la de nivel 11 (MA007).
   - Consecuencia para la digitalización: se carga primero el año de nivel 10 y después el de nivel 11.
 - RN-62: Una sección de nivel 11 en el año X solo se crea si existe la sección de nivel 10 con el mismo número en X-1 (SE005). Mientras exista esa 11-N, la 10-N del año anterior no se elimina (SE006).
@@ -28,36 +29,43 @@ Bachillerato Internacional. La numeración RN-xx es común con las reglas genera
 ### Ausentismo
 - RN-66: Una lección es una clase que el profesor de una asignación registra cuando la imparte: fecha, hora y un tema opcional (Visión 5.8). No depende de un horario. Solo el profesor de la asignación registra, modifica o elimina sus lecciones (AD004); no se repiten fecha y hora en la misma asignación (LE002).
 - RN-67: La fecha de la lección cae dentro de un semestre del periodo de la sección y no es futura (LE001). Cuando el semestre de la lección ya terminó, la lección y sus ausencias quedan cerradas (PA004).
-- RN-68: Al registrar o modificar la lección se indican los estudiantes ausentes. Cada uno debe estar matriculado en la sección a esa fecha: matrícula en o antes de la fecha y sin retiro en o antes de ella (LE003). Modificar la lección reemplaza la lista de ausentes; la justificación de quien sigue ausente se conserva.
+- RN-68: Al registrar o modificar la lección se indican los estudiantes ausentes y los que llegaron tarde. Cada uno debe estar matriculado en la sección a esa fecha: matrícula en o antes de la fecha y sin retiro en o antes de ella (LE003). Modificar la lección reemplaza las listas; la justificación de quien sigue ausente se conserva.
+- RN-86: Las llegadas tardías se registran por lección como las ausencias; un estudiante no puede estar ausente y tardío en la misma lección (LE004). Una tardía no se justifica (NF011) y no suma al porcentaje de ausentismo: se cuenta aparte (así sale en el reporte de bandas: tardías, injustificadas y justificadas).
 - RN-69: El mismo profesor de la asignación justifica una ausencia, con un motivo, o anula la justificación (Visión 5.9). NF011 si el estudiante no tiene ausencia en esa lección.
-- RN-70: El resumen de ausentismo de una asignación compara, por estudiante, sus ausencias (justificadas e injustificadas) con las lecciones registradas mientras estuvo matriculado (desde su fecha de matrícula hasta su retiro). Se puede filtrar por semestre.
+- RN-70: El resumen de ausentismo de una asignación compara, por estudiante, sus ausencias (justificadas e injustificadas) con las lecciones registradas mientras estuvo matriculado (desde su fecha de matrícula hasta su retiro), y muestra sus tardías. Se puede filtrar por semestre.
 - RN-71: El guía consulta el resumen de ausentismo de su sección por estudiante y asignatura (AD005 si no es el guía de la sección).
 - RN-72: No se elimina una asignación con lecciones ni una matrícula con ausencias (23001).
+
+### Evaluaciones
+- RN-73: El tipo de asignatura define la escala de la nota: SUPERIOR (mínima 4) y MEDIO (mínima 3) con bandas 1 a 7; TRONCAL (TdC, Monografía, CAS) con letras A a E ('A' la más alta, sin mínima); MEP con enteros de 0 a 100 (mínima 70). Una nota fuera de la escala da EV001. El tipo de una asignatura con notas o monografías no se cambia (AS006).
+- RN-74: La nota es por semestre, estudiante y asignación. El profesor la registra y corrige desde el inicio del semestre (EV002) hasta el cierre: la fecha de fin del semestre o, si el ADMIN le dio una prórroga, la fecha límite de esa prórroga (EV003). La prórroga es por profesor y semestre, posterior al fin del semestre y no pasada (EV007).
+- RN-75: Se califica a los estudiantes matriculados en la sección a más tardar el fin del semestre y sin retiro en o antes de esa fecha (EV004). El profesor envía al guía las notas de su asignación cuando todos tienen nota (EV006); el guía y el reporte de bandas solo ven notas enviadas. Después del envío el profesor puede corregir hasta el cierre; eliminar una nota anula el envío (hay que volver a enviar). Cada nota lleva observaciones opcionales del profesor (Profesor Regular CU09). No se elimina una asignación o matrícula con notas (23001).
+- RN-76: La pantalla principal del profesor muestra sus asignaciones con el plazo de notas abierto, los días para el cierre y un aviso mientras le falten notas o no las haya enviado: informativo desde 30 días antes y de prioridad desde 15 días antes.
+- RN-77: Las notas de una sección se consultan con un solo caso de uso (Guía CU03 y CU04 unificados): cualquier guía consulta las notas enviadas de cualquier sección; el profesor consulta las de sus asignaciones.
+
+### Monografía
+- RN-78: Una monografía por estudiante (MO001). Empieza con su matrícula de nivel 10 sin retiro (MO004) y sigue en su nivel 11 (dura los dos años: 6 meses de capacitación y 1.5 años de tutoría). El ADMIN la asigna a un coordinador con rol COORD_MONOGRAFIA (MO005) en una materia SUPERIOR o MEDIO (MO002); cada coordinador tiene grupos de 1 a 5 estudiantes por materia y cohorte (MO003). No se quita COORD_MONOGRAFIA a quien coordina monografías sin terminar (AU019).
+- RN-79: Estados: CAPACITACION, INVESTIGACION y TERMINADA. Solo el coordinador de la monografía los cambia (AD006).
+- RN-80: El seguimiento son observaciones fechadas del coordinador (no futuras ni anteriores al inicio de la monografía, MO006). "Verificar" (Guía CU07) es que el guía consulte el estado y el seguimiento de las monografías de su sección.
+- RN-81: Cada semestre el coordinador envía al guía un reporte con observaciones (Coordinador CU05), en el plazo de notas del semestre (con su prórroga si la tiene). Sale en el reporte de bandas del estudiante: área (materia), coordinador y observaciones ("Sin informe registrado" si no hay). Una monografía con seguimiento o reportes no se elimina (23001).
+- RN-88: La monografía también puede tener su asignatura TRONCAL (código MON, registrada por el ADMIN): se asigna a la sección como cualquier asignatura y el profesor asignado (puede ser un coordinador) registra y envía su nota. Así sale en la lista de asignaturas TRONCAL del reporte de bandas y, además, en la sección de monografía (RN-81).
+
+### CAS
+- RN-82: CAS es la asignatura TRONCAL con código CAS. El profesor CAS se asigna a la sección con una asignación académica de CAS (Administrador CU38 = CU30), y debe tener el rol PROFESOR_CAS en periodos no finalizados (AD007). No se quita PROFESOR_CAS a quien imparte CAS en un periodo no finalizado (AU018). La asignatura CAS siempre es TRONCAL (AS008).
+- RN-83: Cada semestre el profesor CAS llena un informe por estudiante con el formato del Instituto: experiencias (descripción, fecha, C/A/S, resultados de aprendizaje 1 a 7, carpeta, reflexión y pruebas), perfil y entrevistas (I, II y final: lo que lleva hasta ese semestre) y observaciones. Se llena en el plazo de notas del semestre (EV002/EV003) para estudiantes que se califican (EV004); la fecha de una experiencia no es futura y cae en el periodo (CA001). El informe comparte la clave de la nota CAS (asignación, matrícula, semestre): la nota se registra y envía con evaluaciones.
+- RN-84: El coordinador CAS consulta el progreso de todas las secciones (quién tiene informe, experiencias, perfil y entrevistas) y genera el reporte CAS de un estudiante; la nota CAS solo aparece si el profesor ya la envió.
+
+### Informes
+- RN-85: El guía genera el reporte de bandas de un estudiante o de toda su sección guía en un semestre (AD005): por asignatura, banda o nota mínima, nota alcanzada (solo si se envió), ausentismo (tardías, injustificadas y justificadas) y observaciones del profesor; las asignaturas se agrupan en BI (SUPERIOR y MEDIO), TRONCAL y MEP, más la sección de monografía (RN-81). CAS no va en este reporte (tiene su informe, RN-83). El backend devuelve los datos y el front arma el PDF (el formato es el del ejemplo del Instituto).
 
 ### Roles
 - RN-13: Roles válidos: ADMIN, PROFESOR_REGULAR (profesor de asignatura), GUIA (profesor guía de sección), COORD_MONOGRAFIA, PROFESOR_CAS y COORD_CAS. Asignar profesores como coordinadores (CU39) es otorgarles COORD_MONOGRAFIA o COORD_CAS.
 
-## Aceptadas, pendientes de implementar
-Reglas validadas por el usuario cuyos módulos (evaluaciones, monografía, CAS, correo) aún no existen. Reciben número RN-xx al implementarse.
+## Aplazadas
+Reglas aceptadas que el usuario decidió no implementar por ahora (no tienen módulo).
 
-### Evaluaciones
-- PR-04: El tipo de asignatura define la escala: SUPERIOR (aprobación mínima 4) y MEDIO (aprobación mínima 3) con bandas 1 a 7; TRONCAL (TdC, Monografía, CAS) con letras A a E ('A' la más alta); MEP con nota 0 a 100. No se permiten escalas fuera de estas (Visión).
-- PR-05: La nota es por semestre: cada profesor envía al guía la nota de sus estudiantes en cada asignación antes del cierre, que es la fecha de fin del semestre del periodo. Después del cierre ya no se envían ni modifican notas, salvo que el ADMIN le dé más tiempo a ese profesor (la prórroga es por profesor).
-- PR-11: Mientras el profesor tenga estudiantes sin nota, su pantalla muestra cuántos días faltan para el cierre: un aviso informativo desde 30 días antes y un aviso de prioridad desde 15 días antes.
-- PR-18: Las notas de una sección se consultan con un solo caso de uso (unifica Guía CU03 y CU04): el guía ve todas las asignaturas de su sección guía y el profesor ve las de sus asignaciones.
-
-### Monografía
-- PR-06: Dura 2 años: 6 meses de capacitación y 1.5 años de tutoría en la materia elegida; cada coordinador/tutor tiene grupos de 1 a 5 estudiantes por materia.
-- PR-07: Solo las asignaturas SUPERIOR y MEDIO pueden elegirse como materia de monografía.
-- PR-08: La monografía empieza en nivel 10 y termina en nivel 11 del mismo estudiante (sigue su continuidad BI, RN-58).
-- PR-15: Estados de una monografía: CAPACITACION, INVESTIGACION y TERMINADA. El coordinador registra el estado y el seguimiento (observaciones); "verificar" (Guía CU07) es que el guía consulte cómo van las monografías de su sección y sus observaciones.
-
-### CAS
-- PR-14: CAS es una asignatura TRONCAL. El profesor CAS se asigna a la sección con una asignación académica de la asignatura CAS (Administrador CU38 = CU30). Cada semestre llena un informe con formato propio y lo envía junto con la calificación: el informe apunta al registro de la nota (ej. "el estudiante X tuvo A en CAS"). El progreso CAS es ir llenando ese informe por semestre. Mientras el formato no se defina, el informe se modela de forma genérica.
-
-### Informes y correo
-- PR-16: Los informes de notas del guía (por estudiante y por sección) se generan en PDF; el formato lo aportará el usuario con un ejemplo.
-- PR-17: Un módulo futuro enviará por correo a los estudiantes los documentos que se ocupen, a su correo registrado aunque no usen el sistema.
+### Correo
+- PR-17: Un módulo futuro enviaría por correo a los estudiantes los documentos que se ocupen, a su correo registrado aunque no usen el sistema (Profesor Regular CU13). Se descarta por ahora (decisión del 30/09/2026); falta definir qué documentos y el servidor de correo.
 
 ## Descartadas
 - PR-09: Estudiantes y encargados no usan el sistema (no son usuarios, ni siquiera de consulta).

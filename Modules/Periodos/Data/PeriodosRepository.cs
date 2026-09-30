@@ -30,7 +30,7 @@ public class PeriodosRepository(NpgsqlDataSource db)
     public Task<PeriodoAcademico?> ObtenerActualAsync() =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_periodo_actual()", Leer);
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON. Errores: NF004, PA002, PA004, PA005, PA007.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON. Errores: NF004, PA002, PA004, PA005, PA007, PA008.</summary>
     public Task<(string Estado, string? Anteriores)> ActualizarAsync(Guid actorId, int anio, ActualizarPeriodoRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +

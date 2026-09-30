@@ -74,6 +74,18 @@ BEGIN
 END;
 $$;
 
+-- RN-82: AS008 si la asignatura CAS no es TRONCAL (su nota usa la escala A a E y tiene su propio informe).
+CREATE OR REPLACE FUNCTION academico.fn_validar_tipo_asignatura(p_codigo TEXT, p_tipo academico.tipo_asignatura)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF p_codigo = 'CAS' AND p_tipo IS DISTINCT FROM 'TRONCAL' THEN
+        PERFORM api.fn_lanzar_excepcion('AS008', 'La asignatura CAS debe ser de tipo TRONCAL.');
+    END IF;
+END;
+$$;
+
 -- CU 26 - Registrar asignatura. Devuelve el código normalizado.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_asignatura(
     p_id_usuario_actor UUID,
@@ -107,6 +119,7 @@ BEGIN
     END IF;
 
     PERFORM academico.fn_validar_niveles_asignatura(p_imparte_nivel_10, p_imparte_nivel_11);
+    PERFORM academico.fn_validar_tipo_asignatura(v_codigo, p_tipo);
 
     INSERT INTO academico.asignaturas (codigo, nombre, tipo, descripcion, imparte_nivel_10, imparte_nivel_11)
     VALUES (v_codigo, v_nombre, p_tipo, api.fn_limpiar(p_descripcion), p_imparte_nivel_10, p_imparte_nivel_11);
@@ -153,6 +166,7 @@ AS $$
 $$;
 
 -- CU 28 - Modificar asignatura (todo menos el código). Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
+-- AS006 tipo con notas o monografías; AS007 nivel con asignaciones; AS008 CAS no TRONCAL.
 CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_asignatura(
     p_id_usuario_actor UUID,
     p_codigo TEXT,
@@ -182,6 +196,7 @@ BEGIN
     END IF;
 
     PERFORM academico.fn_validar_niveles_asignatura(p_imparte_nivel_10, p_imparte_nivel_11);
+    PERFORM academico.fn_validar_tipo_asignatura(v_prev.codigo, p_tipo);
 
     v_nuevo := v_prev;
     v_nuevo.nombre := api.fn_limpiar(p_nombre)::CITEXT;
@@ -201,6 +216,24 @@ BEGIN
     IF EXISTS (SELECT 1 FROM academico.asignaturas
                WHERE nombre = v_nuevo.nombre AND id_asignatura <> v_prev.id_asignatura) THEN
         PERFORM api.fn_lanzar_excepcion('AS002', 'Ya existe una asignatura con ese nombre.');
+    END IF;
+
+    -- RN-73: el tipo define la escala de la nota y la materia de monografía (RN-78); no cambia si ya se usa.
+    IF v_nuevo.tipo <> v_prev.tipo AND (
+        EXISTS (SELECT 1 FROM academico.evaluaciones ev
+                JOIN academico.asignaciones_docentes a ON a.id_asignacion = ev.id_asignacion
+                WHERE a.id_asignatura = v_prev.id_asignatura)
+        OR EXISTS (SELECT 1 FROM academico.monografias mo WHERE mo.id_asignatura = v_prev.id_asignatura)
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AS006', 'No se puede cambiar el tipo de una asignatura con notas o monografías registradas.');
+    END IF;
+
+    -- RN-43: AS007 si se quita un nivel en el que la asignatura ya está asignada a alguna sección.
+    IF EXISTS (SELECT 1 FROM academico.asignaciones_docentes a
+               JOIN academico.secciones s ON s.id_seccion = a.id_seccion
+               WHERE a.id_asignatura = v_prev.id_asignatura
+                 AND ((s.nivel = 10 AND NOT v_nuevo.imparte_nivel_10) OR (s.nivel = 11 AND NOT v_nuevo.imparte_nivel_11))) THEN
+        PERFORM api.fn_lanzar_excepcion('AS007', 'La asignatura tiene asignaciones en un nivel que se quiere quitar.');
     END IF;
 
     UPDATE academico.asignaturas

@@ -15,7 +15,8 @@ namespace iet_bi_portal_backend.Modules.Ausentismo.Controllers;
 public class ProfesorAusentismoController(AusentismoService ausentismo) : ApiControllerBase
 {
     /// <summary>CU10: 201 con el id. 404 (NF006/NF007); 403 (AD004); 400 (LE001) fecha futura o fuera de los semestres;
-    /// 409 (LE002) fecha y hora repetidas; 400 (LE003) ausente no matriculado a esa fecha; 409 (PA004).</summary>
+    /// 409 (LE002) fecha y hora repetidas; 400 (LE003) ausente o tardío no matriculado a esa fecha; 400 (LE004) un
+    /// estudiante ausente y tardío a la vez; 409 (PA004).</summary>
     [HttpPost("lecciones")]
     public async Task<IActionResult> RegistrarLeccion(RegistrarLeccionRequest request)
     {
@@ -33,8 +34,8 @@ public class ProfesorAusentismoController(AusentismoService ausentismo) : ApiCon
     public async Task<IActionResult> ObtenerLeccion(long idLeccion) =>
         Ok(await ausentismo.ObtenerLeccionAsync(ActorId, idLeccion));
 
-    /// <summary>CU11: corrige fecha, hora y tema y reemplaza los ausentes (conserva las justificaciones de quien sigue
-    /// ausente). 404 (NF010); 403 (AD004); 400 (LE001/LE003); 409 (LE002/PA004).</summary>
+    /// <summary>CU11: corrige fecha, hora y tema y reemplaza ausentes y tardíos (conserva las justificaciones de quien
+    /// sigue ausente). 404 (NF010); 403 (AD004); 400 (LE001/LE003/LE004); 409 (LE002/PA004).</summary>
     [HttpPut("lecciones/{idLeccion:long}")]
     public async Task<IActionResult> ModificarLeccion(long idLeccion, ModificarLeccionRequest request)
     {
@@ -50,7 +51,8 @@ public class ProfesorAusentismoController(AusentismoService ausentismo) : ApiCon
         return NoContent();
     }
 
-    /// <summary>CU11: justifica la ausencia del estudiante (RN-69). 404 (NF010/NF003/NF011); 403 (AD004); 409 (PA004).</summary>
+    /// <summary>CU11: justifica la ausencia del estudiante (RN-69); una llegada tardía no se justifica (NF011).
+    /// 404 (NF010/NF003/NF011); 403 (AD004); 409 (PA004).</summary>
     [HttpPut("lecciones/{idLeccion:long}/ausencias/{cedula}/justificacion")]
     public async Task<IActionResult> JustificarAusencia(long idLeccion, string cedula, JustificarAusenciaRequest request)
     {

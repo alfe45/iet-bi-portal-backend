@@ -60,8 +60,9 @@ END;
 $$;
 
 -- AD002 si el periodo de la sección no está finalizado y el profesor no tiene usuario activo con
--- rol PROFESOR_REGULAR (el front activa el módulo de profesor según ese rol).
-CREATE OR REPLACE FUNCTION academico.fn_validar_profesor_asignable(p_id_seccion BIGINT, p_id_profesor BIGINT)
+-- rol PROFESOR_REGULAR (el front activa el módulo de profesor según ese rol). En la asignatura CAS además
+-- debe tener el rol PROFESOR_CAS (RN-82, AD007): asignar CAS es el Administrador CU38.
+CREATE OR REPLACE FUNCTION academico.fn_validar_profesor_asignable(p_id_seccion BIGINT, p_id_asignatura BIGINT, p_id_profesor BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
@@ -77,6 +78,12 @@ BEGIN
     IF academico.fn_estado_periodo(v_periodo) <> 'FINALIZADO'
        AND NOT academico.fn_profesor_tiene_rol_activo(p_id_profesor, 'PROFESOR_REGULAR') THEN
         PERFORM api.fn_lanzar_excepcion('AD002', 'El profesor debe tener un usuario activo con el rol PROFESOR_REGULAR.');
+    END IF;
+
+    IF academico.fn_estado_periodo(v_periodo) <> 'FINALIZADO'
+       AND EXISTS (SELECT 1 FROM academico.asignaturas WHERE id_asignatura = p_id_asignatura AND codigo = 'CAS')
+       AND NOT academico.fn_profesor_tiene_rol_activo(p_id_profesor, 'PROFESOR_CAS') THEN
+        PERFORM api.fn_lanzar_excepcion('AD007', 'Para impartir CAS el profesor debe tener un usuario activo con el rol PROFESOR_CAS.');
     END IF;
 END;
 $$;
@@ -133,7 +140,7 @@ BEGIN
 
     -- RN-39: la asignatura se imparte en el nivel de la sección (ej. Cívica no en 11).
     PERFORM academico.fn_validar_asignatura_en_nivel(v_id_asignatura, p_nivel);
-    PERFORM academico.fn_validar_profesor_asignable(v_id_seccion, v_id_profesor);
+    PERFORM academico.fn_validar_profesor_asignable(v_id_seccion, v_id_asignatura, v_id_profesor);
 
     IF EXISTS (SELECT 1 FROM academico.asignaciones_docentes
                WHERE id_seccion = v_id_seccion AND id_asignatura = v_id_asignatura AND id_profesor = v_id_profesor) THEN
@@ -215,7 +222,7 @@ BEGIN
         RETURN;
     END IF;
 
-    PERFORM academico.fn_validar_profesor_asignable(v_asignacion.id_seccion, v_id_profesor_nuevo);
+    PERFORM academico.fn_validar_profesor_asignable(v_asignacion.id_seccion, v_asignacion.id_asignatura, v_id_profesor_nuevo);
 
     IF EXISTS (SELECT 1 FROM academico.asignaciones_docentes
                WHERE id_seccion = v_asignacion.id_seccion AND id_asignatura = v_asignacion.id_asignatura

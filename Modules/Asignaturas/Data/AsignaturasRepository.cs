@@ -29,7 +29,7 @@ public class AsignaturasRepository(NpgsqlDataSource db)
     public Task<Asignatura?> ObtenerAsync(string codigo) =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_asignatura($1::text)", Leer, codigo);
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON. Errores: NF007, AS002, AS003.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON. Errores: NF007, AS002, AS003, AS006, AS007, AS008.</summary>
     public Task<(string Estado, string? Anteriores)> ActualizarAsync(Guid actorId, string codigo, ActualizarAsignaturaRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +

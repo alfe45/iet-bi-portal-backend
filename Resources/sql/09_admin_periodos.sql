@@ -215,7 +215,36 @@ AS $$
     WHERE p.anio = p_anio;
 $$;
 
+-- TRUE si con las fechas de p (nuevas) algún registro del periodo queda fuera de sus reglas de fecha. plpgsql: las
+-- tablas se crean en 06 (RP-50).
+CREATE OR REPLACE FUNCTION academico.fn_periodo_tiene_registros_fuera(p academico.periodos_academicos)
+RETURNS BOOLEAN
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    RETURN EXISTS (SELECT 1 FROM academico.lecciones l
+                   JOIN academico.asignaciones_docentes a ON a.id_asignacion = l.id_asignacion
+                   JOIN academico.secciones s ON s.id_seccion = a.id_seccion
+                   WHERE s.id_periodo = p.id_periodo AND academico.fn_semestre_en_fecha(p, l.fecha) IS NULL)
+        OR EXISTS (SELECT 1 FROM academico.matriculas m
+                   WHERE m.id_periodo = p.id_periodo
+                     AND (m.fecha_matricula > p.fin_semestre_ii
+                          OR m.fecha_matricula < (p.inicio_semestre_i - INTERVAL '1 year')::DATE
+                          OR m.fecha_retiro > p.fin_semestre_ii))
+        OR EXISTS (SELECT 1 FROM academico.experiencias_cas x
+                   JOIN academico.informes_cas i ON i.id_informe = x.id_informe
+                   JOIN academico.matriculas m ON m.id_matricula = i.id_matricula
+                   WHERE m.id_periodo = p.id_periodo AND x.fecha NOT BETWEEN p.inicio_semestre_i AND p.fin_semestre_ii)
+        OR EXISTS (SELECT 1 FROM academico.seguimientos_monografia sg
+                   JOIN academico.monografias mo ON mo.id_monografia = sg.id_monografia
+                   JOIN academico.matriculas m ON m.id_matricula = mo.id_matricula_inicio
+                   WHERE m.id_periodo = p.id_periodo AND sg.fecha < p.inicio_semestre_i);
+END;
+$$;
+
 -- CU 16 - Modificar las fechas de un periodo. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
+-- PA008 si las nuevas fechas dejan fuera registros del periodo (lecciones, matrículas, retiros...).
 -- Periodo finalizado (histórico): se puede corregir mientras siga finalizado (PA007: no se reabre).
 -- Periodo no finalizado: las fechas de un semestre finalizado no cambian (PA004) y un semestre no
 -- finalizado no puede quedar con fin en el pasado (PA005).
@@ -278,6 +307,13 @@ BEGIN
     -- II semestre (periodo no finalizado): su fin no puede quedar en el pasado.
     IF academico.fn_estado_periodo(v_prev) <> 'FINALIZADO' AND v_nuevo.fin_semestre_ii < v_hoy THEN
         PERFORM api.fn_lanzar_excepcion('PA005', 'La fecha de fin de un semestre no finalizado no puede quedar en el pasado.');
+    END IF;
+
+    -- PA008: las nuevas fechas no dejan fuera registros del periodo: lecciones fuera de un semestre (LE001), matrículas
+    -- o retiros posteriores al fin del periodo (MA002 / MA003), experiencias CAS fuera del periodo (CA001) ni
+    -- seguimientos de monografía anteriores a su inicio (MO006).
+    IF academico.fn_periodo_tiene_registros_fuera(v_nuevo) THEN
+        PERFORM api.fn_lanzar_excepcion('PA008', 'Las nuevas fechas dejan fuera lecciones, matrículas u otros registros del periodo.');
     END IF;
 
     UPDATE academico.periodos_academicos

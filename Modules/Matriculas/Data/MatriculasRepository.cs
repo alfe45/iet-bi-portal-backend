@@ -41,14 +41,14 @@ public class MatriculasRepository(NpgsqlDataSource db)
     public Task<Matricula?> ObtenerAsync(int anio, string cedula) =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_matricula($1, $2::text)", Leer, anio, cedula);
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF003, NF004, NF006, NF009.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF003, NF004, NF006, NF009, MA006, MA008.</summary>
     public Task<(string Estado, string? Anteriores)> CambiarSeccionAsync(Guid actorId, int anio, string cedula, CambiarSeccionRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +
             "FROM academico.fn_admin_cambiar_seccion_matricula($1, $2, $3::text, $4::integer, $5::integer)",
             LeerEstado, actorId, anio, cedula, r.Nivel, r.Numero);
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF003, NF004, NF009, MA003.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF003, NF004, NF009, MA003, MA007, MA009.</summary>
     public Task<(string Estado, string? Anteriores)> RegistrarRetiroAsync(Guid actorId, int anio, string cedula, RegistrarRetiroRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +
