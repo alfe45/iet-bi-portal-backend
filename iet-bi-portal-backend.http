@@ -1,2 +1,189 @@
-@iet_bi_portal_backend_HostAddress = http://localhost:5149
+# Cambia el host/puerto por el de tu launchSettings.json
+@host = https://localhost:7000
+@bootstrapToken = REEMPLAZAR_CON_ADMIN_BOOTSTRAP_TOKEN
+@adminEmail = admin@iet.test
+@adminPass = Cambiar1234
+@cedulaProfe = 100000001
+@cedulaEst = 200000001
+
+### Crear primer administrador (una sola vez)
+POST {{host}}/api/setup/primer-admin
+Content-Type: application/json
+X-Bootstrap-Token: {{bootstrapToken}}
+
+{ "email": "{{adminEmail}}", "contrasena": "{{adminPass}}" }
+
+### Iniciar sesión
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "{{adminEmail}}", "contrasena": "{{adminPass}}" }
+
 ###
+@token = {{login.response.body.$.accessToken}}
+@refresh = {{login.response.body.$.refreshToken}}
+
+### Renovar sesión
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{refresh}}" }
+
+### CU01 - Mi perfil
+GET {{host}}/api/perfil
+Authorization: Bearer {{token}}
+
+### CU02 - Registrar usuario
+# @name nuevoUsuario
+POST {{host}}/api/admin/usuarios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "email": "profe1@iet.test", "contrasena": "Profe12345" }
+
+###
+@idUsuario = {{nuevoUsuario.response.body.$.id}}
+
+### CU03 - Listar usuarios
+GET {{host}}/api/admin/usuarios?pagina=1&tamanoPagina=20
+Authorization: Bearer {{token}}
+
+### CU03 - Detalle de usuario
+GET {{host}}/api/admin/usuarios/{{idUsuario}}
+Authorization: Bearer {{token}}
+
+### CU04 - Modificar email
+PATCH {{host}}/api/admin/usuarios/{{idUsuario}}/email
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "email": "profe1.nuevo@iet.test" }
+
+### CU04 - Resetear contraseña
+POST {{host}}/api/admin/usuarios/{{idUsuario}}/resetear-contrasena
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "contrasenaNueva": "Otra12345" }
+
+### CU05 - Desactivar usuario
+POST {{host}}/api/admin/usuarios/{{idUsuario}}/desactivar
+Authorization: Bearer {{token}}
+
+### CU05 - Activar usuario
+POST {{host}}/api/admin/usuarios/{{idUsuario}}/activar
+Authorization: Bearer {{token}}
+
+### CU06 - Asignar rol
+POST {{host}}/api/admin/usuarios/{{idUsuario}}/roles
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "rol": "GUIA" }
+
+### CU06 - Revocar rol
+DELETE {{host}}/api/admin/usuarios/{{idUsuario}}/roles/GUIA
+Authorization: Bearer {{token}}
+
+### CU08 - Registrar profesor
+POST {{host}}/api/admin/profesores
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idUsuario": "{{idUsuario}}",
+  "nombre": "Ana",
+  "primerApellido": "Mora",
+  "segundoApellido": "Rojas",
+  "cedula": "{{cedulaProfe}}",
+  "numeroCelular": "88888888",
+  "fechaNacimiento": "1985-04-12"
+}
+
+### CU09 - Listar profesores
+GET {{host}}/api/admin/profesores?pagina=1&tamanoPagina=20
+Authorization: Bearer {{token}}
+
+### CU09 - Detalle de profesor (por cédula)
+GET {{host}}/api/admin/profesores/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+
+### CU10 - Modificar profesor
+PUT {{host}}/api/admin/profesores/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Ana María",
+  "primerApellido": "Mora",
+  "segundoApellido": "Rojas",
+  "numeroCelular": "87777777",
+  "fechaNacimiento": "1985-04-12"
+}
+
+### CU11 - Eliminar profesor
+DELETE {{host}}/api/admin/profesores/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+
+### CU12 - Registrar estudiante (edad válida: 16 a 19 años; ajusta la fecha)
+POST {{host}}/api/admin/estudiantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Luis",
+  "primerApellido": "Vargas",
+  "segundoApellido": null,
+  "cedula": "{{cedulaEst}}",
+  "numeroCelular": "86666666",
+  "email": "luis.vargas@iet.test",
+  "fechaNacimiento": "2009-03-20"
+}
+
+### CU13 - Listar estudiantes
+GET {{host}}/api/admin/estudiantes?pagina=1&tamanoPagina=20
+Authorization: Bearer {{token}}
+
+### CU13 - Detalle de estudiante (por cédula)
+GET {{host}}/api/admin/estudiantes/{{cedulaEst}}
+Authorization: Bearer {{token}}
+
+### CU14 - Modificar estudiante
+PUT {{host}}/api/admin/estudiantes/{{cedulaEst}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Luis Andrés",
+  "primerApellido": "Vargas",
+  "segundoApellido": null,
+  "numeroCelular": "86666666",
+  "email": "luis.vargas@iet.test",
+  "fechaNacimiento": "2009-03-20"
+}
+
+### CU15 - Eliminar estudiante
+DELETE {{host}}/api/admin/estudiantes/{{cedulaEst}}
+Authorization: Bearer {{token}}
+
+### CU07 - Eliminar usuario (elimina antes el perfil de profesor si lo tiene)
+DELETE {{host}}/api/admin/usuarios/{{idUsuario}}
+Authorization: Bearer {{token}}
+
+### Cambiar mi contraseña
+POST {{host}}/api/auth/cambiar-contrasena
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "contrasenaActual": "{{adminPass}}", "contrasenaNueva": "Nueva12345" }
+
+### Cerrar sesión (logout)
+POST {{host}}/api/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "{{refresh}}" }
+
+### Cerrar todas mis sesiones
+POST {{host}}/api/auth/logout-all
+Authorization: Bearer {{token}}
