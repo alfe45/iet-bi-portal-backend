@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Profesores.Models;
 
-/// <summary>CU10: datos editables de un profesor. La cédula (RN-10) y el usuario vinculado no se pueden cambiar.
+/// <summary>CU08: datos editables de un profesor. La cédula (RN-10) y el usuario vinculado no se pueden cambiar.
 /// El trim y el paso de vacíos a null los hace la DB (api.fn_limpiar).</summary>
 public class ActualizarProfesorRequest
 {
@@ -23,7 +23,7 @@ public class ActualizarProfesorRequest
     public DateOnly? FechaNacimiento { get; set; }
 }
 
-/// <summary>CU08: los mismos campos + la cédula + el usuario existente al que se vincula.</summary>
+/// <summary>CU06: los mismos campos + la cédula + el usuario existente al que se vincula.</summary>
 public class RegistrarProfesorRequest : ActualizarProfesorRequest
 {
     [Required, RegularExpression(PatronesValidacion.Cedula, ErrorMessage = PatronesValidacion.MensajeCedula)]

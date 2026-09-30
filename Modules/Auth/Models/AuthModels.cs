@@ -56,8 +56,9 @@ public record UsuarioAutenticado(Guid Id, string Email, IReadOnlyList<string> Ro
 public record UsuarioAuth(
     Guid Id, string Email, string ContrasenaHash, bool Activo, DateTime? BloqueadoHasta, IReadOnlyList<string> Roles);
 
-/// <summary>Resultado de rotar un refresh token. Estado: ok | invalid | expired | reused.</summary>
-public record ResultadoRefresh(string Estado, UsuarioAutenticado? Usuario);
+/// <summary>Resultado de rotar un refresh token. Estado: ok | invalid | expired | reused.
+/// IdUsuario viene en ok y en reused (para auditar la reutilización); Usuario solo en ok.</summary>
+public record ResultadoRefresh(string Estado, Guid? IdUsuario, UsuarioAutenticado? Usuario);
 
 /// <summary>Resultado del login: o hay respuesta con tokens, o un código de error del catálogo.</summary>
 public record ResultadoLogin(AuthResponse? Respuesta, string? CodigoError)

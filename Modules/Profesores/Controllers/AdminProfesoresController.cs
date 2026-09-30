@@ -7,11 +7,11 @@ using iet_bi_portal_backend.Modules.Profesores.Services;
 
 namespace iet_bi_portal_backend.Modules.Profesores.Controllers;
 
-/// <summary>CU08 a CU11. Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
+/// <summary>CU06 a CU09. Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
 [Route("api/admin/profesores")]
 public class AdminProfesoresController(ProfesoresService profesores) : AdminControllerBase
 {
-    /// <summary>CU08: 201 con la cédula; 404 (NF001) usuario inexistente; 409 (PR001) el usuario ya tiene perfil; 409 (PR002) cédula en uso.</summary>
+    /// <summary>CU06: 201 con la cédula; 404 (NF001) usuario inexistente; 409 (PR001) el usuario ya tiene perfil; 409 (PR002) cédula en uso.</summary>
     [HttpPost]
     public async Task<IActionResult> Registrar(RegistrarProfesorRequest request)
     {
@@ -19,12 +19,12 @@ public class AdminProfesoresController(ProfesoresService profesores) : AdminCont
         return StatusCode(StatusCodes.Status201Created, new { cedula });
     }
 
-    /// <summary>CU09: listado paginado.</summary>
+    /// <summary>CU07: listado paginado; ?busqueda= por nombre, apellidos, cédula o correo.</summary>
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] ConsultaPaginada consulta) =>
-        Ok(await profesores.ListarAsync(consulta.Pagina, consulta.TamanoPagina));
+    public async Task<IActionResult> Listar([FromQuery] ConsultaConBusqueda consulta) =>
+        Ok(await profesores.ListarAsync(consulta));
 
-    /// <summary>CU09: detalle por cédula. 404 (NF002) si no existe.</summary>
+    /// <summary>CU07: detalle por cédula. 404 (NF002) si no existe.</summary>
     [HttpGet("{cedula}")]
     public async Task<IActionResult> Obtener(string cedula)
     {
@@ -32,7 +32,7 @@ public class AdminProfesoresController(ProfesoresService profesores) : AdminCont
         return profesor is null ? this.ApiError("NF002") : Ok(profesor);
     }
 
-    /// <summary>CU10: modifica un profesor (reemplazo completo de los campos editables). 404 (NF002) si no existe.</summary>
+    /// <summary>CU08: modifica un profesor (reemplazo completo de los campos editables). 404 (NF002) si no existe.</summary>
     [HttpPut("{cedula}")]
     public async Task<IActionResult> Actualizar(string cedula, ActualizarProfesorRequest request)
     {
@@ -40,7 +40,7 @@ public class AdminProfesoresController(ProfesoresService profesores) : AdminCont
         return NoContent();
     }
 
-    /// <summary>CU11: elimina el perfil de profesor (el usuario se conserva). 404 (NF002) si no existe.</summary>
+    /// <summary>CU09: elimina el perfil de profesor (el usuario se conserva). 404 (NF002) si no existe.</summary>
     [HttpDelete("{cedula}")]
     public async Task<IActionResult> Eliminar(string cedula)
     {

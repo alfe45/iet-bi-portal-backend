@@ -172,33 +172,38 @@ AS $$
 $$;
 
 -- Login fallido: suma un intento; al llegar al máximo bloquea la cuenta.
-CREATE OR REPLACE PROCEDURE auth.sp_registrar_login_fallido(
+-- Devuelve TRUE si este intento bloqueó la cuenta (para auditoría).
+CREATE OR REPLACE FUNCTION auth.fn_registrar_login_fallido(
     p_id_usuario UUID,
     p_intentos_maximos INTEGER,
     p_minutos_bloqueo INTEGER
 )
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
+DECLARE
+    v_bloquear BOOLEAN;
 BEGIN
+    SELECT u.intentos_fallidos_login + 1 >= p_intentos_maximos
+           AND (u.bloqueado_hasta IS NULL OR u.bloqueado_hasta <= NOW())
+    INTO v_bloquear
+    FROM api.usuarios u
+    WHERE u.id_usuario = p_id_usuario
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
     UPDATE api.usuarios
     SET
-        bloqueado_hasta =
-            CASE
-                WHEN intentos_fallidos_login + 1 >= p_intentos_maximos
-                     AND (bloqueado_hasta IS NULL OR bloqueado_hasta <= NOW())
-                THEN NOW() + make_interval(mins => p_minutos_bloqueo)
-                ELSE bloqueado_hasta
-            END,
-        intentos_fallidos_login =
-            CASE
-                WHEN intentos_fallidos_login + 1 >= p_intentos_maximos
-                     AND (bloqueado_hasta IS NULL OR bloqueado_hasta <= NOW())
-                THEN 0
-                ELSE intentos_fallidos_login + 1
-            END,
+        bloqueado_hasta = CASE WHEN v_bloquear THEN NOW() + make_interval(mins => p_minutos_bloqueo) ELSE bloqueado_hasta END,
+        intentos_fallidos_login = CASE WHEN v_bloquear THEN 0 ELSE intentos_fallidos_login + 1 END,
         actualizado_en = NOW()
     WHERE id_usuario = p_id_usuario;
+
+    RETURN v_bloquear;
 END;
 $$;
 
@@ -263,9 +268,11 @@ BEGIN
         RETURN;
     END IF;
 
+    -- Reutilización de un token ya rotado (posible robo): se revoca todo y se devuelve el dueño
+    -- para auditarlo (sin email ni roles: no se emite sesión).
     IF v_sesion.rotado_en IS NOT NULL THEN
         CALL api.sp_revocar_acceso(v_sesion.id_usuario);
-        RETURN QUERY SELECT 'reused'::TEXT, NULL::UUID, NULL::CITEXT, NULL::api.roles[];
+        RETURN QUERY SELECT 'reused'::TEXT, v_sesion.id_usuario, NULL::CITEXT, NULL::api.roles[];
         RETURN;
     END IF;
 

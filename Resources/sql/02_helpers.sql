@@ -38,6 +38,17 @@ AS $$
 $$;
 
 -- ------------------------------------------------------------
+-- Fecha actual en hora de Costa Rica. Toda regla que dependa de "hoy" usa esta función
+-- (no CURRENT_DATE, que depende del TimeZone de la sesión/servidor).
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION api.fn_hoy()
+RETURNS DATE
+LANGUAGE sql STABLE
+AS $$
+    SELECT (NOW() AT TIME ZONE 'America/Costa_Rica')::DATE;
+$$;
+
+-- ------------------------------------------------------------
 -- Paginación: normaliza (clamp) y calcula el offset en BIGINT
 -- (evita overflow con páginas enormes).
 -- ------------------------------------------------------------
@@ -165,4 +176,54 @@ BEGIN
         actualizado_en = NOW()
     WHERE id_usuario = p_id_usuario;
 END;
+$$;
+
+-- ------------------------------------------------------------
+-- Profesores: TRUE si el usuario del profesor está activo y tiene el rol dado. Lo usan las
+-- asignaciones operativas (guía de sección, asignaciones docentes) en periodos no finalizados.
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION academico.fn_profesor_tiene_rol_activo(p_id_profesor BIGINT, p_rol api.roles)
+RETURNS BOOLEAN
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1
+        FROM academico.profesores pr
+        JOIN api.usuarios u ON u.id_usuario = pr.id_usuario
+        JOIN api.usuario_roles ur ON ur.id_usuario = u.id_usuario
+        WHERE pr.id_profesor = p_id_profesor AND u.activo AND ur.rol = p_rol
+    );
+END;
+$$;
+
+-- ------------------------------------------------------------
+-- Fecha de nacimiento coherente (no futura ni anterior a 1900). Depende de "hoy", por eso es
+-- función y no CHECK (RP-28). Cada módulo pasa su código (ES004 estudiantes, PR005 profesores).
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION api.fn_validar_fecha_nacimiento(p_fecha_nacimiento DATE, p_codigo TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF p_fecha_nacimiento IS NULL OR p_fecha_nacimiento < DATE '1900-01-01' OR p_fecha_nacimiento > api.fn_hoy() THEN
+        PERFORM api.fn_lanzar_excepcion(p_codigo, 'La fecha de nacimiento no es válida.');
+    END IF;
+END;
+$$;
+
+-- ------------------------------------------------------------
+-- Búsqueda de texto en listados: TRUE si p_busqueda es NULL/vacía o si aparece en p_texto,
+-- sin distinguir mayúsculas ni acentos ("solis" encuentra "Solís"). Los comodines % y _ del
+-- usuario se tratan como texto literal.
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION api.fn_coincide(p_texto TEXT, p_busqueda TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE
+SET search_path = academico, api, public
+AS $$
+    SELECT api.fn_limpiar(p_busqueda) IS NULL
+        OR academico.unaccent(COALESCE(p_texto, '')) ILIKE
+           '%' || replace(replace(replace(academico.unaccent(api.fn_limpiar(p_busqueda)), '\', '\\'), '%', '\%'), '_', '\_') || '%';
 $$;

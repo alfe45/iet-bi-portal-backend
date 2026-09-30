@@ -20,8 +20,9 @@ public class AuthRepository(NpgsqlDataSource db)
     public Task<UsuarioAuth?> ObtenerPorIdAsync(Guid id) =>
         db.PrimeroOpcionalAsync($"SELECT {ColumnasUsuario} FROM auth.fn_obtener_usuario_por_id($1)", LeerUsuario, id);
 
-    public Task RegistrarLoginFallidoAsync(Guid idUsuario, int intentosMaximos, int minutosBloqueo) =>
-        db.EjecutarAsync("CALL auth.sp_registrar_login_fallido($1, $2, $3)", idUsuario, intentosMaximos, minutosBloqueo);
+    /// <summary>Suma un intento fallido. Devuelve true si este intento bloqueó la cuenta.</summary>
+    public Task<bool> RegistrarLoginFallidoAsync(Guid idUsuario, int intentosMaximos, int minutosBloqueo) =>
+        db.EscalarAsync<bool>("SELECT auth.fn_registrar_login_fallido($1, $2, $3)", idUsuario, intentosMaximos, minutosBloqueo);
 
     public Task RegistrarLoginExitosoAsync(Guid idUsuario) =>
         db.EjecutarAsync("CALL auth.sp_registrar_login_exitoso($1)", idUsuario);
@@ -42,7 +43,8 @@ public class AuthRepository(NpgsqlDataSource db)
             "FROM auth.fn_rotar_sesion($1, $2, $3, $4::text, $5::text)",
             r => new ResultadoRefresh(
                 r.GetString(0),
-                r.IsDBNull(1)
+                r.IsDBNull(1) ? null : r.GetGuid(1),
+                r.IsDBNull(2)
                     ? null
                     : new UsuarioAutenticado(r.GetGuid(1), r.GetString(2), r.GetFieldValue<string[]>(3))),
             tokenHashAnterior, tokenHashNuevo, expiraUtc, ip, userAgent);

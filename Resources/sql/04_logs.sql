@@ -7,7 +7,7 @@ SET search_path = academico, api, auth, public;
 CREATE TABLE api.logs (
     id_log UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_usuario UUID NULL,                    -- quién lo hizo (NULL = sistema/background)
-    accion TEXT NOT NULL,                     -- 'LOGIN', 'ASSIGN_ROLE', 'UPDATE', etc.
+    accion TEXT NOT NULL,                     -- 'LOGIN', 'ASIGNAR_ROL', etc. (catálogo en Modules/Logs/log_codes.md)
     tabla_afectada TEXT NULL,                 -- 'api.usuario_roles', si aplica
     id_registro_afectado TEXT NULL,           -- PK de la fila afectada, como texto
     datos_anteriores JSONB NULL,              -- estado previo (UPDATE/DELETE)

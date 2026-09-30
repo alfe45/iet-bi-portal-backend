@@ -1,10 +1,15 @@
-# Cambia el host/puerto por el de tu launchSettings.json
-@host = https://localhost:7000
+# Pruebas manuales de la API. Ejecuta en orden: los borrados van al final porque los datos
+# tienen dependencias (matrícula -> sección -> periodo, asignación -> asignatura/profesor...).
+# @host según launchSettings.json: perfil "http" = http://localhost:5149, "https" = https://localhost:7128.
+@host = http://localhost:5149
 @bootstrapToken = REEMPLAZAR_CON_ADMIN_BOOTSTRAP_TOKEN
 @adminEmail = admin@iet.test
 @adminPass = Cambiar1234
+@profeEmail = profe1@iet.test
+@profePass = Profe12345
 @cedulaProfe = 100000001
 @cedulaEst = 200000001
+@anio = 2026
 
 ### Crear primer administrador (una sola vez)
 POST {{host}}/api/setup/primer-admin
@@ -30,23 +35,23 @@ Content-Type: application/json
 
 { "refreshToken": "{{refresh}}" }
 
-### CU01 - Mi perfil
+### CU01 - Mi perfil (roles y, si tiene, perfil de profesor)
 GET {{host}}/api/perfil
 Authorization: Bearer {{token}}
 
-### CU02 - Registrar usuario
+### CU02 - Registrar usuario (nace con PROFESOR_REGULAR)
 # @name nuevoUsuario
 POST {{host}}/api/admin/usuarios
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "email": "profe1@iet.test", "contrasena": "Profe12345" }
+{ "email": "{{profeEmail}}", "contrasena": "{{profePass}}" }
 
 ###
 @idUsuario = {{nuevoUsuario.response.body.$.id}}
 
-### CU03 - Listar usuarios
-GET {{host}}/api/admin/usuarios?pagina=1&tamanoPagina=20
+### CU03 - Listar usuarios (filtros opcionales: busqueda, rol)
+GET {{host}}/api/admin/usuarios?pagina=1&tamanoPagina=20&busqueda=&rol=
 Authorization: Bearer {{token}}
 
 ### CU03 - Detalle de usuario
@@ -65,28 +70,24 @@ POST {{host}}/api/admin/usuarios/{{idUsuario}}/resetear-contrasena
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "contrasenaNueva": "Otra12345" }
+{ "contrasenaNueva": "{{profePass}}" }
 
-### CU05 - Desactivar usuario
+### CU04 - Desactivar usuario
 POST {{host}}/api/admin/usuarios/{{idUsuario}}/desactivar
 Authorization: Bearer {{token}}
 
-### CU05 - Activar usuario
+### CU04 - Activar usuario
 POST {{host}}/api/admin/usuarios/{{idUsuario}}/activar
 Authorization: Bearer {{token}}
 
-### CU06 - Asignar rol
+### CU04 - Asignar rol (GUIA para poder ser guía de una sección)
 POST {{host}}/api/admin/usuarios/{{idUsuario}}/roles
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "rol": "GUIA" }
 
-### CU06 - Revocar rol
-DELETE {{host}}/api/admin/usuarios/{{idUsuario}}/roles/GUIA
-Authorization: Bearer {{token}}
-
-### CU08 - Registrar profesor
+### CU06 - Registrar profesor
 POST {{host}}/api/admin/profesores
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -101,15 +102,15 @@ Content-Type: application/json
   "fechaNacimiento": "1985-04-12"
 }
 
-### CU09 - Listar profesores
-GET {{host}}/api/admin/profesores?pagina=1&tamanoPagina=20
+### CU07 - Listar profesores (búsqueda opcional, sin mayúsculas ni acentos)
+GET {{host}}/api/admin/profesores?pagina=1&tamanoPagina=20&busqueda=
 Authorization: Bearer {{token}}
 
-### CU09 - Detalle de profesor (por cédula)
+### CU07 - Detalle de profesor (por cédula)
 GET {{host}}/api/admin/profesores/{{cedulaProfe}}
 Authorization: Bearer {{token}}
 
-### CU10 - Modificar profesor
+### CU08 - Modificar profesor
 PUT {{host}}/api/admin/profesores/{{cedulaProfe}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -122,11 +123,7 @@ Content-Type: application/json
   "fechaNacimiento": "1985-04-12"
 }
 
-### CU11 - Eliminar profesor
-DELETE {{host}}/api/admin/profesores/{{cedulaProfe}}
-Authorization: Bearer {{token}}
-
-### CU12 - Registrar estudiante (edad válida: 16 a 19 años; ajusta la fecha)
+### CU10 - Registrar estudiante (la edad 16-19 se valida al matricular, no aquí)
 POST {{host}}/api/admin/estudiantes
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -141,15 +138,15 @@ Content-Type: application/json
   "fechaNacimiento": "2009-03-20"
 }
 
-### CU13 - Listar estudiantes
-GET {{host}}/api/admin/estudiantes?pagina=1&tamanoPagina=20
+### CU11 - Listar estudiantes (búsqueda opcional)
+GET {{host}}/api/admin/estudiantes?pagina=1&tamanoPagina=20&busqueda=
 Authorization: Bearer {{token}}
 
-### CU13 - Detalle de estudiante (por cédula)
+### CU11 - Detalle de estudiante (por cédula)
 GET {{host}}/api/admin/estudiantes/{{cedulaEst}}
 Authorization: Bearer {{token}}
 
-### CU14 - Modificar estudiante
+### CU12 - Modificar estudiante
 PUT {{host}}/api/admin/estudiantes/{{cedulaEst}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -163,27 +160,221 @@ Content-Type: application/json
   "fechaNacimiento": "2009-03-20"
 }
 
-### CU15 - Eliminar estudiante
+### CU14 - Registrar periodo académico
+POST {{host}}/api/admin/periodos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "anio": {{anio}},
+  "inicioSemestreI": "2026-02-02",
+  "finSemestreI": "2026-06-30",
+  "inicioSemestreII": "2026-07-20",
+  "finSemestreII": "2026-11-30"
+}
+
+### Periodo actual (año y semestre en curso)
+GET {{host}}/api/periodos/actual
+Authorization: Bearer {{token}}
+
+### CU15 - Listar periodos
+GET {{host}}/api/admin/periodos?pagina=1&tamanoPagina=20
+Authorization: Bearer {{token}}
+
+### CU15 - Detalle de periodo
+GET {{host}}/api/admin/periodos/{{anio}}
+Authorization: Bearer {{token}}
+
+### CU16 - Modificar fechas del periodo
+PUT {{host}}/api/admin/periodos/{{anio}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "inicioSemestreI": "2026-02-02",
+  "finSemestreI": "2026-06-30",
+  "inicioSemestreII": "2026-07-20",
+  "finSemestreII": "2026-12-04"
+}
+
+### CU18 - Registrar sección 10-1
+POST {{host}}/api/admin/secciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "anio": {{anio}}, "nivel": 10, "numero": 1 }
+
+### CU19 - Listar secciones del año (incluye guía y cantidad de estudiantes)
+GET {{host}}/api/admin/secciones?anio={{anio}}&nivel=&pagina=1&tamanoPagina=20
+Authorization: Bearer {{token}}
+
+### CU19 - Detalle de sección
+GET {{host}}/api/admin/secciones/{{anio}}/10/1
+Authorization: Bearer {{token}}
+
+### CU21 - Asociar profesor guía (requiere rol GUIA en periodos abiertos)
+PUT {{host}}/api/admin/secciones/{{anio}}/10/1/guia
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "cedulaProfesor": "{{cedulaProfe}}" }
+
+### CU29 - Registrar asignatura
+POST {{host}}/api/admin/asignaturas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "codigo": "MAT", "nombre": "Matemáticas", "tipo": "MEP", "descripcion": null, "imparteNivel10": true, "imparteNivel11": true }
+
+### CU29 - Registrar asignatura solo de nivel 10 (Cívica: el nivel 11 no la recibe)
+POST {{host}}/api/admin/asignaturas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "codigo": "CIV", "nombre": "Educación Cívica", "tipo": "MEP", "descripcion": null, "imparteNivel10": true, "imparteNivel11": false }
+
+### CU30 - Listar asignaturas (filtros opcionales: tipo, nivel)
+GET {{host}}/api/admin/asignaturas?tipo=&nivel=&pagina=1&tamanoPagina=20
+Authorization: Bearer {{token}}
+
+### CU31 - Modificar asignatura
+PUT {{host}}/api/admin/asignaturas/MAT
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombre": "Matemáticas", "tipo": "MEP", "descripcion": "Programa del MEP", "imparteNivel10": true, "imparteNivel11": true }
+
+### CU33 - Asignar al profesor la asignatura y sección (se permite co-docencia)
+POST {{host}}/api/admin/asignaciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "anio": {{anio}}, "nivel": 10, "numero": 1, "codigoAsignatura": "MAT", "cedulaProfesor": "{{cedulaProfe}}" }
+
+### CU34 - Listar asignaciones (filtros opcionales)
+GET {{host}}/api/admin/asignaciones?anio={{anio}}&nivel=&numero=&codigoAsignatura=&cedulaProfesor=
+Authorization: Bearer {{token}}
+
+### CU25 - Matricular estudiante (fechaMatricula opcional: null = hoy)
+POST {{host}}/api/admin/matriculas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "anio": {{anio}}, "nivel": 10, "numero": 1, "cedulaEstudiante": "{{cedulaEst}}", "fechaMatricula": "2026-02-02" }
+
+### CU27 - Estudiantes matriculados en una sección
+GET {{host}}/api/admin/matriculas?anio={{anio}}&nivel=10&numero=1&estado=&busqueda=
+Authorization: Bearer {{token}}
+
+### CU27 - Historial de matrículas del estudiante
+GET {{host}}/api/admin/matriculas?cedulaEstudiante={{cedulaEst}}
+Authorization: Bearer {{token}}
+
+### CU26 - Registrar retiro
+PUT {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}/retiro
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "fechaRetiro": "2026-09-01", "motivo": "Traslado de colegio" }
+
+### CU26 - Anular retiro
+DELETE {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}/retiro
+Authorization: Bearer {{token}}
+
+# ============================================================
+# Vistas del profesor (inicia sesión con el usuario del profesor)
+# ============================================================
+
+### Login del profesor
+# @name loginProfe
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "profe1.nuevo@iet.test", "contrasena": "{{profePass}}" }
+
+###
+@tokenProfe = {{loginProfe.response.body.$.accessToken}}
+
+### Profesor Regular CU03 - Mis asignaciones (periodo en curso)
+GET {{host}}/api/profesor/asignaciones
+Authorization: Bearer {{tokenProfe}}
+
+### Profesor Regular CU04 / Guía CU02 - Estudiantes de una sección donde imparto o soy guía
+GET {{host}}/api/profesor/secciones/{{anio}}/10/1/estudiantes
+Authorization: Bearer {{tokenProfe}}
+
+### Guía CU01 - Mi sección guía (periodo en curso)
+GET {{host}}/api/profesor/guia/secciones
+Authorization: Bearer {{tokenProfe}}
+
+# ============================================================
+# Borrados (en este orden por las dependencias)
+# ============================================================
+
+### CU28 - Eliminar matrícula
+DELETE {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}
+Authorization: Bearer {{token}}
+
+### CU36 - Eliminar asignación
+DELETE {{host}}/api/admin/asignaciones/{{anio}}/10/1/MAT/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+
+### CU21 - Quitar profesor guía
+DELETE {{host}}/api/admin/secciones/{{anio}}/10/1/guia
+Authorization: Bearer {{token}}
+
+### CU20 - Eliminar sección
+DELETE {{host}}/api/admin/secciones/{{anio}}/10/1
+Authorization: Bearer {{token}}
+
+### CU32 - Eliminar asignaturas
+DELETE {{host}}/api/admin/asignaturas/CIV
+Authorization: Bearer {{token}}
+
+###
+DELETE {{host}}/api/admin/asignaturas/MAT
+Authorization: Bearer {{token}}
+
+### CU17 - Eliminar periodo (solo sin secciones)
+DELETE {{host}}/api/admin/periodos/{{anio}}
+Authorization: Bearer {{token}}
+
+### CU13 - Eliminar estudiante
 DELETE {{host}}/api/admin/estudiantes/{{cedulaEst}}
 Authorization: Bearer {{token}}
 
-### CU07 - Eliminar usuario (elimina antes el perfil de profesor si lo tiene)
+### CU09 - Eliminar profesor
+DELETE {{host}}/api/admin/profesores/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+
+### CU04 - Revocar rol
+DELETE {{host}}/api/admin/usuarios/{{idUsuario}}/roles/GUIA
+Authorization: Bearer {{token}}
+
+### CU05 - Eliminar usuario (elimina antes el perfil de profesor si lo tiene)
 DELETE {{host}}/api/admin/usuarios/{{idUsuario}}
 Authorization: Bearer {{token}}
 
-### Cambiar mi contraseña
+### Cerrar sesión (logout de esta sesión; responde 204 aunque el token no exista)
+POST {{host}}/api/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "{{refresh}}" }
+
+### Cambiar mi contraseña (cierra todas las sesiones: hay que volver a iniciar sesión)
 POST {{host}}/api/auth/cambiar-contrasena
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "contrasenaActual": "{{adminPass}}", "contrasenaNueva": "Nueva12345" }
 
-### Cerrar sesión (logout)
-POST {{host}}/api/auth/logout
+### Iniciar sesión con la contraseña nueva
+# @name login2
+POST {{host}}/api/auth/login
 Content-Type: application/json
 
-{ "refreshToken": "{{refresh}}" }
+{ "email": "{{adminEmail}}", "contrasena": "Nueva12345" }
 
 ### Cerrar todas mis sesiones
 POST {{host}}/api/auth/logout-all
-Authorization: Bearer {{token}}
+Authorization: Bearer {{login2.response.body.$.accessToken}}

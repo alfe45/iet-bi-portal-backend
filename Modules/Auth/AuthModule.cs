@@ -105,7 +105,9 @@ public static class AuthModule
                             return;
                         }
 
-                        if (desde is { } marca && DateTimeOffset.FromUnixTimeSeconds(iatUnix).UtcDateTime < marca)
+                        // iat tiene resolución de segundos: se compara contra la marca truncada al segundo para que
+                        // un login justo después de una revocación (mismo segundo) no quede rechazado.
+                        if (desde is { } marca && iatUnix < new DateTimeOffset(marca).ToUnixTimeSeconds())
                             context.Fail("La sesión fue cerrada. Inicia sesión de nuevo.");
                     }
                 };

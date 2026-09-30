@@ -2,6 +2,7 @@ using iet_bi_portal_backend.Common.Data;
 using iet_bi_portal_backend.Common.Models;
 using iet_bi_portal_backend.Common.Security;
 using iet_bi_portal_backend.Common.Texto;
+using iet_bi_portal_backend.Modules.Logs;
 using iet_bi_portal_backend.Modules.Logs.Services;
 using iet_bi_portal_backend.Modules.Usuarios.Models;
 using iet_bi_portal_backend.Modules.Usuarios.Data;
@@ -19,15 +20,15 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
         email = email.NormalizarEmail();
         var id = await repo.RegistrarAsync(actorId, email, contrasenas.Hashear(contrasena));
 
-        await logs.RegistrarAsync(actorId, "CREATE_USER", TablaUsuarios, id.ToString(),
+        await logs.RegistrarAsync(actorId, AccionesLog.RegistrarUsuario, TablaUsuarios, id.ToString(),
             datosNuevos: new { email, roles = new[] { Roles.ProfesorRegular } });
 
         return (id, email);
     }
 
-    /// <summary>CU03: listado paginado, sin filtros (los aplica el frontend).</summary>
-    public Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(int pagina, int tamanoPagina) =>
-        repo.ListarAsync(pagina, tamanoPagina);
+    /// <summary>CU03: listado paginado con búsqueda y filtro por rol (en el servidor: filtrar en el
+    /// frontend solo vería la página actual).</summary>
+    public Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(ConsultaUsuarios consulta) => repo.ListarAsync(consulta);
 
     /// <summary>CU01 / CU03: detalle de un usuario, o null si no existe.</summary>
     public Task<UsuarioAdmin?> ObtenerAsync(Guid id) => repo.ObtenerAsync(id);
@@ -39,7 +40,7 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
         var (estado, emailAnterior) = await repo.ActualizarEmailAsync(actorId, idObjetivo, emailNuevo);
 
         if (estado == EstadoOperacion.Ok)
-            await logs.RegistrarAsync(actorId, "UPDATE_USER_EMAIL", TablaUsuarios, idObjetivo.ToString(),
+            await logs.RegistrarAsync(actorId, AccionesLog.ModificarEmailUsuario, TablaUsuarios, idObjetivo.ToString(),
                 datosAnteriores: new { email = emailAnterior },
                 datosNuevos: new { email = emailNuevo });
     }
@@ -48,20 +49,20 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
     public async Task ResetearContrasenaAsync(Guid actorId, Guid idObjetivo, string contrasenaNueva)
     {
         await repo.ResetearContrasenaAsync(actorId, idObjetivo, contrasenas.Hashear(contrasenaNueva));
-        await logs.RegistrarAsync(actorId, "RESET_PASSWORD", TablaUsuarios, idObjetivo.ToString());   // nunca el hash
+        await logs.RegistrarAsync(actorId, AccionesLog.ResetearContrasena, TablaUsuarios, idObjetivo.ToString());   // nunca el hash
     }
 
-    /// <summary>CU05: activa o desactiva. La DB impide auto-desactivación y dejar el sistema sin admins (AU010/AU011).</summary>
+    /// <summary>CU04: activa o desactiva. La DB impide auto-desactivación y dejar el sistema sin admins (AU010/AU011).</summary>
     public async Task CambiarEstadoAsync(Guid actorId, Guid idObjetivo, bool activo)
     {
         var estado = await repo.CambiarEstadoAsync(actorId, idObjetivo, activo);
 
         if (estado == EstadoOperacion.Ok)
-            await logs.RegistrarAsync(actorId, activo ? "ACTIVATE_USER" : "DEACTIVATE_USER",
+            await logs.RegistrarAsync(actorId, activo ? AccionesLog.ActivarUsuario : AccionesLog.DesactivarUsuario,
                 TablaUsuarios, idObjetivo.ToString());
     }
 
-    /// <summary>CU06: otorga un rol. true si se asignó; false si ya lo tenía.</summary>
+    /// <summary>CU04: otorga un rol. true si se asignó; false si ya lo tenía.</summary>
     public async Task<bool> AsignarRolAsync(Guid actorId, Guid idObjetivo, string rol)
     {
         rol = rol.ToUpperInvariant();
@@ -69,28 +70,28 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
 
         if (estado != EstadoOperacion.Ok) return false;
 
-        await logs.RegistrarAsync(actorId, "ASSIGN_ROLE", TablaRoles, idObjetivo.ToString(),
+        await logs.RegistrarAsync(actorId, AccionesLog.AsignarRol, TablaRoles, idObjetivo.ToString(),
             datosNuevos: new { rol });
         return true;
     }
 
-    /// <summary>CU06: quita un rol (AU003/AU004/AU005 los valida la DB).</summary>
+    /// <summary>CU04: quita un rol (AU003/AU004/AU005/AU016 los valida la DB).</summary>
     public async Task RevocarRolAsync(Guid actorId, Guid idObjetivo, string rol)
     {
         rol = rol.ToUpperInvariant();
         var estado = await repo.RevocarRolAsync(actorId, idObjetivo, rol);
 
         if (estado == EstadoOperacion.Ok)
-            await logs.RegistrarAsync(actorId, "REVOKE_ROLE", TablaRoles, idObjetivo.ToString(),
+            await logs.RegistrarAsync(actorId, AccionesLog.RevocarRol, TablaRoles, idObjetivo.ToString(),
                 datosAnteriores: new { rol });
     }
 
-    /// <summary>CU07: elimina el usuario. Registra email y roles previos, porque después del DELETE no hay nada que consultar.</summary>
+    /// <summary>CU05: elimina el usuario. Registra email y roles previos, porque después del DELETE no hay nada que consultar.</summary>
     public async Task EliminarAsync(Guid actorId, Guid idObjetivo)
     {
         var (email, roles) = await repo.EliminarAsync(actorId, idObjetivo);
 
-        await logs.RegistrarAsync(actorId, "DELETE_USER", TablaUsuarios, idObjetivo.ToString(),
+        await logs.RegistrarAsync(actorId, AccionesLog.EliminarUsuario, TablaUsuarios, idObjetivo.ToString(),
             datosAnteriores: new { email, roles });
     }
 }

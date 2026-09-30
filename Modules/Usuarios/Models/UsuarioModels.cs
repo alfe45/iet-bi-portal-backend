@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using iet_bi_portal_backend.Common.Models;
 using iet_bi_portal_backend.Common.Security;
 
 namespace iet_bi_portal_backend.Modules.Usuarios.Models;
@@ -27,14 +28,22 @@ public class ResetearContrasenaRequest
     public string ContrasenaNueva { get; set; } = string.Empty;
 }
 
-/// <summary>CU06: rol a asignar.</summary>
+/// <summary>CU04: rol a asignar.</summary>
 public class RolRequest
 {
     [Required, RolValido]
     public string Rol { get; set; } = string.Empty;
 }
 
-/// <summary>Usuario tal como lo devuelve auth.fn_*_usuario*. Se usa también como respuesta HTTP (no incluye el hash).</summary>
+/// <summary>CU03: listado con búsqueda (correo, cédula o nombre del profesor) y filtro opcional por rol.</summary>
+public class ConsultaUsuarios : ConsultaConBusqueda
+{
+    [RolValido]
+    public string? Rol { get; set; }
+}
+
+/// <summary>Usuario tal como lo devuelve auth.fn_*_usuario*. Se usa también como respuesta HTTP (no incluye el hash).
+/// CedulaProfesor/NombreProfesor: perfil de profesor vinculado, o null si no tiene.</summary>
 public record UsuarioAdmin(
     Guid Id,
     string Email,
@@ -43,4 +52,6 @@ public record UsuarioAdmin(
     DateTime? UltimoLogin,
     DateTime CreadoEn,
     IReadOnlyList<string> Roles,
-    long CantidadSesiones);
+    long CantidadSesiones,
+    string? CedulaProfesor,
+    string? NombreProfesor);

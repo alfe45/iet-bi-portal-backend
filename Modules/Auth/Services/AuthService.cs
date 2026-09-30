@@ -6,6 +6,7 @@ using iet_bi_portal_backend.Modules.Auth.Data;
 using iet_bi_portal_backend.Modules.Auth.Models;
 using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Settings;
+using iet_bi_portal_backend.Modules.Logs;
 using iet_bi_portal_backend.Modules.Logs.Services;
 
 namespace iet_bi_portal_backend.Modules.Auth.Services;
@@ -25,13 +26,14 @@ public class AuthService(
 
     public async Task<ResultadoLogin> LoginAsync(string email, string contrasena, InfoCliente cliente)
     {
-        var usuario = await repo.ObtenerPorEmailAsync(email.NormalizarEmail());
+        email = email.NormalizarEmail();
+        var usuario = await repo.ObtenerPorEmailAsync(email);
 
         // Correo inexistente: gasta el mismo tiempo que una verificación real (RP-24).
         if (usuario is null)
         {
             contrasenas.VerificarDummy(contrasena);
-            return ResultadoLogin.Fallo("AU006");
+            return await FalloLoginAsync(null, email, "CORREO_INEXISTENTE", "AU006", cliente);
         }
 
         var bloqueado = usuario.BloqueadoHasta > DateTime.UtcNow;
@@ -40,21 +42,31 @@ public class AuthService(
         // está activa y no bloqueada.
         if (!contrasenas.Verificar(contrasena, usuario.ContrasenaHash))
         {
-            if (usuario.Activo && !bloqueado)
+            var cuentaBloqueada = usuario.Activo && !bloqueado &&
                 await repo.RegistrarLoginFallidoAsync(usuario.Id, _politica.MaxIntentosFallidos, _politica.MinutosBloqueo);
-            return ResultadoLogin.Fallo("AU006");
+            return await FalloLoginAsync(usuario.Id, email, "CONTRASENA_INCORRECTA", "AU006", cliente, cuentaBloqueada);
         }
 
         // Contraseña correcta: recién aquí es seguro explicar el estado de la cuenta.
-        if (!usuario.Activo) return ResultadoLogin.Fallo("AU014");
-        if (bloqueado) return ResultadoLogin.Fallo("AU015");
+        if (!usuario.Activo) return await FalloLoginAsync(usuario.Id, email, "CUENTA_DESACTIVADA", "AU014", cliente);
+        if (bloqueado) return await FalloLoginAsync(usuario.Id, email, "CUENTA_BLOQUEADA", "AU015", cliente);
 
         // Sin roles (solo por edición manual de la DB): fail-closed, sin filtrar el motivo.
-        if (usuario.Roles.Count == 0) return ResultadoLogin.Fallo("AU006");
+        if (usuario.Roles.Count == 0) return await FalloLoginAsync(usuario.Id, email, "SIN_ROLES", "AU006", cliente);
 
         await repo.RegistrarLoginExitosoAsync(usuario.Id);
-        await logs.RegistrarAsync(usuario.Id, "LOGIN", ip: cliente.Ip, userAgent: cliente.UserAgent);
+        await logs.RegistrarAsync(usuario.Id, AccionesLog.Login, ip: cliente.Ip, userAgent: cliente.UserAgent);
         return ResultadoLogin.Exito(await EmitirSesionAsync(usuario.Id, usuario.Email, usuario.Roles, cliente));
+    }
+
+    /// <summary>Audita el intento fallido (nunca la contraseña) y devuelve el código de error para el cliente.
+    /// El motivo queda solo en el log: al cliente se le sigue respondiendo genérico donde corresponde.</summary>
+    private async Task<ResultadoLogin> FalloLoginAsync(
+        Guid? idUsuario, string email, string motivo, string codigoError, InfoCliente cliente, bool cuentaBloqueada = false)
+    {
+        await logs.RegistrarAsync(idUsuario, AccionesLog.LoginFallido, TablaUsuarios, idUsuario?.ToString(),
+            datosNuevos: new { email, motivo, cuentaBloqueada }, ip: cliente.Ip, userAgent: cliente.UserAgent);
+        return ResultadoLogin.Fallo(codigoError);
     }
 
     public async Task LogoutAsync(string refreshToken, InfoCliente cliente)
@@ -64,7 +76,7 @@ public class AuthService(
         // Token inexistente: no se registra nada (evita ruido/abuso del endpoint anónimo).
         if (idUsuario is null) return;
 
-        await logs.RegistrarAsync(idUsuario, "LOGOUT", TablaUsuarios, idUsuario.Value.ToString(),
+        await logs.RegistrarAsync(idUsuario, AccionesLog.Logout, TablaUsuarios, idUsuario.Value.ToString(),
             ip: cliente.Ip, userAgent: cliente.UserAgent);
     }
 
@@ -79,6 +91,11 @@ public class AuthService(
             cliente.Ip,
             cliente.UserAgent);
 
+        // Reutilización de un refresh token ya rotado: la DB ya revocó todo el acceso; se audita.
+        if (resultado.Estado == "reused" && resultado.IdUsuario is { } idReutilizado)
+            await logs.RegistrarAsync(idReutilizado, AccionesLog.SesionReutilizada, TablaUsuarios, idReutilizado.ToString(),
+                ip: cliente.Ip, userAgent: cliente.UserAgent);
+
         if (resultado.Estado != "ok" || resultado.Usuario is not { Roles.Count: > 0 } usuario) return null;
 
         var access = tokens.CrearAccessToken(usuario.Id, usuario.Email, usuario.Roles);
@@ -88,7 +105,7 @@ public class AuthService(
     public async Task LogoutAllAsync(Guid idUsuario)
     {
         await repo.LogoutAllAsync(idUsuario);
-        await logs.RegistrarAsync(idUsuario, "LOGOUT_ALL", TablaUsuarios, idUsuario.ToString());
+        await logs.RegistrarAsync(idUsuario, AccionesLog.LogoutAll, TablaUsuarios, idUsuario.ToString());
     }
 
     /// <summary>Cambia la contraseña propia. false si la actual es incorrecta o el usuario no está activo.</summary>
@@ -99,7 +116,7 @@ public class AuthService(
             return false;
 
         await repo.EstablecerContrasenaAsync(idUsuario, contrasenas.Hashear(contrasenaNueva));
-        await logs.RegistrarAsync(idUsuario, "CHANGE_PASSWORD", TablaUsuarios, idUsuario.ToString());   // nunca el hash
+        await logs.RegistrarAsync(idUsuario, AccionesLog.CambiarContrasena, TablaUsuarios, idUsuario.ToString());   // nunca el hash
         return true;
     }
 
@@ -109,7 +126,7 @@ public class AuthService(
     {
         email = email.NormalizarEmail();
         var id = await repo.CrearPrimerAdminAsync(email, contrasenas.Hashear(contrasena));
-        await logs.RegistrarAsync(id, "BOOTSTRAP_ADMIN", TablaUsuarios, id.ToString());
+        await logs.RegistrarAsync(id, AccionesLog.CrearPrimerAdmin, TablaUsuarios, id.ToString());
         return (id, email);
     }
 
