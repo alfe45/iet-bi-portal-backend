@@ -1,5 +1,5 @@
 -- ============================================================
--- 13_admin_matriculas.sql: CU 22 a 25 (admin) + estudiantes de una sección (profesor/guía).
+-- 13_admin_matriculas.sql: CU 22 a 25 (admin) + estudiantes de una sección y ficha del estudiante (profesor/guía).
 -- Una matrícula por estudiante y periodo; se identifica por (año, cédula del estudiante).
 -- El estado se deriva: RETIRADA si tiene retiro; si no PROGRAMADA / ACTIVA / FINALIZADA según el periodo.
 -- El ADMIN puede matricular en periodos pasados (digitalización).
@@ -496,22 +496,62 @@ AS $$
 DECLARE
     v_id_seccion BIGINT := academico.fn_obtener_id_seccion(p_anio, p_nivel, p_numero);
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM academico.asignaciones_docentes a
-        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
-        WHERE a.id_seccion = v_id_seccion AND pr.id_usuario = p_id_usuario
-        UNION ALL
-        SELECT 1 FROM academico.secciones s
-        JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
-        WHERE s.id_seccion = v_id_seccion AND pr.id_usuario = p_id_usuario
-    ) THEN
-        PERFORM api.fn_lanzar_excepcion('AD003', 'No tienes acceso a esa sección.');
-    END IF;
+    PERFORM academico.fn_validar_acceso_seccion(p_id_usuario, v_id_seccion);
 
     RETURN QUERY
     SELECT (d.fila).*
     FROM academico.fn_matriculas_detalle() d
     WHERE d.id_seccion = v_id_seccion
     ORDER BY d.apellidos_nombre;
+END;
+$$;
+
+-- Profesor Regular CU05 - Ficha de un estudiante de una sección (RN-65): datos personales y su matrícula
+-- en esa sección, incluido el motivo de retiro. Mismo acceso que CU04 (AD003); NF003 si el estudiante no
+-- existe y NF009 si no está matriculado en la sección.
+CREATE TYPE academico.ficha_estudiante AS (
+    cedula VARCHAR(20),
+    nombre VARCHAR(100),
+    primer_apellido VARCHAR(100),
+    segundo_apellido VARCHAR(100),
+    numero_celular VARCHAR(20),
+    email CITEXT,
+    fecha_nacimiento DATE,
+    anio INTEGER,
+    seccion TEXT,
+    fecha_matricula DATE,
+    estado academico.estado_matricula,
+    fecha_retiro DATE,
+    motivo_retiro VARCHAR(255)
+);
+
+CREATE OR REPLACE FUNCTION academico.fn_profesor_obtener_estudiante_seccion(
+    p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_cedula_estudiante TEXT)
+RETURNS academico.ficha_estudiante
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_id_seccion BIGINT := academico.fn_obtener_id_seccion(p_anio, p_nivel, p_numero);
+    v_id_estudiante BIGINT;
+    v_ficha academico.ficha_estudiante;
+BEGIN
+    PERFORM academico.fn_validar_acceso_seccion(p_id_usuario, v_id_seccion);
+    v_id_estudiante := academico.fn_obtener_id_estudiante(p_cedula_estudiante);
+
+    SELECT e.cedula, e.nombre, e.primer_apellido, e.segundo_apellido, e.numero_celular, e.email, e.fecha_nacimiento,
+           (d.fila).anio, (d.fila).seccion, (d.fila).fecha_matricula, (d.fila).estado,
+           (d.fila).fecha_retiro, (d.fila).motivo_retiro
+    INTO v_ficha
+    FROM academico.fn_matriculas_detalle() d
+    JOIN academico.matriculas m ON m.id_matricula = d.id_matricula
+    JOIN academico.estudiantes e ON e.id_estudiante = m.id_estudiante
+    WHERE d.id_seccion = v_id_seccion AND m.id_estudiante = v_id_estudiante;
+
+    IF NOT FOUND THEN
+        PERFORM api.fn_lanzar_excepcion('NF009', 'El estudiante no está matriculado en esa sección.');
+    END IF;
+
+    RETURN v_ficha;
 END;
 $$;

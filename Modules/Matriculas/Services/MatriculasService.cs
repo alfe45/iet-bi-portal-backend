@@ -76,4 +76,8 @@ public class MatriculasService(MatriculasRepository repo, ILogsService logs)
     /// <summary>Profesor Regular CU04 / Guía CU02: estudiantes de una sección donde imparte o es guía.</summary>
     public Task<List<Matricula>> ListarEstudiantesSeccionAsync(Guid idUsuario, int anio, int nivel, int numero) =>
         repo.ListarEstudiantesSeccionAsync(idUsuario, anio, nivel, numero);
+
+    /// <summary>Profesor Regular CU05: ficha de un estudiante de una sección donde imparte o es guía.</summary>
+    public Task<FichaEstudiante> ObtenerEstudianteSeccionAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula) =>
+        repo.ObtenerEstudianteSeccionAsync(idUsuario, anio, nivel, numero, cedula);
 }

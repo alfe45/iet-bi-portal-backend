@@ -74,6 +74,7 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-57: Modificar una matrícula es trasladarla a otra sección del mismo año (con las limitaciones de RN-58) o registrar/anular su retiro. La fecha de retiro no puede ser futura, anterior a la matrícula ni posterior al fin del periodo (MA003).
 - RN-59: Un profesor solo consulta los estudiantes de una sección si imparte en ella o es su guía (AD003).
 - RN-60: No se elimina un estudiante o una sección con matrículas (23001).
+- RN-65: Con el mismo acceso de RN-59, el profesor consulta la ficha de un estudiante de la sección: sus datos personales y su matrícula, incluido el motivo de retiro, que puede ver cualquier profesor con acceso a la sección (NF009 si no está matriculado en ella).
 
 ## Auditoría y seguridad
 - RN-24: Toda operación que modifica datos registra una entrada en `api.logs`, sin contraseñas ni hashes.

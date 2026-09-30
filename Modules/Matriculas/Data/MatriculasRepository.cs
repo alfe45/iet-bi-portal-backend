@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Matriculas.Models;
 
 namespace iet_bi_portal_backend.Modules.Matriculas.Data;
 
-/// <summary>Acceso a las funciones de matrículas (CU22 a CU25 y estudiantes de una sección).
+/// <summary>Acceso a las funciones de matrículas (CU22 a CU25, estudiantes de una sección y ficha del estudiante).
 /// Una matrícula se identifica por (año, cédula del estudiante).</summary>
 public class MatriculasRepository(NpgsqlDataSource db)
 {
@@ -70,6 +70,24 @@ public class MatriculasRepository(NpgsqlDataSource db)
         db.ListarAsync(
             $"SELECT {Columnas} FROM academico.fn_profesor_listar_estudiantes_seccion($1, $2, $3, $4)",
             Leer, idUsuario, anio, nivel, numero);
+
+    /// <summary>Ficha de un estudiante de la sección (Profesor Regular CU05). Errores: NF006, AD003, NF003, NF009.</summary>
+    public Task<FichaEstudiante> ObtenerEstudianteSeccionAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula) =>
+        db.PrimeroAsync(
+            "SELECT cedula, nombre, primer_apellido, segundo_apellido, numero_celular, email::text, fecha_nacimiento, " +
+            "anio, seccion, fecha_matricula, estado::text, fecha_retiro, motivo_retiro " +
+            "FROM academico.fn_profesor_obtener_estudiante_seccion($1, $2, $3, $4, $5::text)",
+            r => new FichaEstudiante(
+                r.GetString(0), r.GetString(1), r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.GetString(5),
+                r.GetFieldValue<DateOnly>(6),
+                r.GetInt32(7), r.GetString(8),
+                r.GetFieldValue<DateOnly>(9), r.GetString(10),
+                r.IsDBNull(11) ? null : r.GetFieldValue<DateOnly>(11),
+                r.IsDBNull(12) ? null : r.GetString(12)),
+            idUsuario, anio, nivel, numero, cedula);
 
     private static (string, string?) LeerEstado(NpgsqlDataReader x) => (x.GetString(0), x.IsDBNull(1) ? null : x.GetString(1));
 

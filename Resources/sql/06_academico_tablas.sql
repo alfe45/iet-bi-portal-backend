@@ -152,3 +152,33 @@ CREATE TABLE academico.matriculas (
     CONSTRAINT ck_matriculas_motivo_sin_retiro CHECK (fecha_retiro IS NOT NULL OR motivo_retiro IS NULL)
 );
 CREATE INDEX ix_matriculas_seccion ON academico.matriculas(id_seccion);
+
+-- LECCIONES: clase que el profesor de una asignación registra cuando la imparte (no depende de un horario).
+-- Se identifica por id_leccion (RP-53): la fecha y la hora se pueden corregir. Reglas que dependen de la
+-- fecha actual (fecha no futura, semestre abierto) en 14_ausentismo.sql.
+CREATE TABLE academico.lecciones (
+    id_leccion BIGINT GENERATED ALWAYS AS IDENTITY,
+    id_asignacion BIGINT NOT NULL,
+    fecha DATE NOT NULL,
+    hora TIME NOT NULL,
+    tema VARCHAR(255) NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_lecciones PRIMARY KEY (id_leccion),
+    CONSTRAINT fk_lecciones_asignacion FOREIGN KEY (id_asignacion) REFERENCES academico.asignaciones_docentes(id_asignacion) ON DELETE RESTRICT,
+    CONSTRAINT uq_lecciones_asignacion_fecha_hora UNIQUE (id_asignacion, fecha, hora)
+);
+
+-- AUSENCIAS: solo se guardan los ausentes de cada lección (el resto de los matriculados estuvo presente).
+-- justificacion NULL = injustificada. Borrar la lección borra sus ausencias; una matrícula con ausencias no se borra.
+CREATE TABLE academico.ausencias (
+    id_leccion BIGINT NOT NULL,
+    id_matricula BIGINT NOT NULL,
+    justificacion VARCHAR(255) NULL,
+    justificada_en TIMESTAMPTZ NULL,
+    CONSTRAINT pk_ausencias PRIMARY KEY (id_leccion, id_matricula),
+    CONSTRAINT fk_ausencias_leccion FOREIGN KEY (id_leccion) REFERENCES academico.lecciones(id_leccion) ON DELETE CASCADE,
+    CONSTRAINT fk_ausencias_matricula FOREIGN KEY (id_matricula) REFERENCES academico.matriculas(id_matricula) ON DELETE RESTRICT,
+    CONSTRAINT ck_ausencias_justificacion CHECK (justificacion IS NULL OR length(trim(justificacion)) >= 3),
+    CONSTRAINT ck_ausencias_justificada_en CHECK ((justificacion IS NULL) = (justificada_en IS NULL))
+);
+CREATE INDEX ix_ausencias_matricula ON academico.ausencias(id_matricula);
