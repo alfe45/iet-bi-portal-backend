@@ -20,6 +20,7 @@ BEGIN;
     CREATE EXTENSION IF NOT EXISTS citext SCHEMA academico;
     CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA academico;
     CREATE EXTENSION IF NOT EXISTS btree_gist SCHEMA academico;
+    CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA academico;   -- búsquedas sin acentos (api.fn_coincide)
 
     -- ============================================================
     -- 3. SEARCH PATH DE INSTALACIÓN

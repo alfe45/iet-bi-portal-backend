@@ -1,5 +1,5 @@
 -- ============================================================
--- 05_admin_usuarios.sql: ADMINISTRACIÓN DE USUARIOS (CU 02 a 07) + detalle (CU 01)
+-- 05_admin_usuarios.sql: ADMINISTRACIÓN DE USUARIOS (CU 02 a 05) + detalle (CU 01)
 -- Toda función fn_admin_* / sp_admin_* empieza validando api.fn_validar_admin_activo.
 -- ============================================================
 SET search_path = academico, api, auth, public;
@@ -12,8 +12,35 @@ CREATE TYPE api.usuario_admin AS (
     ultimo_login TIMESTAMPTZ,
     creado_en TIMESTAMPTZ,
     roles api.roles[],
-    cantidad_sesiones BIGINT   -- solo sesiones vigentes (no rotadas, no expiradas)
+    cantidad_sesiones BIGINT,      -- solo sesiones vigentes (no rotadas, no expiradas)
+    cedula_profesor VARCHAR(20),   -- NULL si no tiene perfil de profesor
+    nombre_profesor TEXT
 );
+
+-- Fila de api.usuario_admin para un usuario (detalle, listado y "mi perfil").
+-- plpgsql: referencia academico.profesores, que se crea en 06.
+CREATE OR REPLACE FUNCTION auth.fn_a_usuario_admin(u api.usuarios)
+RETURNS api.usuario_admin
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_fila api.usuario_admin;
+BEGIN
+    SELECT u.id_usuario, u.email, u.activo, u.bloqueado_hasta, u.ultimo_login, u.creado_en,
+           api.fn_roles_de(u.id_usuario),
+           (SELECT COUNT(*) FROM api.sesiones s
+             WHERE s.id_usuario = u.id_usuario AND s.rotado_en IS NULL AND s.expira_en > NOW()),
+           pr.cedula,
+           CASE WHEN pr.id_profesor IS NULL THEN NULL
+                ELSE concat_ws(' ', pr.nombre, pr.primer_apellido, pr.segundo_apellido) END
+    INTO v_fila
+    FROM (SELECT 1) x
+    LEFT JOIN academico.profesores pr ON pr.id_usuario = u.id_usuario;
+
+    RETURN v_fila;
+END;
+$$;
 
 -- ============================================================
 -- CU 02 - Registrar usuario (siempre nace con PROFESOR_REGULAR)
@@ -41,35 +68,46 @@ RETURNS SETOF api.usuario_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT u.id_usuario, u.email, u.activo, u.bloqueado_hasta, u.ultimo_login, u.creado_en,
-           api.fn_roles_de(u.id_usuario),
-           (SELECT COUNT(*) FROM api.sesiones s
-             WHERE s.id_usuario = u.id_usuario AND s.rotado_en IS NULL AND s.expira_en > NOW())
+    SELECT (auth.fn_a_usuario_admin(u)).*
     FROM api.usuarios u
     WHERE u.id_usuario = p_id_usuario;
 $$;
 
-CREATE OR REPLACE FUNCTION auth.fn_admin_listar_usuarios(p_pagina INTEGER, p_tamano_pagina INTEGER)
+-- Filtros opcionales: p_busqueda (correo, cédula o nombre del perfil de profesor) y p_rol.
+CREATE OR REPLACE FUNCTION auth.fn_usuarios_filtrados(p_busqueda TEXT, p_rol api.roles)
+RETURNS SETOF api.usuarios
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.*
+    FROM api.usuarios u
+    LEFT JOIN academico.profesores pr ON pr.id_usuario = u.id_usuario
+    WHERE api.fn_coincide(concat_ws(' ', u.email, pr.cedula, pr.nombre, pr.primer_apellido, pr.segundo_apellido), p_busqueda)
+      AND (p_rol IS NULL OR EXISTS (SELECT 1 FROM api.usuario_roles ur WHERE ur.id_usuario = u.id_usuario AND ur.rol = p_rol));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.fn_admin_listar_usuarios(
+    p_busqueda TEXT, p_rol api.roles, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF api.usuario_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT u.id_usuario, u.email, u.activo, u.bloqueado_hasta, u.ultimo_login, u.creado_en,
-           api.fn_roles_de(u.id_usuario),
-           (SELECT COUNT(*) FROM api.sesiones s
-             WHERE s.id_usuario = u.id_usuario AND s.rotado_en IS NULL AND s.expira_en > NOW())
-    FROM api.usuarios u
+    SELECT (auth.fn_a_usuario_admin(u)).*
+    FROM auth.fn_usuarios_filtrados(p_busqueda, p_rol) u
     ORDER BY u.creado_en DESC, u.id_usuario
     LIMIT api.fn_tamano_pagina(p_tamano_pagina)
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION auth.fn_admin_contar_usuarios()
+CREATE OR REPLACE FUNCTION auth.fn_admin_contar_usuarios(p_busqueda TEXT, p_rol api.roles)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT COUNT(*) FROM api.usuarios;
+    SELECT COUNT(*) FROM auth.fn_usuarios_filtrados(p_busqueda, p_rol);
 $$;
 
 -- ============================================================
@@ -134,7 +172,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 05 - Activar / desactivar
+-- CU 04 - Activar / desactivar
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_cambiar_estado_usuario(
     p_id_usuario_actor UUID,
@@ -181,7 +219,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 06 - Asignar / revocar roles
+-- CU 04 - Asignar / revocar roles
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_asignar_rol(
     p_id_usuario_actor UUID,
@@ -244,6 +282,31 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('AU005', 'No se puede quitar el único rol que tiene el usuario.');
     END IF;
 
+    -- El front activa los módulos según los roles: un guía de un periodo no finalizado debe conservar GUIA.
+    IF p_rol = 'GUIA' AND EXISTS (
+        SELECT 1
+        FROM academico.secciones s
+        JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
+        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+        WHERE pr.id_usuario = p_id_usuario_objetivo
+          AND academico.fn_estado_periodo(p) <> 'FINALIZADO'
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AU016', 'El usuario es guía de una sección en un periodo no finalizado.');
+    END IF;
+
+    -- Igual para PROFESOR_REGULAR: un profesor con asignaciones en un periodo no finalizado lo conserva.
+    IF p_rol = 'PROFESOR_REGULAR' AND EXISTS (
+        SELECT 1
+        FROM academico.asignaciones_docentes a
+        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
+        JOIN academico.secciones s ON s.id_seccion = a.id_seccion
+        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+        WHERE pr.id_usuario = p_id_usuario_objetivo
+          AND academico.fn_estado_periodo(p) <> 'FINALIZADO'
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AU017', 'El usuario tiene asignaciones docentes en un periodo no finalizado.');
+    END IF;
+
     DELETE FROM api.usuario_roles WHERE id_usuario = p_id_usuario_objetivo AND rol = p_rol;
     CALL api.sp_revocar_acceso(p_id_usuario_objetivo);
 
@@ -252,7 +315,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 07 - Eliminar usuario (devuelve email y roles previos para auditoría)
+-- CU 05 - Eliminar usuario (devuelve email y roles previos para auditoría)
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_eliminar_usuario(
     p_id_usuario_actor UUID,

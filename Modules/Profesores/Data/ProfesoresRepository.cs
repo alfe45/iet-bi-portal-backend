@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Profesores.Models;
 
 namespace iet_bi_portal_backend.Modules.Profesores.Data;
 
-/// <summary>Acceso a las funciones de administración de profesores (CU08 a CU11). Todo por cédula.</summary>
+/// <summary>Acceso a las funciones de administración de profesores (CU06 a CU09). Todo por cédula.</summary>
 public class ProfesoresRepository(NpgsqlDataSource db)
 {
     private const string Columnas =
@@ -17,11 +17,14 @@ public class ProfesoresRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_registrar_profesor($1, $2, $3::text, $4::text, $5::text, $6::text, $7::text, $8::date)",
             actorId, r.IdUsuario, r.Nombre, r.PrimerApellido, r.SegundoApellido, r.Cedula, r.NumeroCelular, r.FechaNacimiento);
 
-    public Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(int pagina, int tamanoPagina) =>
-        db.ListarPaginadoAsync(
-            $"SELECT {Columnas} FROM academico.fn_admin_listar_profesores($1, $2)",
-            "SELECT academico.fn_admin_contar_profesores()",
-            Leer, pagina, tamanoPagina);
+    public async Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(ConsultaConBusqueda c)
+    {
+        var elementos = await db.ListarAsync(
+            $"SELECT {Columnas} FROM academico.fn_admin_listar_profesores($1::text, $2, $3)",
+            Leer, c.Busqueda, c.Pagina, c.TamanoPagina);
+        var total = await db.EscalarAsync<long>("SELECT academico.fn_admin_contar_profesores($1::text)", c.Busqueda);
+        return new ResultadoPaginado<ProfesorAdmin>(elementos, c.Pagina, c.TamanoPagina, total);
+    }
 
     public Task<ProfesorAdmin?> ObtenerAsync(string cedula) =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_profesor($1::text)", Leer, cedula);

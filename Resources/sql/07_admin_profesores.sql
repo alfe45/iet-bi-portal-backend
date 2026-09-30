@@ -1,6 +1,6 @@
 -- ============================================================
--- 07_admin_profesores.sql: CU 08 a 11. Se opera SIEMPRE por cédula (nunca por id_profesor).
--- La cédula es inmutable: identifica al profesor y no se modifica en CU10.
+-- 07_admin_profesores.sql: CU 06 a 09. Se opera SIEMPRE por cédula (nunca por id_profesor).
+-- La cédula es inmutable: identifica al profesor y no se modifica en CU08.
 -- ============================================================
 SET search_path = academico, api, auth, public;
 
@@ -15,7 +15,7 @@ CREATE TYPE academico.profesor_admin AS (
     email CITEXT
 );
 
--- CU 08 - Registrar profesor (vincula un usuario existente). Devuelve la cédula normalizada.
+-- CU 06 - Registrar profesor (vincula un usuario existente). Devuelve la cédula normalizada.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_profesor(
     p_id_usuario_actor UUID,
     p_id_usuario UUID,
@@ -47,6 +47,8 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('PR002', 'Ya existe un profesor con esa cédula.');
     END IF;
 
+    PERFORM api.fn_validar_fecha_nacimiento(p_fecha_nacimiento, 'PR005');
+
     INSERT INTO academico.profesores (
         nombre, primer_apellido, segundo_apellido, cedula, numero_celular, fecha_nacimiento, id_usuario)
     VALUES (
@@ -57,8 +59,9 @@ BEGIN
 END;
 $$;
 
--- CU 09 - Consultar profesores
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_profesores(p_pagina INTEGER, p_tamano_pagina INTEGER)
+-- CU 07 - Consultar profesores
+-- Búsqueda opcional por nombre, apellidos, cédula o correo (sin mayúsculas ni acentos).
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_profesores(p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.profesor_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
@@ -67,17 +70,21 @@ AS $$
            p.numero_celular, p.fecha_nacimiento, p.id_usuario, u.email
     FROM academico.profesores p
     JOIN api.usuarios u ON u.id_usuario = p.id_usuario
+    WHERE api.fn_coincide(concat_ws(' ', p.nombre, p.primer_apellido, p.segundo_apellido, p.cedula, u.email), p_busqueda)
     ORDER BY p.primer_apellido, p.segundo_apellido NULLS LAST, p.nombre, p.cedula
     LIMIT api.fn_tamano_pagina(p_tamano_pagina)
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_profesores()
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_profesores(p_busqueda TEXT)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT COUNT(*) FROM academico.profesores;
+    SELECT COUNT(*)
+    FROM academico.profesores p
+    JOIN api.usuarios u ON u.id_usuario = p.id_usuario
+    WHERE api.fn_coincide(concat_ws(' ', p.nombre, p.primer_apellido, p.segundo_apellido, p.cedula, u.email), p_busqueda);
 $$;
 
 CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_profesor(p_cedula TEXT)
@@ -92,7 +99,7 @@ AS $$
     WHERE p.cedula = api.fn_limpiar(p_cedula);
 $$;
 
--- CU 10 - Modificar profesor. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo (auditoría).
+-- CU 08 - Modificar profesor. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo (auditoría).
 -- Cédula y usuario vinculado no cambian.
 CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_profesor(
     p_id_usuario_actor UUID,
@@ -129,6 +136,10 @@ BEGIN
     v_nuevo.numero_celular := api.fn_limpiar(p_numero_celular);
     v_nuevo.fecha_nacimiento := p_fecha_nacimiento;
 
+    IF v_nuevo.fecha_nacimiento IS DISTINCT FROM v_prev.fecha_nacimiento THEN
+        PERFORM api.fn_validar_fecha_nacimiento(v_nuevo.fecha_nacimiento, 'PR005');
+    END IF;
+
     IF v_nuevo IS NOT DISTINCT FROM v_prev THEN
         RETURN QUERY SELECT 'SIN_CAMBIOS'::TEXT, NULL::JSONB;
         RETURN;
@@ -146,7 +157,7 @@ BEGIN
 END;
 $$;
 
--- CU 11 - Eliminar profesor (solo el perfil; el usuario se conserva). Devuelve el snapshot previo.
+-- CU 09 - Eliminar profesor (solo el perfil; el usuario se conserva). Devuelve el snapshot previo.
 -- Si otras entidades lo referencian con FK RESTRICT, Postgres lanza 23503.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_profesor(
     p_id_usuario_actor UUID,
@@ -169,6 +180,10 @@ BEGIN
 
     IF NOT FOUND THEN
         PERFORM api.fn_lanzar_excepcion('NF002', 'El profesor no existe.');
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM academico.secciones WHERE id_profesor_guia = v_id) THEN
+        PERFORM api.fn_lanzar_excepcion('PR004', 'El profesor es guía de una sección.');
     END IF;
 
     DELETE FROM academico.profesores WHERE id_profesor = v_id;

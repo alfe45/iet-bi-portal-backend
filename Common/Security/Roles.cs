@@ -28,5 +28,5 @@ public sealed class RolValidoAttribute()
     : ValidationAttribute($"Rol inválido. Valores permitidos: {string.Join(", ", Roles.Todos)}.")
 {
     public override bool IsValid(object? value) =>
-        value is string texto && Roles.Todos.Contains(texto, StringComparer.OrdinalIgnoreCase);
+        value is null || (value is string texto && Roles.Todos.Contains(texto, StringComparer.OrdinalIgnoreCase));
 }

@@ -8,7 +8,7 @@ using iet_bi_portal_backend.Modules.Usuarios.Services;
 
 namespace iet_bi_portal_backend.Modules.Usuarios.Controllers;
 
-/// <summary>CU02 a CU07. Exige rol ADMIN (AdminControllerBase).</summary>
+/// <summary>CU02 a CU05. Exige rol ADMIN (AdminControllerBase).</summary>
 [Route("api/admin/usuarios")]
 public class AdminUsuariosController(UsuariosService usuarios) : AdminControllerBase
 {
@@ -20,10 +20,10 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return StatusCode(StatusCodes.Status201Created, new { id, email });
     }
 
-    /// <summary>CU03: listado paginado.</summary>
+    /// <summary>CU03: listado paginado; filtros opcionales ?busqueda= (correo, cédula o nombre del profesor) y ?rol=.</summary>
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] ConsultaPaginada consulta) =>
-        Ok(await usuarios.ListarAsync(consulta.Pagina, consulta.TamanoPagina));
+    public async Task<IActionResult> Listar([FromQuery] ConsultaUsuarios consulta) =>
+        Ok(await usuarios.ListarAsync(consulta));
 
     /// <summary>CU03: detalle. 404 (NF001) si no existe.</summary>
     [HttpGet("{id:guid}")]
@@ -49,7 +49,7 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU05: activa un usuario.</summary>
+    /// <summary>CU04: activa un usuario.</summary>
     [HttpPost("{id:guid}/activar")]
     public async Task<IActionResult> Activar(Guid id)
     {
@@ -57,7 +57,7 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU05: desactiva un usuario. 409 (AU010) a sí mismo; 409 (AU011) si es el último admin activo.</summary>
+    /// <summary>CU04: desactiva un usuario. 409 (AU010) a sí mismo; 409 (AU011) si es el último admin activo.</summary>
     [HttpPost("{id:guid}/desactivar")]
     public async Task<IActionResult> Desactivar(Guid id)
     {
@@ -65,7 +65,7 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU06: otorga un rol. 201 si se asignó; 204 si ya lo tenía.</summary>
+    /// <summary>CU04: otorga un rol. 201 si se asignó; 204 si ya lo tenía.</summary>
     [HttpPost("{id:guid}/roles")]
     public async Task<IActionResult> AsignarRol(Guid id, RolRequest request)
     {
@@ -73,7 +73,8 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return asignado ? StatusCode(StatusCodes.Status201Created) : NoContent();
     }
 
-    /// <summary>CU06: quita un rol. 409 (AU005) si es el único; 409 (AU003/AU004) reglas de ADMIN.</summary>
+    /// <summary>CU04: quita un rol. 409 (AU005) si es el único; 409 (AU003/AU004) reglas de ADMIN;
+    /// 409 (AU016) GUIA de un guía con sección en periodo no finalizado.</summary>
     [HttpDelete("{id:guid}/roles/{rol}")]
     public async Task<IActionResult> RevocarRol(Guid id, [RolValido] string rol)
     {
@@ -81,7 +82,7 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU07: elimina el usuario. 409 (AU012) a sí mismo; 409 (AU013) último admin; 409 (PR003) si tiene perfil de profesor.</summary>
+    /// <summary>CU05: elimina el usuario. 409 (AU012) a sí mismo; 409 (AU013) último admin; 409 (PR003) si tiene perfil de profesor.</summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Eliminar(Guid id)
     {

@@ -12,5 +12,12 @@ public class ConsultaPaginada
     public int TamanoPagina { get; set; } = 20;
 }
 
+/// <summary>Listado paginado con búsqueda de texto opcional (sin distinguir mayúsculas ni acentos).</summary>
+public class ConsultaConBusqueda : ConsultaPaginada
+{
+    [MaxLength(100)]
+    public string? Busqueda { get; set; }
+}
+
 /// <summary>Resultado paginado genérico; también es la respuesta HTTP de los listados.</summary>
 public record ResultadoPaginado<T>(IReadOnlyList<T> Elementos, int Pagina, int TamanoPagina, long Total);

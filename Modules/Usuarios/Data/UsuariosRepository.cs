@@ -5,21 +5,27 @@ using iet_bi_portal_backend.Modules.Usuarios.Models;
 
 namespace iet_bi_portal_backend.Modules.Usuarios.Data;
 
-/// <summary>Acceso a las funciones de administración de usuarios (CU01 a CU07). Las reglas las valida la DB.</summary>
+/// <summary>Acceso a las funciones de administración de usuarios (CU01 a CU05). Las reglas las valida la DB.</summary>
 public class UsuariosRepository(NpgsqlDataSource db)
 {
     private const string Columnas =
-        "id_usuario, email, activo, bloqueado_hasta, ultimo_login, creado_en, roles::text[], cantidad_sesiones";
+        "id_usuario, email, activo, bloqueado_hasta, ultimo_login, creado_en, roles::text[], cantidad_sesiones, " +
+        "cedula_profesor, nombre_profesor";
 
     public Task<Guid> RegistrarAsync(Guid actorId, string email, string contrasenaHash) =>
         db.EscalarAsync<Guid>(
             "SELECT auth.fn_admin_registrar_usuario($1, $2::academico.citext, $3)", actorId, email, contrasenaHash);
 
-    public Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(int pagina, int tamanoPagina) =>
-        db.ListarPaginadoAsync(
-            $"SELECT {Columnas} FROM auth.fn_admin_listar_usuarios($1, $2)",
-            "SELECT auth.fn_admin_contar_usuarios()",
-            Leer, pagina, tamanoPagina);
+    public async Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(ConsultaUsuarios c)
+    {
+        var rol = c.Rol?.ToUpperInvariant();
+        var elementos = await db.ListarAsync(
+            $"SELECT {Columnas} FROM auth.fn_admin_listar_usuarios($1::text, $2::api.roles, $3, $4)",
+            Leer, c.Busqueda, rol, c.Pagina, c.TamanoPagina);
+        var total = await db.EscalarAsync<long>(
+            "SELECT auth.fn_admin_contar_usuarios($1::text, $2::api.roles)", c.Busqueda, rol);
+        return new ResultadoPaginado<UsuarioAdmin>(elementos, c.Pagina, c.TamanoPagina, total);
+    }
 
     public Task<UsuarioAdmin?> ObtenerAsync(Guid id) =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM auth.fn_obtener_usuario_detalle($1)", Leer, id);
@@ -57,5 +63,7 @@ public class UsuariosRepository(NpgsqlDataSource db)
         r.IsDBNull(4) ? null : r.GetDateTime(4),
         r.GetDateTime(5),
         r.GetFieldValue<string[]>(6),
-        r.GetInt64(7));
+        r.GetInt64(7),
+        r.IsDBNull(8) ? null : r.GetString(8),
+        r.IsDBNull(9) ? null : r.GetString(9));
 }

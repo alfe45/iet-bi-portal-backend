@@ -12,6 +12,8 @@
   "AU012": { "status": 409, "mensaje": "Un administrador no puede eliminarse a sí mismo." },
   "AU013": { "status": 409, "mensaje": "No se puede eliminar al último administrador activo del sistema." },
   "AU014": { "status": 403, "mensaje": "La cuenta está desactivada. Contacta a un administrador." },
+  "AU016": { "status": 409, "mensaje": "No se puede quitar el rol GUIA a un profesor que es guía de una sección en un periodo no finalizado. Quítalo primero como guía." },
+  "AU017": { "status": 409, "mensaje": "No se puede quitar el rol PROFESOR_REGULAR a un profesor con asignaciones docentes en un periodo no finalizado. Reasigna o elimina primero sus asignaciones." },
   "AU015": { "status": 403, "mensaje": "La cuenta está bloqueada temporalmente por demasiados intentos fallidos. Intenta de nuevo más tarde." },
 
   "NU001": { "status": 400, "mensaje": "El correo no puede estar vacío." },
@@ -22,16 +24,53 @@
   "PR001": { "status": 409, "mensaje": "El usuario ya tiene un perfil de profesor." },
   "PR002": { "status": 409, "mensaje": "Ya existe un profesor con esa cédula." },
   "PR003": { "status": 409, "mensaje": "No se puede eliminar un usuario que tiene un perfil de profesor. Elimina primero el perfil." },
+  "PR004": { "status": 409, "mensaje": "El profesor es guía de una sección. Quítalo como guía antes de eliminarlo." },
+  "PR005": { "status": 400, "mensaje": "La fecha de nacimiento no es válida." },
   "NF002": { "status": 404, "mensaje": "El profesor no existe." },
 
   "ES001": { "status": 409, "mensaje": "Ya existe un estudiante con esa cédula." },
   "ES002": { "status": 409, "mensaje": "Ya existe un estudiante con ese correo." },
-  "ES003": { "status": 400, "mensaje": "El estudiante debe tener entre 16 y 19 años." },
+  "ES003": { "status": 400, "mensaje": "El estudiante debe tener entre 16 y 19 años al inicio del periodo." },
+  "ES004": { "status": 400, "mensaje": "La fecha de nacimiento no es válida." },
   "NF003": { "status": 404, "mensaje": "El estudiante no existe." },
+
+  "PA001": { "status": 409, "mensaje": "Ya existe un periodo académico para ese año." },
+  "PA002": { "status": 400, "mensaje": "Las fechas del periodo no son válidas: deben estar dentro del año y en orden (inicio I semestre < fin I semestre < inicio II semestre < fin II semestre)." },
+  "PA003": { "status": 409, "mensaje": "El periodo académico ya finalizó; sus procesos están cerrados." },
+  "PA004": { "status": 409, "mensaje": "El semestre ya finalizó; sus fechas y procesos están cerrados." },
+  "PA005": { "status": 400, "mensaje": "La fecha de fin de un semestre que no ha finalizado no puede quedar en el pasado." },
+  "PA006": { "status": 409, "mensaje": "No se puede eliminar un periodo académico que tiene secciones asociadas." },
+  "PA007": { "status": 409, "mensaje": "Un periodo finalizado no se puede reabrir: la fecha de fin del II semestre debe seguir en el pasado." },
+  "NF004": { "status": 404, "mensaje": "El periodo académico no existe." },
+  "NF005": { "status": 404, "mensaje": "No hay un periodo académico en curso." },
+
+  "SE001": { "status": 409, "mensaje": "Ya existe esa sección en el periodo." },
+  "SE002": { "status": 400, "mensaje": "La sección no es válida: el nivel debe ser 10 u 11 y el número entre 1 y 99." },
+  "SE003": { "status": 409, "mensaje": "El profesor guía debe tener un usuario activo con el rol GUIA." },
+  "SE004": { "status": 409, "mensaje": "El profesor ya es guía de otra sección en ese periodo." },
+  "NF006": { "status": 404, "mensaje": "La sección no existe." },
+
+  "AS001": { "status": 409, "mensaje": "Ya existe una asignatura con ese código." },
+  "AS002": { "status": 409, "mensaje": "Ya existe una asignatura con ese nombre." },
+  "AS003": { "status": 400, "mensaje": "La asignatura debe impartirse en al menos un nivel." },
+  "AS004": { "status": 400, "mensaje": "El código de la asignatura no es válido: de 2 a 10 letras o dígitos." },
+  "AS005": { "status": 409, "mensaje": "La asignatura no se imparte en el nivel de la sección." },
+  "NF007": { "status": 404, "mensaje": "La asignatura no existe." },
+
+  "AD001": { "status": 409, "mensaje": "El profesor ya tiene asignada esa asignatura en la sección." },
+  "AD002": { "status": 409, "mensaje": "El profesor debe tener un usuario activo con el rol PROFESOR_REGULAR." },
+  "NF008": { "status": 404, "mensaje": "La asignación no existe." },
+  "AD003": { "status": 403, "mensaje": "No tienes acceso a esa sección: no impartes en ella ni eres su guía." },
+
+  "MA001": { "status": 409, "mensaje": "El estudiante ya está matriculado en ese periodo." },
+  "MA002": { "status": 400, "mensaje": "La fecha de matrícula no es válida: no puede ser futura, posterior al fin del periodo ni más de un año anterior a su inicio." },
+  "MA003": { "status": 400, "mensaje": "La fecha de retiro no es válida: no puede ser futura, anterior a la matrícula ni posterior al fin del periodo." },
+  "NF009": { "status": 404, "mensaje": "La matrícula no existe." },
 
   "23502": { "status": 400, "mensaje": "Falta un valor obligatorio." },
   "23505": { "status": 409, "mensaje": "Ya existe un registro con esos datos." },
   "23514": { "status": 400, "mensaje": "Uno de los valores enviados no cumple las reglas de validación." },
   "22P02": { "status": 400, "mensaje": "Uno de los valores enviados no tiene un formato válido." },
+  "23001": { "status": 409, "mensaje": "No se puede eliminar porque todavía tiene datos asociados." },
   "23503": { "status": 409, "mensaje": "La operación entra en conflicto con registros relacionados (el registro referenciado no existe o todavía tiene datos asociados)." }
 }
