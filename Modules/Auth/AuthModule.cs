@@ -1,25 +1,24 @@
-﻿using iet_bi_portal_backend.Modules.Auth.Data;
+using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using iet_bi_portal_backend.Common.Security;
+using iet_bi_portal_backend.Config;
+using iet_bi_portal_backend.Modules.Auth.Data;
 using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Services;
 using iet_bi_portal_backend.Modules.Auth.Settings;
-using iet_bi_portal_backend.Config;
-using iet_bi_portal_backend.Security;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.IdentityModel.JsonWebTokens;
-using System.Text;
-using System.Threading.RateLimiting;
 
 namespace iet_bi_portal_backend.Modules.Auth;
 
 public static class AuthModule
 {
-    /// <summary> Registra servicios, JWT, rate limiting y acceso a la DB del módulo, leyendo todo desde el .env </summary>
-    public static IServiceCollection AddAuthModule(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    /// <summary>Registra servicios, JWT y rate limiting del módulo, leyendo todo desde el .env.
+    /// Requiere AddCommon() (IContrasenaService), NpgsqlDataSource (DatabaseModule) e ILogsService (LogsModule).</summary>
+    public static IServiceCollection AddAuthModule(this IServiceCollection services, IConfiguration configuration)
     {
         // JWT
         var jwt = new JwtOptions
@@ -38,15 +37,13 @@ public static class AuthModule
         services.AddSingleton(Options.Create(jwt));
 
         // Política de login (intentos fallidos / bloqueo)
-        var authPolicy = new AuthPolicyOptions
+        services.AddSingleton(Options.Create(new AuthPolicyOptions
         {
-            MaxFailedAttempts = EnvConfig.RequiredInt(configuration, "LOGIN_MAX_ATTEMPTS"),
-            LockoutMinutes = EnvConfig.RequiredInt(configuration, "LOGIN_LOCKOUT_MINUTES"),
-        };
-        services.AddSingleton(Options.Create(authPolicy));
+            MaxIntentosFallidos = EnvConfig.RequiredInt(configuration, "LOGIN_MAX_ATTEMPTS"),
+            MinutosBloqueo = EnvConfig.RequiredInt(configuration, "LOGIN_LOCKOUT_MINUTES"),
+        }));
 
-        // Token de inicialización: protege POST /api/setup/admin (creación del primer ADMIN)
-        // además de la garantía que ya da la base de datos.
+        // Token de inicialización: protege POST /api/setup/primer-admin, además de la garantía de la DB.
         var bootstrap = new BootstrapOptions
         {
             Secret = EnvConfig.Required(configuration, "ADMIN_BOOTSTRAP_TOKEN"),
@@ -59,7 +56,6 @@ public static class AuthModule
         services.AddSingleton(Options.Create(bootstrap));
 
         // Servicios del módulo
-        services.AddSingleton<IPasswordService, PasswordService>();
         services.AddSingleton<ITokenService, TokenService>();
         services.AddScoped<AuthRepository>();
         services.AddScoped<AuthService>();
@@ -84,30 +80,33 @@ public static class AuthModule
                     ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
                     RoleClaimType = AuthClaims.Role
                 };
-                // Revocación server-side: rechaza tokens emitidos antes de un logout-all,
-                // cambio de contraseña o cambio de roles, aunque el JWT todavía no expiró.
+
+                // Revocación server-side (RP-20): rechaza tokens emitidos antes de un logout-all,
+                // cambio de contraseña/correo/roles o desactivación, aunque el JWT no haya expirado.
                 options.Events = new JwtBearerEvents
                 {
                     OnTokenValidated = async context =>
                     {
-                        var subClaim = context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-                        var iatClaim = context.Principal?.FindFirst(JwtRegisteredClaimNames.Iat)?.Value;
+                        var sub = context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                        var iat = context.Principal?.FindFirst(JwtRegisteredClaimNames.Iat)?.Value;
 
-                        if (!Guid.TryParse(subClaim, out var userId) || !long.TryParse(iatClaim, out var iatUnix))
+                        if (!Guid.TryParse(sub, out var idUsuario) || !long.TryParse(iat, out var iatUnix))
                         {
                             context.Fail("Token inválido.");
                             return;
                         }
 
                         var repo = context.HttpContext.RequestServices.GetRequiredService<AuthRepository>();
-                        var invalidatedSince = await repo.GetTokenInvalidationWatermarkAsync(userId);
+                        var (existe, desde) = await repo.ObtenerMarcaInvalidacionAsync(idUsuario);
 
-                        if (invalidatedSince is { } watermark)
+                        if (!existe)
                         {
-                            var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iatUnix).UtcDateTime;
-                            if (issuedAt < watermark)
-                                context.Fail("La sesión fue cerrada. Inicia sesión de nuevo.");
+                            context.Fail("El usuario ya no existe.");
+                            return;
                         }
+
+                        if (desde is { } marca && DateTimeOffset.FromUnixTimeSeconds(iatUnix).UtcDateTime < marca)
+                            context.Fail("La sesión fue cerrada. Inicia sesión de nuevo.");
                     }
                 };
             });
@@ -117,7 +116,7 @@ public static class AuthModule
                 .RequireAuthenticatedUser()
                 .Build());
 
-        // Límite de peticiones para /api/auth/* (60 por minuto por IP)
+        // Límite de peticiones para /api/auth/* y /api/setup/* (60 por minuto por IP)
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -134,7 +133,7 @@ public static class AuthModule
         return services;
     }
 
-    /// <summary> Agrega al pipeline: rate limiting, autenticación y autorización (en ese orden). </summary>
+    /// <summary>Agrega al pipeline: rate limiting, autenticación y autorización (en ese orden).</summary>
     public static IApplicationBuilder UseAuthModule(this IApplicationBuilder app)
     {
         app.UseRateLimiter();

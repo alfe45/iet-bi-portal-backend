@@ -3,49 +3,36 @@ using iet_bi_portal_backend.Modules.Logs.Data;
 
 namespace iet_bi_portal_backend.Modules.Logs.Services;
 
-/// <summary>Servicio de auditoría. Cualquier módulo (Auth, Academico, lo que venga) lo
-/// inyecta sin depender de cómo está implementado — solo de esta interfaz.</summary>
+/// <summary>Servicio de auditoría. Cualquier módulo lo inyecta sin depender de su implementación.</summary>
 public interface ILogsService
 {
-    /// <summary> Registra una entrada de auditoría. actorUserId es null para acciones del
-    /// sistema/background (jobs, background services). previousData/newData son objetos
-    /// cualesquiera (se serializan a JSON acá adentro); pasar null si no aplica. </summary>
-    Task RegisterLogAsync(
-        Guid? actorUserId,
-        string action,
-        string? affectedTable = null,
-        string? affectedRecordId = null,
-        object? previousData = null,
-        object? newData = null,
+    /// <summary>Registra una entrada de auditoría. idActor es null para acciones del sistema.
+    /// datosAnteriores/datosNuevos son objetos cualesquiera (se serializan aquí); null si no aplica.
+    /// Nunca pasar contraseñas ni hashes (RP-39).</summary>
+    Task RegistrarAsync(
+        Guid? idActor,
+        string accion,
+        string? tabla = null,
+        string? idRegistro = null,
+        object? datosAnteriores = null,
+        object? datosNuevos = null,
         string? ip = null,
         string? userAgent = null);
 }
 
-public class LogsService : ILogsService
+public class LogsService(LogsRepository repo) : ILogsService
 {
-    private readonly LogsRepository _repo;
-
-    public LogsService(LogsRepository repo) => _repo = repo;
-
-    public Task RegisterLogAsync(
-        Guid? actorUserId,
-        string action,
-        string? affectedTable = null,
-        string? affectedRecordId = null,
-        object? previousData = null,
-        object? newData = null,
+    public Task RegistrarAsync(
+        Guid? idActor,
+        string accion,
+        string? tabla = null,
+        string? idRegistro = null,
+        object? datosAnteriores = null,
+        object? datosNuevos = null,
         string? ip = null,
         string? userAgent = null) =>
-        _repo.RegisterLogAsync(
-            actorUserId,
-            action,
-            affectedTable,
-            affectedRecordId,
-            Serialize(previousData),
-            Serialize(newData),
-            ip,
-            userAgent);
+        repo.RegistrarAsync(idActor, accion, tabla, idRegistro,
+            Serializar(datosAnteriores), Serializar(datosNuevos), ip, userAgent);
 
-    private static string? Serialize(object? data) =>
-        data is null ? null : JsonSerializer.Serialize(data);
+    private static string? Serializar(object? datos) => datos is null ? null : JsonSerializer.Serialize(datos);
 }

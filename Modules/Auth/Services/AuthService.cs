@@ -1,129 +1,131 @@
 using Microsoft.Extensions.Options;
-using iet_bi_portal_backend.Security;
+using iet_bi_portal_backend.Common.Models;
+using iet_bi_portal_backend.Common.Security;
+using iet_bi_portal_backend.Common.Texto;
 using iet_bi_portal_backend.Modules.Auth.Data;
-using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Models;
+using iet_bi_portal_backend.Modules.Auth.Security;
 using iet_bi_portal_backend.Modules.Auth.Settings;
 using iet_bi_portal_backend.Modules.Logs.Services;
 
 namespace iet_bi_portal_backend.Modules.Auth.Services;
 
-public class AuthService
+public class AuthService(
+    AuthRepository repo,
+    IContrasenaService contrasenas,
+    ITokenService tokens,
+    IOptions<JwtOptions> jwtOptions,
+    IOptions<AuthPolicyOptions> politicaOptions,
+    ILogsService logs)
 {
-    private readonly AuthRepository _repo;
-    private readonly IPasswordService _passwords;
-    private readonly ITokenService _tokens;
-    private readonly JwtOptions _jwt;
-    private readonly AuthPolicyOptions _policy;
-    private readonly ILogsService _logs;
+    private const string TablaUsuarios = "api.usuarios";
 
-    public AuthService(
-        AuthRepository repo,
-        IPasswordService passwords,
-        ITokenService tokens,
-        IOptions<JwtOptions> jwt,
-        IOptions<AuthPolicyOptions> policy,
-        ILogsService logs)
+    private readonly JwtOptions _jwt = jwtOptions.Value;
+    private readonly AuthPolicyOptions _politica = politicaOptions.Value;
+
+    public async Task<ResultadoLogin> LoginAsync(string email, string contrasena, InfoCliente cliente)
     {
-        _repo = repo;
-        _passwords = passwords;
-        _tokens = tokens;
-        _jwt = jwt.Value;
-        _policy = policy.Value;
-        _logs = logs;
-    }
+        var usuario = await repo.ObtenerPorEmailAsync(email.NormalizarEmail());
 
-    public async Task<AuthResponse?> LoginAsync(string email, string password, ClientInfo client)
-    {
-        email = NormalizeEmail(email);
-        var user = await _repo.GetUserByEmailAsync(email);
-
-        // Un usuario sin ningún rol asignado (no debería pasar en
-        // el flujo normal, pero es posible por edición manual de la DB) se trata
-        // igual que credenciales inválidas: fail-closed, sin filtrar el motivo.
-        if (user is null || !user.IsActive || user.LockoutUntil > DateTime.UtcNow || user.Roles.Count == 0)
+        // Correo inexistente: gasta el mismo tiempo que una verificación real (RP-24).
+        if (usuario is null)
         {
-            _passwords.VerifyDummy(password);
-            return null;
+            contrasenas.VerificarDummy(contrasena);
+            return ResultadoLogin.Fallo("AU006");
         }
 
-        if (!_passwords.Verify(password, user.PasswordHash))
+        var bloqueado = usuario.BloqueadoHasta > DateTime.UtcNow;
+
+        // Contraseña incorrecta: siempre genérico. Solo cuenta como intento fallido si la cuenta
+        // está activa y no bloqueada.
+        if (!contrasenas.Verificar(contrasena, usuario.ContrasenaHash))
         {
-            await _repo.RegisterFailedLoginAsync(user.Id, _policy.MaxFailedAttempts, _policy.LockoutMinutes);
-            return null;
+            if (usuario.Activo && !bloqueado)
+                await repo.RegistrarLoginFallidoAsync(usuario.Id, _politica.MaxIntentosFallidos, _politica.MinutosBloqueo);
+            return ResultadoLogin.Fallo("AU006");
         }
 
-        await _repo.RegisterSuccessfulLoginAsync(user.Id);
-        await _logs.RegisterLogAsync(user.Id, "LOGIN", ip: client.Ip, userAgent: client.UserAgent);
-        return await IssueSessionAsync(user.Id, user.Email, user.Roles, client);
+        // Contraseña correcta: recién aquí es seguro explicar el estado de la cuenta.
+        if (!usuario.Activo) return ResultadoLogin.Fallo("AU014");
+        if (bloqueado) return ResultadoLogin.Fallo("AU015");
+
+        // Sin roles (solo por edición manual de la DB): fail-closed, sin filtrar el motivo.
+        if (usuario.Roles.Count == 0) return ResultadoLogin.Fallo("AU006");
+
+        await repo.RegistrarLoginExitosoAsync(usuario.Id);
+        await logs.RegistrarAsync(usuario.Id, "LOGIN", ip: cliente.Ip, userAgent: cliente.UserAgent);
+        return ResultadoLogin.Exito(await EmitirSesionAsync(usuario.Id, usuario.Email, usuario.Roles, cliente));
     }
 
-    public async Task<AuthResponse?> RefreshAsync(string refreshToken, ClientInfo client)
+    public async Task LogoutAsync(string refreshToken, InfoCliente cliente)
     {
-        var newRefreshToken = _tokens.GenerateRefreshToken();
+        var idUsuario = await repo.LogoutAsync(tokens.Hashear(refreshToken));
 
-        var result = await _repo.RotateSessionAsync(
-            _tokens.Hash(refreshToken),
-            _tokens.Hash(newRefreshToken),
+        // Token inexistente: no se registra nada (evita ruido/abuso del endpoint anónimo).
+        if (idUsuario is null) return;
+
+        await logs.RegistrarAsync(idUsuario, "LOGOUT", TablaUsuarios, idUsuario.Value.ToString(),
+            ip: cliente.Ip, userAgent: cliente.UserAgent);
+    }
+
+    public async Task<AuthResponse?> RefreshAsync(string refreshToken, InfoCliente cliente)
+    {
+        var nuevoRefreshToken = tokens.GenerarRefreshToken();
+
+        var resultado = await repo.RotarSesionAsync(
+            tokens.Hashear(refreshToken),
+            tokens.Hashear(nuevoRefreshToken),
             DateTime.UtcNow.AddDays(_jwt.RefreshTokenDays),
-            client.Ip,
-            client.UserAgent);
+            cliente.Ip,
+            cliente.UserAgent);
 
-        if (result.Status != "ok" || result.User is null || result.User.Roles.Count == 0) return null;
+        if (resultado.Estado != "ok" || resultado.Usuario is not { Roles.Count: > 0 } usuario) return null;
 
-        var access = _tokens.CreateAccessToken(result.User.Id, result.User.Email, result.User.Roles);
-        return new AuthResponse(access.Token, access.ExpiresAt, newRefreshToken);
+        var access = tokens.CrearAccessToken(usuario.Id, usuario.Email, usuario.Roles);
+        return new AuthResponse(access.Token, access.ExpiresAt, nuevoRefreshToken);
     }
 
-    public async Task LogoutAsync(string refreshToken)
+    public async Task LogoutAllAsync(Guid idUsuario)
     {
-        await _repo.LogoutAsync(_tokens.Hash(refreshToken));
-        // actorUserId null: este endpoint es anónimo, no tenemos el id_usuario sin una consulta extra.
-        await _logs.RegisterLogAsync(null, "LOGOUT");
+        await repo.LogoutAllAsync(idUsuario);
+        await logs.RegistrarAsync(idUsuario, "LOGOUT_ALL", TablaUsuarios, idUsuario.ToString());
     }
 
-    public async Task LogoutAllAsync(Guid userId)
+    /// <summary>Cambia la contraseña propia. false si la actual es incorrecta o el usuario no está activo.</summary>
+    public async Task<bool> CambiarContrasenaAsync(Guid idUsuario, string contrasenaActual, string contrasenaNueva)
     {
-        await _repo.LogoutAllAsync(userId);
-        await _logs.RegisterLogAsync(userId, "LOGOUT_ALL", "api.usuarios", userId.ToString());
-    }
-
-    public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
-    {
-        var user = await _repo.GetUserByIdAsync(userId);
-        if (user is null || !user.IsActive || !_passwords.Verify(currentPassword, user.PasswordHash))
+        var usuario = await repo.ObtenerPorIdAsync(idUsuario);
+        if (usuario is null || !usuario.Activo || !contrasenas.Verificar(contrasenaActual, usuario.ContrasenaHash))
             return false;
 
-        await _repo.ChangePasswordAsync(userId, _passwords.Hash(newPassword));
-        // Nunca se loguea el hash ni la contraseña, solo el hecho de que cambió.
-        await _logs.RegisterLogAsync(userId, "CHANGE_PASSWORD", "api.usuarios", userId.ToString());
+        await repo.EstablecerContrasenaAsync(idUsuario, contrasenas.Hashear(contrasenaNueva));
+        await logs.RegistrarAsync(idUsuario, "CHANGE_PASSWORD", TablaUsuarios, idUsuario.ToString());   // nunca el hash
         return true;
     }
 
-    /// <summary>Crea el primer administrador. Si ya existe o el correo está en uso, la
-    /// excepción de Postgres (AU001/TA001) sube tal cual — la traduce GlobalExceptionHandler.</summary>
-    public async Task<Guid> BootstrapAdminAsync(string email, string password)
+    /// <summary>Crea el primer administrador. Si ya existe o el correo está en uso, la excepción
+    /// de Postgres (AU001/TA001) sube tal cual y la traduce GlobalExceptionHandler.</summary>
+    public async Task<(Guid Id, string Email)> CrearPrimerAdminAsync(string email, string contrasena)
     {
-        email = NormalizeEmail(email);
-        var userId = await _repo.CreateFirstAdminAsync(email, _passwords.Hash(password));
-        await _logs.RegisterLogAsync(userId, "BOOTSTRAP_ADMIN", "api.usuarios", userId.ToString());
-        return userId;
+        email = email.NormalizarEmail();
+        var id = await repo.CrearPrimerAdminAsync(email, contrasenas.Hashear(contrasena));
+        await logs.RegistrarAsync(id, "BOOTSTRAP_ADMIN", TablaUsuarios, id.ToString());
+        return (id, email);
     }
 
-    private async Task<AuthResponse> IssueSessionAsync(Guid userId, string email, IReadOnlyList<string> roles, ClientInfo client)
+    private async Task<AuthResponse> EmitirSesionAsync(
+        Guid idUsuario, string email, IReadOnlyList<string> roles, InfoCliente cliente)
     {
-        var refreshToken = _tokens.GenerateRefreshToken();
+        var refreshToken = tokens.GenerarRefreshToken();
 
-        await _repo.CreateSessionAsync(
-            userId,
-            _tokens.Hash(refreshToken),
+        await repo.CrearSesionAsync(
+            idUsuario,
+            tokens.Hashear(refreshToken),
             DateTime.UtcNow.AddDays(_jwt.RefreshTokenDays),
-            client.Ip,
-            client.UserAgent);
+            cliente.Ip,
+            cliente.UserAgent);
 
-        var access = _tokens.CreateAccessToken(userId, email, roles);
+        var access = tokens.CrearAccessToken(idUsuario, email, roles);
         return new AuthResponse(access.Token, access.ExpiresAt, refreshToken);
     }
-
-    private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
 }
