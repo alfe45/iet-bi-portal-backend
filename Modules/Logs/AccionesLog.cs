@@ -61,4 +61,11 @@ public static class AccionesLog
     public const string AnularRetiroMatricula = "ANULAR_RETIRO_MATRICULA";
     public const string EliminarMatricula = "ELIMINAR_MATRICULA";
     public const string SubirSeccion = "SUBIR_SECCION";
+
+    // Ausentismo
+    public const string RegistrarLeccion = "REGISTRAR_LECCION";
+    public const string ModificarLeccion = "MODIFICAR_LECCION";
+    public const string EliminarLeccion = "ELIMINAR_LECCION";
+    public const string JustificarAusencia = "JUSTIFICAR_AUSENCIA";
+    public const string AnularJustificacionAusencia = "ANULAR_JUSTIFICACION_AUSENCIA";
 }

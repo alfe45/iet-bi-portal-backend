@@ -61,3 +61,10 @@ ANULAR_RETIRO_MATRICULA     // Anulación del retiro (datos_anteriores = matríc
 ELIMINAR_MATRICULA          // Eliminación (datos_anteriores = snapshot previo).
 SUBIR_SECCION               // Matrícula masiva en 11-N de los estudiantes de 10-N del año anterior (id = "año/11-N";
                             // datos_nuevos = { fechaMatricula, seccionCreada, matriculados: [cédulas] }). No se registra si no hubo cambios.
+
+# Ausentismo (id_registro_afectado = id de la lección, ej. "15"; en justificaciones "15/cédula")
+REGISTRAR_LECCION               // El profesor registró una lección con sus ausentes (datos_nuevos = request).
+MODIFICAR_LECCION               // Corrección de fecha, hora, tema o ausentes (datos_anteriores = lección con ausentes). No se registra si no hubo cambios.
+ELIMINAR_LECCION                // Eliminación de la lección y sus ausencias (datos_anteriores = snapshot previo).
+JUSTIFICAR_AUSENCIA             // Se justificó o se cambió la justificación de una ausencia (datos_anteriores / datos_nuevos).
+ANULAR_JUSTIFICACION_AUSENCIA   // La ausencia vuelve a quedar injustificada (datos_anteriores = justificación previa).

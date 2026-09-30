@@ -199,6 +199,31 @@ END;
 $$;
 
 -- ------------------------------------------------------------
+-- Profesores: AD003 si el usuario no imparte ninguna asignatura en la sección ni es su guía (RN-59).
+-- Lo usan las consultas de profesores sobre una sección (estudiantes y ficha del estudiante).
+-- plpgsql: las tablas se crean en 06 (RP-50).
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION academico.fn_validar_acceso_seccion(p_id_usuario UUID, p_id_seccion BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM academico.asignaciones_docentes a
+        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
+        WHERE a.id_seccion = p_id_seccion AND pr.id_usuario = p_id_usuario
+        UNION ALL
+        SELECT 1 FROM academico.secciones s
+        JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
+        WHERE s.id_seccion = p_id_seccion AND pr.id_usuario = p_id_usuario
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('AD003', 'No tienes acceso a esa sección.');
+    END IF;
+END;
+$$;
+
+-- ------------------------------------------------------------
 -- Fecha de nacimiento coherente (no futura ni anterior a 1900). Depende de "hoy", por eso es
 -- función y no CHECK (RP-28). Cada módulo pasa su código (ES004 estudiantes, PR005 profesores).
 -- ------------------------------------------------------------

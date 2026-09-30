@@ -332,9 +332,70 @@ Authorization: Bearer {{tokenProfe}}
 GET {{host}}/api/profesor/guia/secciones
 Authorization: Bearer {{tokenProfe}}
 
+### Profesor Regular CU05 - Ficha de un estudiante de la sección (datos personales y matrícula)
+GET {{host}}/api/profesor/secciones/{{anio}}/10/1/estudiantes/{{cedulaEst}}
+Authorization: Bearer {{tokenProfe}}
+
+# ------------------------------------------------------------
+# Ausentismo: el profesor registra cada lección cuando la imparte y marca a los ausentes.
+# La fecha no puede ser futura y debe caer en un semestre abierto del periodo.
+# ------------------------------------------------------------
+
+### Profesor Regular CU10 - Registrar lección con sus ausentes (ausentes: [] si asistieron todos)
+# @name leccion
+POST {{host}}/api/profesor/lecciones
+Authorization: Bearer {{tokenProfe}}
+Content-Type: application/json
+
+{
+  "anio": {{anio}}, "nivel": 10, "numero": 1, "codigoAsignatura": "MAT",
+  "fecha": "2026-09-01", "hora": "07:00:00", "tema": "Funciones", "ausentes": ["{{cedulaEst}}"]
+}
+
+###
+@idLeccion = {{leccion.response.body.$.idLeccion}}
+
+### Profesor Regular CU12 - Lecciones de mi asignación (semestre opcional: I_SEMESTRE / II_SEMESTRE)
+GET {{host}}/api/profesor/lecciones?anio={{anio}}&nivel=10&numero=1&codigoAsignatura=MAT&semestre=
+Authorization: Bearer {{tokenProfe}}
+
+### Profesor Regular CU12 - Detalle de la lección con sus ausentes
+GET {{host}}/api/profesor/lecciones/{{idLeccion}}
+Authorization: Bearer {{tokenProfe}}
+
+### Profesor Regular CU11 - Justificar una ausencia
+PUT {{host}}/api/profesor/lecciones/{{idLeccion}}/ausencias/{{cedulaEst}}/justificacion
+Authorization: Bearer {{tokenProfe}}
+Content-Type: application/json
+
+{ "justificacion": "Cita médica con comprobante" }
+
+### Profesor Regular CU11 - Modificar la lección (reemplaza la lista de ausentes; la justificación se conserva)
+PUT {{host}}/api/profesor/lecciones/{{idLeccion}}
+Authorization: Bearer {{tokenProfe}}
+Content-Type: application/json
+
+{ "fecha": "2026-09-01", "hora": "07:00:00", "tema": "Funciones lineales", "ausentes": ["{{cedulaEst}}"] }
+
+### Profesor Regular CU12 - Resumen de ausentismo de mi asignación (ausencias contra lecciones)
+GET {{host}}/api/profesor/ausentismo?anio={{anio}}&nivel=10&numero=1&codigoAsignatura=MAT&semestre=
+Authorization: Bearer {{tokenProfe}}
+
+### Guía CU05 - Ausentismo de mi sección guía por estudiante y asignatura
+GET {{host}}/api/profesor/guia/ausentismo?anio={{anio}}&nivel=10&numero=1&semestre=
+Authorization: Bearer {{tokenProfe}}
+
+### Profesor Regular CU11 - Anular la justificación
+DELETE {{host}}/api/profesor/lecciones/{{idLeccion}}/ausencias/{{cedulaEst}}/justificacion
+Authorization: Bearer {{tokenProfe}}
+
 # ============================================================
 # Borrados (en este orden por las dependencias)
 # ============================================================
+
+### Profesor Regular CU11 - Eliminar la lección (y sus ausencias; antes de borrar la matrícula y la asignación)
+DELETE {{host}}/api/profesor/lecciones/{{idLeccion}}
+Authorization: Bearer {{tokenProfe}}
 
 ### CU25 - Eliminar la matrícula de nivel 11 (primero la continuidad: MA007)
 DELETE {{host}}/api/admin/matriculas/{{anioSiguiente}}/{{cedulaEst}}

@@ -3,6 +3,7 @@ using iet_bi_portal_backend.Common;
 using iet_bi_portal_backend.Config;
 using iet_bi_portal_backend.Modules.Asignaciones;
 using iet_bi_portal_backend.Modules.Asignaturas;
+using iet_bi_portal_backend.Modules.Ausentismo;
 using iet_bi_portal_backend.Modules.Auth;
 using iet_bi_portal_backend.Modules.Errors;
 using iet_bi_portal_backend.Modules.Estudiantes;
@@ -35,6 +36,7 @@ builder.Services.AddSeccionesModule();
 builder.Services.AddAsignaturasModule();
 builder.Services.AddAsignacionesModule();
 builder.Services.AddMatriculasModule();
+builder.Services.AddAusentismoModule();
 
 var app = builder.Build();
 

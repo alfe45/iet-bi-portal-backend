@@ -73,6 +73,14 @@
   "MA007": { "status": 409, "mensaje": "La matrícula de nivel 10 ya tiene continuidad en nivel 11: modifica o elimina primero la de nivel 11." },
   "NF009": { "status": 404, "mensaje": "La matrícula no existe." },
 
+  "AD004": { "status": 403, "mensaje": "No impartes esa asignatura en esa sección." },
+  "AD005": { "status": 403, "mensaje": "No eres el guía de esa sección." },
+  "LE001": { "status": 400, "mensaje": "La fecha de la lección no es válida: no puede ser futura y debe caer dentro de un semestre del periodo." },
+  "LE002": { "status": 409, "mensaje": "Ya registraste una lección de esa asignatura y sección en esa fecha y hora." },
+  "LE003": { "status": 400, "mensaje": "Un estudiante marcado como ausente no estaba matriculado en la sección en la fecha de la lección." },
+  "NF010": { "status": 404, "mensaje": "La lección no existe." },
+  "NF011": { "status": 404, "mensaje": "El estudiante no tiene una ausencia en esa lección." },
+
   "23502": { "status": 400, "mensaje": "Falta un valor obligatorio." },
   "23505": { "status": 409, "mensaje": "Ya existe un registro con esos datos." },
   "23514": { "status": 400, "mensaje": "Uno de los valores enviados no cumple las reglas de validación." },

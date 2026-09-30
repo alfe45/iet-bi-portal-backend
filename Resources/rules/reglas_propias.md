@@ -25,29 +25,39 @@ Bachillerato Internacional. La numeración RN-xx es común con las reglas genera
 - RN-42: Tipos de asignatura: TRONCAL (componentes centrales BI: TdC, Monografía, CAS), SUPERIOR y MEDIO (asignaturas BI de nivel superior y medio) y MEP (asignaturas del programa nacional).
 - RN-39: El nivel 11 no recibe Educación Cívica ni Estudios Sociales: se registran solo con nivel 10, y no se asignan a secciones de nivel 11 (AS005).
 
+### Ausentismo
+- RN-66: Una lección es una clase que el profesor de una asignación registra cuando la imparte: fecha, hora y un tema opcional (Visión 5.8). No depende de un horario. Solo el profesor de la asignación registra, modifica o elimina sus lecciones (AD004); no se repiten fecha y hora en la misma asignación (LE002).
+- RN-67: La fecha de la lección cae dentro de un semestre del periodo de la sección y no es futura (LE001). Cuando el semestre de la lección ya terminó, la lección y sus ausencias quedan cerradas (PA004).
+- RN-68: Al registrar o modificar la lección se indican los estudiantes ausentes. Cada uno debe estar matriculado en la sección a esa fecha: matrícula en o antes de la fecha y sin retiro en o antes de ella (LE003). Modificar la lección reemplaza la lista de ausentes; la justificación de quien sigue ausente se conserva.
+- RN-69: El mismo profesor de la asignación justifica una ausencia, con un motivo, o anula la justificación (Visión 5.9). NF011 si el estudiante no tiene ausencia en esa lección.
+- RN-70: El resumen de ausentismo de una asignación compara, por estudiante, sus ausencias (justificadas e injustificadas) con las lecciones registradas mientras estuvo matriculado (desde su fecha de matrícula hasta su retiro). Se puede filtrar por semestre.
+- RN-71: El guía consulta el resumen de ausentismo de su sección por estudiante y asignatura (AD005 si no es el guía de la sección).
+- RN-72: No se elimina una asignación con lecciones ni una matrícula con ausencias (23001).
+
 ### Roles
 - RN-13: Roles válidos: ADMIN, PROFESOR_REGULAR (profesor de asignatura), GUIA (profesor guía de sección), COORD_MONOGRAFIA, PROFESOR_CAS y COORD_CAS. Asignar profesores como coordinadores (CU39) es otorgarles COORD_MONOGRAFIA o COORD_CAS.
 
 ## Aceptadas, pendientes de implementar
-Reglas validadas por el usuario cuyos módulos (evaluaciones, monografía, ausentismo, CAS) aún no existen. Reciben número RN-xx al implementarse.
+Reglas validadas por el usuario cuyos módulos (evaluaciones, monografía, CAS, correo) aún no existen. Reciben número RN-xx al implementarse.
 
 ### Evaluaciones
 - PR-04: El tipo de asignatura define la escala: SUPERIOR (aprobación mínima 4) y MEDIO (aprobación mínima 3) con bandas 1 a 7; TRONCAL (TdC, Monografía, CAS) con letras A a E ('A' la más alta); MEP con nota 0 a 100. No se permiten escalas fuera de estas (Visión).
-- PR-05: La nota es por semestre: cada profesor envía al guía la nota de sus estudiantes en cada asignación antes de que termine el semestre (el cierre). Después del cierre ya no se envían ni modifican notas, salvo que el ADMIN dé más tiempo (prórroga).
-- PR-11: Antes del cierre el profesor ve en su pantalla cuántos días faltan y recibe advertencias mientras tenga estudiantes sin nota.
+- PR-05: La nota es por semestre: cada profesor envía al guía la nota de sus estudiantes en cada asignación antes del cierre, que es la fecha de fin del semestre del periodo. Después del cierre ya no se envían ni modifican notas, salvo que el ADMIN le dé más tiempo a ese profesor (la prórroga es por profesor).
+- PR-11: Mientras el profesor tenga estudiantes sin nota, su pantalla muestra cuántos días faltan para el cierre: un aviso informativo desde 30 días antes y un aviso de prioridad desde 15 días antes.
+- PR-18: Las notas de una sección se consultan con un solo caso de uso (unifica Guía CU03 y CU04): el guía ve todas las asignaturas de su sección guía y el profesor ve las de sus asignaciones.
 
 ### Monografía
 - PR-06: Dura 2 años: 6 meses de capacitación y 1.5 años de tutoría en la materia elegida; cada coordinador/tutor tiene grupos de 1 a 5 estudiantes por materia.
 - PR-07: Solo las asignaturas SUPERIOR y MEDIO pueden elegirse como materia de monografía.
 - PR-08: La monografía empieza en nivel 10 y termina en nivel 11 del mismo estudiante (sigue su continuidad BI, RN-58).
-
-### Ausentismo
-- PR-10: La asistencia se registra por lección de una asignación docente (Visión 5.8 y 5.9). No depende de un horario: el profesor registra la lección cuando la imparte (fecha, hora y asignación, es decir asignatura y sección) y marca a los estudiantes ausentes.
-- PR-12: Las ausencias las justifica el mismo profesor que registró la lección.
-- PR-13: El ausentismo de cada estudiante se reporta contra la cantidad de lecciones que registró el profesor en esa asignación (ej. 3 ausencias de 40 lecciones).
+- PR-15: Estados de una monografía: CAPACITACION, INVESTIGACION y TERMINADA. El coordinador registra el estado y el seguimiento (observaciones); "verificar" (Guía CU07) es que el guía consulte cómo van las monografías de su sección y sus observaciones.
 
 ### CAS
-- PR-14: CAS es una asignatura TRONCAL. Lo único distinto es un informe con un formato específico que llena el profesor CAS; mientras ese formato no se defina, el módulo se modela de forma genérica para implementarlo después.
+- PR-14: CAS es una asignatura TRONCAL. El profesor CAS se asigna a la sección con una asignación académica de la asignatura CAS (Administrador CU38 = CU30). Cada semestre llena un informe con formato propio y lo envía junto con la calificación: el informe apunta al registro de la nota (ej. "el estudiante X tuvo A en CAS"). El progreso CAS es ir llenando ese informe por semestre. Mientras el formato no se defina, el informe se modela de forma genérica.
+
+### Informes y correo
+- PR-16: Los informes de notas del guía (por estudiante y por sección) se generan en PDF; el formato lo aportará el usuario con un ejemplo.
+- PR-17: Un módulo futuro enviará por correo a los estudiantes los documentos que se ocupen, a su correo registrado aunque no usen el sistema.
 
 ## Descartadas
 - PR-09: Estudiantes y encargados no usan el sistema (no son usuarios, ni siquiera de consulta).

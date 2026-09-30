@@ -96,3 +96,20 @@ public record Matricula(
     string Estado,
     DateOnly? FechaRetiro,
     string? MotivoRetiro);
+
+/// <summary>Profesor Regular CU05 (RN-65): ficha de un estudiante de la sección con su matrícula en ella.
+/// Tal como la devuelve academico.fn_profesor_obtener_estudiante_seccion; no expone el id interno (RP-07).</summary>
+public record FichaEstudiante(
+    string Cedula,
+    string Nombre,
+    string PrimerApellido,
+    string? SegundoApellido,
+    string? NumeroCelular,
+    string Email,
+    DateOnly FechaNacimiento,
+    int Anio,
+    string Seccion,
+    DateOnly FechaMatricula,
+    string Estado,
+    DateOnly? FechaRetiro,
+    string? MotivoRetiro);
