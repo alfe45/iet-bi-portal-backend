@@ -59,3 +59,5 @@ CAMBIAR_SECCION_MATRICULA   // Traslado a otra sección del mismo año (datos_an
 REGISTRAR_RETIRO_MATRICULA  // Registro o corrección del retiro (fecha y motivo en datos_nuevos).
 ANULAR_RETIRO_MATRICULA     // Anulación del retiro (datos_anteriores = matrícula con el retiro).
 ELIMINAR_MATRICULA          // Eliminación (datos_anteriores = snapshot previo).
+SUBIR_SECCION               // Matrícula masiva en 11-N de los estudiantes de 10-N del año anterior (id = "año/11-N";
+                            // datos_nuevos = { fechaMatricula, seccionCreada, matriculados: [cédulas] }). No se registra si no hubo cambios.

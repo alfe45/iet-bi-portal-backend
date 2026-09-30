@@ -48,6 +48,8 @@
   "SE002": { "status": 400, "mensaje": "La sección no es válida: el nivel debe ser 10 u 11 y el número entre 1 y 99." },
   "SE003": { "status": 409, "mensaje": "El profesor guía debe tener un usuario activo con el rol GUIA." },
   "SE004": { "status": 409, "mensaje": "El profesor ya es guía de otra sección en ese periodo." },
+  "SE005": { "status": 409, "mensaje": "Para crear la sección de nivel 11 debe existir la sección de nivel 10 con el mismo número el año anterior." },
+  "SE006": { "status": 409, "mensaje": "La sección de nivel 10 ya continúa en nivel 11 el año siguiente: elimina primero la de nivel 11." },
   "NF006": { "status": 404, "mensaje": "La sección no existe." },
 
   "AS001": { "status": 409, "mensaje": "Ya existe una asignatura con ese código." },

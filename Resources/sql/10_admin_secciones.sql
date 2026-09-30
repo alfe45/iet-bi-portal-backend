@@ -57,7 +57,20 @@ BEGIN
 END;
 $$;
 
--- CU 18 - Registrar sección. Devuelve el nombre ("10-1").
+-- TRUE si existe la sección (año, nivel, número).
+CREATE OR REPLACE FUNCTION academico.fn_existe_seccion(p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM academico.secciones s
+        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+        WHERE p.anio = p_anio AND s.nivel = p_nivel AND s.numero = p_numero);
+$$;
+
+-- CU 18 - Registrar sección. Devuelve el nombre ("10-1"). Una sección de nivel 11 solo se crea si
+-- existió la 10-N del año anterior (SE005, RN-62); su guía no se hereda (RN-63).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_seccion(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -85,6 +98,11 @@ BEGIN
     IF EXISTS (SELECT 1 FROM academico.secciones
                WHERE id_periodo = v_id_periodo AND nivel = p_nivel AND numero = p_numero) THEN
         PERFORM api.fn_lanzar_excepcion('SE001', 'Ya existe esa sección en el periodo.');
+    END IF;
+
+    -- RN-62: la sección de nivel 11 es la continuación de la 10-N del año anterior (la sección sube completa).
+    IF p_nivel = 11 AND NOT academico.fn_existe_seccion(p_anio - 1, 10, p_numero) THEN
+        PERFORM api.fn_lanzar_excepcion('SE005', 'Para crear la sección de nivel 11 debe existir la sección de nivel 10 con el mismo número el año anterior.');
     END IF;
 
     INSERT INTO academico.secciones (id_periodo, nivel, numero)
@@ -134,8 +152,9 @@ AS $$
     WHERE p.anio = p_anio AND s.nivel = p_nivel AND s.numero = p_numero;
 $$;
 
--- CU 20 - Eliminar sección. Devuelve el snapshot previo. Si otras entidades la referencian
--- (matrículas, asignaciones...) con FK RESTRICT, Postgres lanza 23503.
+-- CU 20 - Eliminar sección. Devuelve el snapshot previo. Una 10-N que ya continúa como 11-N el año
+-- siguiente no se elimina (SE006, RN-62). Si otras entidades la referencian (matrículas,
+-- asignaciones...) con FK RESTRICT, Postgres lanza 23503.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_seccion(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -158,6 +177,10 @@ BEGIN
     FROM academico.secciones
     WHERE id_seccion = v_id_seccion
     FOR UPDATE;
+
+    IF p_nivel = 10 AND academico.fn_existe_seccion(p_anio + 1, 11, p_numero) THEN
+        PERFORM api.fn_lanzar_excepcion('SE006', 'La sección de nivel 10 ya continúa en nivel 11 el año siguiente.');
+    END IF;
 
     v_prev := to_jsonb(academico.fn_a_seccion_admin(v_seccion));
 

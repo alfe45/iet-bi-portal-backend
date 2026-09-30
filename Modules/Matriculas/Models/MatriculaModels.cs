@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Matriculas.Models;
 
-/// <summary>CU25: matricular un estudiante en una sección (año, nivel, número). FechaMatricula es opcional
+/// <summary>CU22: matricular un estudiante en una sección (año, nivel, número). FechaMatricula es opcional
 /// (por defecto hoy, o el inicio del periodo si ya finalizó). Edad (ES003), duplicado (MA001) y fecha (MA002)
 /// los valida la DB.</summary>
 public class RegistrarMatriculaRequest
@@ -23,7 +23,23 @@ public class RegistrarMatriculaRequest
     public DateOnly? FechaMatricula { get; set; }
 }
 
-/// <summary>CU26: trasladar la matrícula a otra sección del mismo año.</summary>
+/// <summary>CU22 - Subir la sección (RN-64): matricula en la 11-{Numero} de {Anio} a todos los estudiantes sin retiro de la
+/// 10-{Numero} del año anterior; crea la 11-N si no existe. FechaMatricula opcional (como en la matrícula individual).</summary>
+public class SubirSeccionRequest
+{
+    [Required]
+    public int? Anio { get; set; }
+
+    [Required, Range(1, 99, ErrorMessage = "El número de sección debe estar entre 1 y 99.")]
+    public int? Numero { get; set; }
+
+    public DateOnly? FechaMatricula { get; set; }
+}
+
+/// <summary>Resultado de subir la sección: si se creó la 11-N, cédulas matriculadas y omitidas (ya tenían matrícula en el año).</summary>
+public record SeccionSubida(bool SeccionCreada, string[] Matriculados, string[] Omitidos);
+
+/// <summary>CU23: trasladar la matrícula a otra sección del mismo año.</summary>
 public class CambiarSeccionRequest
 {
     [Required]
@@ -33,7 +49,7 @@ public class CambiarSeccionRequest
     public int? Numero { get; set; }
 }
 
-/// <summary>CU26: registrar o corregir el retiro del estudiante (MA003 fecha inválida).</summary>
+/// <summary>CU23: registrar o corregir el retiro del estudiante (MA003 fecha inválida).</summary>
 public class RegistrarRetiroRequest
 {
     [Required]
@@ -43,7 +59,7 @@ public class RegistrarRetiroRequest
     public string? Motivo { get; set; }
 }
 
-/// <summary>CU27: listado/historial paginado; todos los filtros son opcionales. Busqueda: nombre o cédula.</summary>
+/// <summary>CU24: listado/historial paginado; todos los filtros son opcionales. Busqueda: nombre o cédula.</summary>
 public class ConsultaMatriculas : ConsultaConBusqueda
 {
     public int? Anio { get; set; }

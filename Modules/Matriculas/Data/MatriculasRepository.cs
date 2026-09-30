@@ -5,18 +5,25 @@ using iet_bi_portal_backend.Modules.Matriculas.Models;
 
 namespace iet_bi_portal_backend.Modules.Matriculas.Data;
 
-/// <summary>Acceso a las funciones de matrículas (CU25 a CU28 y estudiantes de una sección).
+/// <summary>Acceso a las funciones de matrículas (CU22 a CU25 y estudiantes de una sección).
 /// Una matrícula se identifica por (año, cédula del estudiante).</summary>
 public class MatriculasRepository(NpgsqlDataSource db)
 {
     private const string Columnas =
         "anio, nivel::int, numero::int, seccion, cedula_estudiante, nombre_estudiante, fecha_matricula, estado::text, fecha_retiro, motivo_retiro";
 
-    /// <summary>Errores de la DB: AU009, NF003, NF006, ES003, MA001, MA002.</summary>
+    /// <summary>Errores de la DB: AU009, NF003, NF006, ES003, MA001, MA002, MA004, MA005.</summary>
     public Task RegistrarAsync(Guid actorId, RegistrarMatriculaRequest r) =>
         db.EjecutarAsync(
             "SELECT academico.fn_admin_registrar_matricula($1, $2::integer, $3::integer, $4::integer, $5::text, $6::date)",
             actorId, r.Anio, r.Nivel, r.Numero, r.CedulaEstudiante, r.FechaMatricula);
+
+    /// <summary>Sube la sección 10-N del año anterior a 11-N de r.Anio. Errores: AU009, NF004, NF006, MA002.</summary>
+    public Task<SeccionSubida> SubirSeccionAsync(Guid actorId, SubirSeccionRequest r) =>
+        db.PrimeroAsync(
+            "SELECT seccion_creada, matriculados, omitidos FROM academico.fn_admin_subir_seccion($1, $2::integer, $3::integer, $4::date)",
+            x => new SeccionSubida(x.GetBoolean(0), x.GetFieldValue<string[]>(1), x.GetFieldValue<string[]>(2)),
+            actorId, r.Anio, r.Numero, r.FechaMatricula);
 
     public async Task<ResultadoPaginado<Matricula>> ListarAsync(ConsultaMatriculas c)
     {

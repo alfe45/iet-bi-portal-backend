@@ -7,7 +7,7 @@ using iet_bi_portal_backend.Modules.Profesores.Services;
 
 namespace iet_bi_portal_backend.Modules.Profesores.Controllers;
 
-/// <summary>CU06 a CU09. Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
+/// <summary>Administrador CU06 a CU09 (registrar, consultar, modificar y eliminar profesores). Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
 [Route("api/admin/profesores")]
 public class AdminProfesoresController(ProfesoresService profesores) : AdminControllerBase
 {
