@@ -83,6 +83,39 @@ BEGIN
 END;
 $$;
 
+-- BI es un programa de dos años: nivel 10 y luego nivel 11 con el mismo número de sección (la sección
+-- completa sube de nivel). TRUE si la matrícula es de nivel 10 y el estudiante ya tiene la de nivel 11
+-- del año siguiente (su continuidad).
+CREATE OR REPLACE FUNCTION academico.fn_matricula_tiene_continuidad(p_id_matricula BIGINT)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM academico.matriculas m
+        JOIN academico.secciones s ON s.id_seccion = m.id_seccion AND s.nivel = 10
+        JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
+        JOIN academico.matriculas m11 ON m11.id_estudiante = m.id_estudiante
+        JOIN academico.secciones s11 ON s11.id_seccion = m11.id_seccion AND s11.nivel = 11
+        JOIN academico.periodos_academicos p11 ON p11.id_periodo = m11.id_periodo AND p11.anio = p.anio + 1
+        WHERE m.id_matricula = p_id_matricula
+    );
+$$;
+
+-- MA007 si la matrícula de nivel 10 ya tiene continuidad en nivel 11 (no se retira ni se elimina).
+CREATE OR REPLACE FUNCTION academico.fn_validar_sin_continuidad(p_id_matricula BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    IF academico.fn_matricula_tiene_continuidad(p_id_matricula) THEN
+        PERFORM api.fn_lanzar_excepcion('MA007', 'La matrícula de nivel 10 ya tiene continuidad en nivel 11.');
+    END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION academico.fn_snapshot_matricula(p_id_matricula BIGINT)
 RETURNS JSONB
 LANGUAGE sql STABLE
@@ -127,8 +160,26 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('MA001', 'El estudiante ya está matriculado en ese periodo.');
     END IF;
 
-    -- RN-01: edad a la fecha de inicio del periodo de la matrícula.
-    PERFORM academico.fn_validar_edad_estudiante(v_estudiante.fecha_nacimiento, v_periodo.inicio_semestre_i);
+    -- MA005: no se repite un nivel (BI: nivel 10 y luego 11, una sola vez cada uno).
+    IF EXISTS (SELECT 1 FROM academico.matriculas m JOIN academico.secciones s ON s.id_seccion = m.id_seccion
+               WHERE m.id_estudiante = v_estudiante.id_estudiante AND s.nivel = p_nivel) THEN
+        PERFORM api.fn_lanzar_excepcion('MA005', 'El estudiante ya tiene una matrícula en ese nivel.');
+    END IF;
+
+    IF p_nivel = 10 THEN
+        -- RN-01: la edad se valida al ingresar al programa (nivel 10), a la fecha de inicio del periodo.
+        PERFORM academico.fn_validar_edad_estudiante(v_estudiante.fecha_nacimiento, v_periodo.inicio_semestre_i);
+    ELSIF NOT EXISTS (
+        -- MA004: nivel 11 exige nivel 10 del año anterior, mismo número de sección y sin retiro.
+        SELECT 1
+        FROM academico.matriculas m
+        JOIN academico.secciones s ON s.id_seccion = m.id_seccion
+        JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
+        WHERE m.id_estudiante = v_estudiante.id_estudiante
+          AND s.nivel = 10 AND s.numero = p_numero AND p.anio = p_anio - 1 AND m.fecha_retiro IS NULL
+    ) THEN
+        PERFORM api.fn_lanzar_excepcion('MA004', 'Para matricular en nivel 11 el estudiante debe haber cursado nivel 10 el año anterior en la sección con el mismo número.');
+    END IF;
 
     v_fecha := COALESCE(p_fecha_matricula,
         CASE WHEN academico.fn_estado_periodo(v_periodo) = 'FINALIZADO' THEN v_periodo.inicio_semestre_i ELSE api.fn_hoy() END);
@@ -228,6 +279,14 @@ BEGIN
         RETURN;
     END IF;
 
+    -- MA006: solo se traslada dentro del nivel 10 y antes de pasar a 11 (en 11 la sección conserva
+    -- el número que tenía en 10).
+    IF p_nivel <> 10
+       OR (SELECT s.nivel FROM academico.secciones s WHERE s.id_seccion = v_matricula.id_seccion) <> 10
+       OR academico.fn_matricula_tiene_continuidad(v_id_matricula) THEN
+        PERFORM api.fn_lanzar_excepcion('MA006', 'Solo se puede trasladar de sección dentro del nivel 10 y antes de pasar a nivel 11.');
+    END IF;
+
     v_prev := academico.fn_snapshot_matricula(v_id_matricula);
 
     UPDATE academico.matriculas SET id_seccion = v_id_seccion_nueva WHERE id_matricula = v_id_matricula;
@@ -260,6 +319,7 @@ BEGIN
 
     v_id_matricula := academico.fn_obtener_id_matricula(p_anio, p_cedula_estudiante);
     SELECT * INTO v_matricula FROM academico.matriculas WHERE id_matricula = v_id_matricula FOR UPDATE;
+    PERFORM academico.fn_validar_sin_continuidad(v_id_matricula);
     SELECT fin_semestre_ii INTO v_fin_periodo FROM academico.periodos_academicos WHERE id_periodo = v_matricula.id_periodo;
 
     IF p_fecha_retiro IS NULL OR p_fecha_retiro > api.fn_hoy()
@@ -333,6 +393,7 @@ BEGIN
 
     v_id_matricula := academico.fn_obtener_id_matricula(p_anio, p_cedula_estudiante);
     PERFORM 1 FROM academico.matriculas WHERE id_matricula = v_id_matricula FOR UPDATE;
+    PERFORM academico.fn_validar_sin_continuidad(v_id_matricula);
 
     v_prev := academico.fn_snapshot_matricula(v_id_matricula);
     DELETE FROM academico.matriculas WHERE id_matricula = v_id_matricula;
