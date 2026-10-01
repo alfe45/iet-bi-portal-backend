@@ -20,7 +20,8 @@ using iet_bi_portal_backend.Modules.Secciones;
 using iet_bi_portal_backend.Modules.Usuarios;
 using Npgsql;
 
-Env.Load();
+// ENV_FILE elige el archivo de variables (lo fijan los perfiles de launchSettings.json); sin ella, .env.
+Env.Load(Environment.GetEnvironmentVariable("ENV_FILE") ?? ".env");
 
 var builder = WebApplication.CreateBuilder(args);
 
