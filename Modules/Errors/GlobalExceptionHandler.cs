@@ -25,6 +25,13 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             UnauthorizedAccessException
                 => (StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "No autorizado."),
 
+            // Cuerpo mayor al límite de Kestrel (1 MB) u otra petición mal formada a nivel HTTP.
+            BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge }
+                => (StatusCodes.Status413PayloadTooLarge, "PAYLOAD_TOO_LARGE", "La solicitud supera el tamaño máximo permitido."),
+
+            BadHttpRequestException bad
+                => (bad.StatusCode, "BAD_REQUEST", "La solicitud no es válida."),
+
             _ => (StatusCodes.Status500InternalServerError, "INTERNAL_ERROR", "Ocurrió un error inesperado.")
         };
 

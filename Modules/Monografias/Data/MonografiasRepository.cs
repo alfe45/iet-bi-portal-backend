@@ -20,22 +20,22 @@ public class MonografiasRepository(NpgsqlDataSource db)
         db.EjecutarAsync("SELECT academico.fn_admin_registrar_monografia($1, $2::integer, $3::text, $4::text, $5::text)",
             actorId, r.Anio, r.CedulaEstudiante, r.CedulaCoordinador, r.CodigoAsignatura);
 
-    public async Task<ResultadoPaginado<Monografia>> ListarAsync(ConsultaMonografias c)
+    public async Task<ResultadoPaginado<Monografia>> ListarAsync(Guid actorId, ConsultaMonografias c)
     {
         var estado = c.Estado?.ToUpperInvariant();
         var elementos = await db.ListarAsync(
             $"SELECT {ColumnasMonografia} FROM academico.fn_admin_listar_monografias(" +
-            "$1::integer, $2::text, $3::text, $4::academico.estado_monografia, $5, $6)",
-            LeerMonografia, c.AnioInicio, c.CedulaCoordinador, c.CodigoAsignatura, estado, c.Pagina, c.TamanoPagina);
+            "$1, $2::integer, $3::text, $4::text, $5::academico.estado_monografia, $6, $7)",
+            LeerMonografia, actorId, c.AnioInicio, c.CedulaCoordinador, c.CodigoAsignatura, estado, c.Pagina, c.TamanoPagina);
         var total = await db.EscalarAsync<long>(
-            "SELECT academico.fn_admin_contar_monografias($1::integer, $2::text, $3::text, $4::academico.estado_monografia)",
-            c.AnioInicio, c.CedulaCoordinador, c.CodigoAsignatura, estado);
+            "SELECT academico.fn_admin_contar_monografias($1, $2::integer, $3::text, $4::text, $5::academico.estado_monografia)",
+            actorId, c.AnioInicio, c.CedulaCoordinador, c.CodigoAsignatura, estado);
         return new ResultadoPaginado<Monografia>(elementos, c.Pagina, c.TamanoPagina, total);
     }
 
     /// <summary>Errores: NF003, NF013.</summary>
-    public Task<Monografia> ObtenerAsync(string cedula) =>
-        db.PrimeroAsync($"SELECT {ColumnasMonografia} FROM academico.fn_admin_obtener_monografia($1::text)", LeerMonografia, cedula);
+    public Task<Monografia> ObtenerAsync(Guid actorId, string cedula) =>
+        db.PrimeroAsync($"SELECT {ColumnasMonografia} FROM academico.fn_admin_obtener_monografia($1, $2::text)", LeerMonografia, actorId, cedula);
 
     /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: AU009, NF003, NF013, NF002, NF007, MO002, MO003, MO005.</summary>
     public Task<(string Estado, string? Anteriores)> ModificarAsync(Guid actorId, string cedula, ModificarMonografiaRequest r) =>

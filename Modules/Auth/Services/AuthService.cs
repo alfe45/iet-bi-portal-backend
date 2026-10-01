@@ -36,20 +36,26 @@ public class AuthService(
             return await FalloLoginAsync(null, email, "CORREO_INEXISTENTE", "AU006", cliente);
         }
 
-        var bloqueado = usuario.BloqueadoHasta > DateTime.UtcNow;
-
-        // Contraseña incorrecta: siempre genérico. Solo cuenta como intento fallido si la cuenta
-        // está activa y no bloqueada.
-        if (!contrasenas.Verificar(contrasena, usuario.ContrasenaHash))
+        // Cuenta bloqueada o desactivada: se responde ANTES de evaluar la contraseña (con el mismo costo, RP-24). Si se
+        // evaluara primero, AU015/AU014 solo saldrían con la contraseña correcta y el bloqueo serviría de oráculo para
+        // seguir adivinándola (hallazgo QA-007). Trade-off: se revela que la cuenta está bloqueada o desactivada.
+        if (usuario.BloqueadoHasta > DateTime.UtcNow)
         {
-            var cuentaBloqueada = usuario.Activo && !bloqueado &&
-                await repo.RegistrarLoginFallidoAsync(usuario.Id, _politica.MaxIntentosFallidos, _politica.MinutosBloqueo);
-            return await FalloLoginAsync(usuario.Id, email, "CONTRASENA_INCORRECTA", "AU006", cliente, cuentaBloqueada);
+            contrasenas.VerificarDummy(contrasena);
+            return await FalloLoginAsync(usuario.Id, email, "CUENTA_BLOQUEADA", "AU015", cliente);
+        }
+        if (!usuario.Activo)
+        {
+            contrasenas.VerificarDummy(contrasena);
+            return await FalloLoginAsync(usuario.Id, email, "CUENTA_DESACTIVADA", "AU014", cliente);
         }
 
-        // Contraseña correcta: recién aquí es seguro explicar el estado de la cuenta.
-        if (!usuario.Activo) return await FalloLoginAsync(usuario.Id, email, "CUENTA_DESACTIVADA", "AU014", cliente);
-        if (bloqueado) return await FalloLoginAsync(usuario.Id, email, "CUENTA_BLOQUEADA", "AU015", cliente);
+        // Contraseña incorrecta: genérico; cuenta como intento fallido.
+        if (!contrasenas.Verificar(contrasena, usuario.ContrasenaHash))
+        {
+            var cuentaBloqueada = await repo.RegistrarLoginFallidoAsync(usuario.Id, _politica.MaxIntentosFallidos, _politica.MinutosBloqueo);
+            return await FalloLoginAsync(usuario.Id, email, "CONTRASENA_INCORRECTA", "AU006", cliente, cuentaBloqueada);
+        }
 
         // Sin roles (solo por edición manual de la DB): fail-closed, sin filtrar el motivo.
         if (usuario.Roles.Count == 0) return await FalloLoginAsync(usuario.Id, email, "SIN_ROLES", "AU006", cliente);

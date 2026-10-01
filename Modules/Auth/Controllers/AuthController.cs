@@ -12,7 +12,8 @@ namespace iet_bi_portal_backend.Modules.Auth.Controllers;
 [EnableRateLimiting("auth")]
 public class AuthController(AuthService auth) : ApiControllerBase
 {
-    /// <summary>Inicia sesión. 200 con tokens; 401 (AU006) credenciales inválidas; 403 (AU014/AU015) cuenta desactivada o bloqueada.</summary>
+    /// <summary>Inicia sesión. 200 con tokens; 401 (AU006) credenciales inválidas; 403 (AU014/AU015) cuenta desactivada o bloqueada
+    /// (sin evaluar la contraseña: así el bloqueo no sirve para adivinarla).</summary>
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)

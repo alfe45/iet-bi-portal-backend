@@ -17,17 +17,17 @@ public class ProfesoresRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_registrar_profesor($1, $2, $3::text, $4::text, $5::text, $6::text, $7::text, $8::date)",
             actorId, r.IdUsuario, r.Nombre, r.PrimerApellido, r.SegundoApellido, r.Cedula, r.NumeroCelular, r.FechaNacimiento);
 
-    public async Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(ConsultaConBusqueda c)
+    public async Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(Guid actorId, ConsultaConBusqueda c)
     {
         var elementos = await db.ListarAsync(
-            $"SELECT {Columnas} FROM academico.fn_admin_listar_profesores($1::text, $2, $3)",
-            Leer, c.Busqueda, c.Pagina, c.TamanoPagina);
-        var total = await db.EscalarAsync<long>("SELECT academico.fn_admin_contar_profesores($1::text)", c.Busqueda);
+            $"SELECT {Columnas} FROM academico.fn_admin_listar_profesores($1, $2::text, $3, $4)",
+            Leer, actorId, c.Busqueda, c.Pagina, c.TamanoPagina);
+        var total = await db.EscalarAsync<long>("SELECT academico.fn_admin_contar_profesores($1, $2::text)", actorId, c.Busqueda);
         return new ResultadoPaginado<ProfesorAdmin>(elementos, c.Pagina, c.TamanoPagina, total);
     }
 
-    public Task<ProfesorAdmin?> ObtenerAsync(string cedula) =>
-        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_profesor($1::text)", Leer, cedula);
+    public Task<ProfesorAdmin?> ObtenerAsync(Guid actorId, string cedula) =>
+        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_profesor($1, $2::text)", Leer, actorId, cedula);
 
     /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON (null si no hubo cambios). Error: NF002.</summary>
     public Task<(string Estado, string? Anteriores)> ActualizarAsync(Guid actorId, string cedula, ActualizarProfesorRequest r) =>

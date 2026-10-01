@@ -73,15 +73,4 @@ public static class DbExtensions
             ? leer(reader)
             : throw new InvalidOperationException($"Respuesta vacía de: {sql}");
     }
-
-    /// <summary>Listado paginado: sqlListado recibe ($1 = página, $2 = tamaño); sqlConteo no recibe parámetros.
-    /// Son dos llamadas separadas para que el total sea correcto aunque la página esté fuera de rango.</summary>
-    public static async Task<ResultadoPaginado<T>> ListarPaginadoAsync<T>(
-        this NpgsqlDataSource db, string sqlListado, string sqlConteo,
-        Func<NpgsqlDataReader, T> leer, int pagina, int tamanoPagina)
-    {
-        var elementos = await db.ListarAsync(sqlListado, leer, pagina, tamanoPagina);
-        var total = await db.EscalarAsync<long>(sqlConteo);
-        return new ResultadoPaginado<T>(elementos, pagina, tamanoPagina, total);
-    }
 }

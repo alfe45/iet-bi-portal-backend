@@ -23,18 +23,19 @@ public class AdminPeriodosController(PeriodosService periodos) : AdminController
     /// <summary>CU15: listado paginado.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaPaginada consulta) =>
-        Ok(await periodos.ListarAsync(consulta.Pagina, consulta.TamanoPagina));
+        Ok(await periodos.ListarAsync(ActorId, consulta.Pagina, consulta.TamanoPagina));
 
     /// <summary>CU15: detalle por año. 404 (NF004) si no existe.</summary>
     [HttpGet("{anio:int}")]
     public async Task<IActionResult> Obtener(int anio)
     {
-        var periodo = await periodos.ObtenerAsync(anio);
+        var periodo = await periodos.ObtenerAsync(ActorId, anio);
         return periodo is null ? this.ApiError("NF004") : Ok(periodo);
     }
 
     /// <summary>CU16: reemplaza las fechas. 404 (NF004); 400 (PA002/PA005); 409 (PA004) semestre cerrado;
-    /// 409 (PA007) reabrir un periodo finalizado; 409 (PA008) las fechas dejan fuera lecciones, matrículas u otros registros.</summary>
+    /// 409 (PA007) reabrir un periodo finalizado; 409 (PA008) las fechas dejan fuera lecciones, matrículas u otros registros;
+    /// 409 (PA009) el inicio de un semestre que ya comenzó pasa a una fecha futura.</summary>
     [HttpPut("{anio:int}")]
     public async Task<IActionResult> Actualizar(int anio, ActualizarPeriodoRequest request)
     {

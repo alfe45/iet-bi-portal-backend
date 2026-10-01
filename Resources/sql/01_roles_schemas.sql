@@ -46,11 +46,11 @@ BEGIN
         END IF;
 
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_admin') THEN
-            CREATE ROLE svc_admin LOGIN PASSWORD '1234';
+            CREATE ROLE svc_admin LOGIN;   -- contraseña: \password svc_admin (nunca en el script)
         END IF;
 
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_api') THEN
-            CREATE ROLE svc_api LOGIN PASSWORD '1234';
+            CREATE ROLE svc_api LOGIN;     -- contraseña: \password svc_api; la API debe conectarse con este rol (DB_USER), no con postgres
         END IF;
 
         -- Herencia de permisos

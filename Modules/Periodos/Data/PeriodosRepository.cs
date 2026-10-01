@@ -17,20 +17,22 @@ public class PeriodosRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_registrar_periodo($1, $2::integer, $3::date, $4::date, $5::date, $6::date)",
             actorId, r.Anio, r.InicioSemestreI, r.FinSemestreI, r.InicioSemestreII, r.FinSemestreII);
 
-    public Task<ResultadoPaginado<PeriodoAcademico>> ListarAsync(int pagina, int tamanoPagina) =>
-        db.ListarPaginadoAsync(
-            $"SELECT {Columnas} FROM academico.fn_admin_listar_periodos($1, $2)",
-            "SELECT academico.fn_admin_contar_periodos()",
-            Leer, pagina, tamanoPagina);
+    public async Task<ResultadoPaginado<PeriodoAcademico>> ListarAsync(Guid actorId, int pagina, int tamanoPagina)
+    {
+        var elementos = await db.ListarAsync(
+            $"SELECT {Columnas} FROM academico.fn_admin_listar_periodos($1, $2, $3)", Leer, actorId, pagina, tamanoPagina);
+        var total = await db.EscalarAsync<long>("SELECT academico.fn_admin_contar_periodos($1)", actorId);
+        return new ResultadoPaginado<PeriodoAcademico>(elementos, pagina, tamanoPagina, total);
+    }
 
-    public Task<PeriodoAcademico?> ObtenerAsync(int anio) =>
-        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_periodo($1)", Leer, anio);
+    public Task<PeriodoAcademico?> ObtenerAsync(Guid actorId, int anio) =>
+        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_periodo($1, $2)", Leer, actorId, anio);
 
     /// <summary>Periodo que contiene la fecha de hoy, o null si no hay ninguno en curso.</summary>
     public Task<PeriodoAcademico?> ObtenerActualAsync() =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_periodo_actual()", Leer);
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON. Errores: NF004, PA002, PA004, PA005, PA007, PA008.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo en JSON. Errores: NF004, PA002, PA004, PA005, PA007, PA008, PA009.</summary>
     public Task<(string Estado, string? Anteriores)> ActualizarAsync(Guid actorId, int anio, ActualizarPeriodoRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +

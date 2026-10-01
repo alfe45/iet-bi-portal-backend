@@ -15,7 +15,7 @@ public class AdminProrrogasController(EvaluacionesService evaluaciones) : AdminC
     /// <summary>Listado con filtros opcionales ?anio=&amp;cedulaProfesor=.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaProrrogas consulta) =>
-        Ok(await evaluaciones.ListarProrrogasAsync(consulta));
+        Ok(await evaluaciones.ListarProrrogasAsync(ActorId, consulta));
 
     /// <summary>Otorga o cambia la prórroga. 404 (NF004/NF002); 400 (EV007) fecha no posterior al fin del semestre o pasada.</summary>
     [HttpPut(RutaProrroga)]

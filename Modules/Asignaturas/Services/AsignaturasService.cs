@@ -21,10 +21,10 @@ public class AsignaturasService(AsignaturasRepository repo, ILogsService logs)
     }
 
     /// <summary>CU27: listado paginado con filtros opcionales.</summary>
-    public Task<ResultadoPaginado<Asignatura>> ListarAsync(ConsultaAsignaturas consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<Asignatura>> ListarAsync(Guid actorId, ConsultaAsignaturas consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU27: detalle por código, o null si no existe.</summary>
-    public Task<Asignatura?> ObtenerAsync(string codigo) => repo.ObtenerAsync(codigo);
+    public Task<Asignatura?> ObtenerAsync(Guid actorId, string codigo) => repo.ObtenerAsync(actorId, codigo);
 
     /// <summary>CU28: modifica una asignatura. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
     public async Task ActualizarAsync(Guid actorId, string codigo, ActualizarAsignaturaRequest request)

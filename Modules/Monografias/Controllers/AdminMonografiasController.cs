@@ -23,11 +23,11 @@ public class AdminMonografiasController(MonografiasService monografias) : AdminC
     /// <summary>CU35: listado paginado; filtros opcionales ?anioInicio=&amp;cedulaCoordinador=&amp;codigoAsignatura=&amp;estado=.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaMonografias consulta) =>
-        Ok(await monografias.ListarAsync(consulta));
+        Ok(await monografias.ListarAsync(ActorId, consulta));
 
     /// <summary>CU35: 404 (NF003/NF013).</summary>
     [HttpGet("{cedula}")]
-    public async Task<IActionResult> Obtener(string cedula) => Ok(await monografias.ObtenerAsync(cedula));
+    public async Task<IActionResult> Obtener(string cedula) => Ok(await monografias.ObtenerAsync(ActorId, cedula));
 
     /// <summary>CU36: cambia coordinador y/o materia. 404 (NF003/NF013/NF002/NF007); 409 (MO002/MO003/MO005).</summary>
     [HttpPut("{cedula}")]

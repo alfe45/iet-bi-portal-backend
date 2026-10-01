@@ -23,10 +23,10 @@ public class EstudiantesService(EstudiantesRepository repo, ILogsService logs)
     }
 
     /// <summary>CU11: listado paginado con búsqueda opcional (nombre, apellidos, cédula o correo).</summary>
-    public Task<ResultadoPaginado<EstudianteAdmin>> ListarAsync(ConsultaConBusqueda consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<EstudianteAdmin>> ListarAsync(Guid actorId, ConsultaConBusqueda consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU11: detalle por cédula, o null si no existe.</summary>
-    public Task<EstudianteAdmin?> ObtenerAsync(string cedula) => repo.ObtenerAsync(cedula);
+    public Task<EstudianteAdmin?> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
     /// <summary>CU12: modifica un estudiante. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
     public async Task ActualizarAsync(Guid actorId, string cedula, ActualizarEstudianteRequest request)

@@ -19,7 +19,7 @@ GROUP BY u.id_usuario, u.email, u.activo, u.bloqueado_hasta;
 -- Ver los logs y usuarios relacionados
 CREATE OR REPLACE VIEW api.vw_logs AS
 SELECT 
-    l.id_log, l.id_usuario, u.email, l.accion, 
+    l.id_log, l.id_usuario, COALESCE(u.email::TEXT, l.email_usuario) AS email, l.accion, 
     l.tabla_afectada, l.id_registro_afectado,
     l.datos_anteriores, l.datos_nuevos, l.direccion_ip, l.agente_usuario,
     l.creado_en

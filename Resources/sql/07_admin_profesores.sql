@@ -31,7 +31,7 @@ LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
-    v_cedula TEXT := api.fn_limpiar(p_cedula);
+    v_cedula TEXT := api.fn_limpiar_cedula(p_cedula);
 BEGIN
     PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
 
@@ -61,11 +61,12 @@ $$;
 
 -- CU 07 - Consultar profesores
 -- Búsqueda opcional por nombre, apellidos, cédula o correo (sin mayúsculas ni acentos).
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_profesores(p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_profesores(p_id_usuario_actor UUID, p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.profesor_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT p.nombre, p.primer_apellido, p.segundo_apellido, p.cedula,
            p.numero_celular, p.fecha_nacimiento, p.id_usuario, u.email
     FROM academico.profesores p
@@ -76,27 +77,29 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_profesores(p_busqueda TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_profesores(p_id_usuario_actor UUID, p_busqueda TEXT)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*)
     FROM academico.profesores p
     JOIN api.usuarios u ON u.id_usuario = p.id_usuario
     WHERE api.fn_coincide(concat_ws(' ', p.nombre, p.primer_apellido, p.segundo_apellido, p.cedula, u.email), p_busqueda);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_profesor(p_cedula TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_profesor(p_id_usuario_actor UUID, p_cedula TEXT)
 RETURNS SETOF academico.profesor_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT p.nombre, p.primer_apellido, p.segundo_apellido, p.cedula,
            p.numero_celular, p.fecha_nacimiento, p.id_usuario, u.email
     FROM academico.profesores p
     JOIN api.usuarios u ON u.id_usuario = p.id_usuario
-    WHERE p.cedula = api.fn_limpiar(p_cedula);
+    WHERE p.cedula = api.fn_limpiar_cedula(p_cedula);
 $$;
 
 -- CU 08 - Modificar profesor. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo (auditoría).
@@ -122,7 +125,7 @@ BEGIN
 
     SELECT * INTO v_prev
     FROM academico.profesores p
-    WHERE p.cedula = api.fn_limpiar(p_cedula)
+    WHERE p.cedula = api.fn_limpiar_cedula(p_cedula)
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -175,7 +178,7 @@ BEGIN
 
     SELECT p.id_profesor, to_jsonb(p) INTO v_id, v_prev
     FROM academico.profesores p
-    WHERE p.cedula = api.fn_limpiar(p_cedula)
+    WHERE p.cedula = api.fn_limpiar_cedula(p_cedula)
     FOR UPDATE;
 
     IF NOT FOUND THEN

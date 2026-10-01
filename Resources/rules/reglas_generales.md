@@ -19,7 +19,7 @@ Entre paréntesis: el código de error que devuelve la API.
 ## Cédula (profesores y estudiantes)
 - RN-09: La cédula es el identificador de negocio; se usa en rutas y búsquedas en lugar del id interno.
 - RN-10: La cédula es inmutable: no se modifica después del registro.
-- RN-11: La cédula tiene de 5 a 20 caracteres, solo letras, dígitos y guion.
+- RN-11: La cédula tiene de 5 a 20 caracteres, solo letras, dígitos y guion. Se guarda en mayúsculas y se busca sin distinguir mayúsculas: `est-0001` y `EST-0001` son la misma persona.
 
 ## Usuarios y roles
 - RN-12: El correo del usuario es único, sin distinguir mayúsculas (TA001).
@@ -29,11 +29,12 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-17: Solo un ADMIN activo puede ejecutar acciones administrativas (AU009).
 - RN-18: Un administrador no puede desactivarse (AU010), eliminarse (AU012) ni quitarse el rol ADMIN (AU003).
 - RN-19: Siempre debe existir al menos un ADMIN activo (AU004, AU011, AU013).
+- RN-89: No se desactiva a un usuario con responsabilidades vigentes: guía de una sección o asignaciones (CAS incluido) en un periodo no finalizado, o monografías sin terminar (AU020). Es la misma regla que impide quitarle el rol (AU016-AU019): primero se reasignan (decisión del 01/10/2026).
 
 ## Sesión
 - RN-20: El primer administrador se crea una sola vez, con el token de inicialización (AU001).
-- RN-21: Tras N intentos fallidos de login (configurable) la cuenta se bloquea M minutos (AU015).
-- RN-22: Un usuario desactivado no puede iniciar sesión (AU014).
+- RN-21: Tras N intentos fallidos de login (configurable) la cuenta se bloquea M minutos (AU015). Mientras está bloqueada, el login responde AU015 sin evaluar la contraseña (si la evaluara, el bloqueo diría cuándo se acertó).
+- RN-22: Un usuario desactivado no puede iniciar sesión (AU014, sin evaluar la contraseña).
 - RN-23: Cambiar contraseña, correo o roles, desactivar el usuario o hacer logout-all cierra todas sus sesiones.
 
 ## Periodos académicos
@@ -45,6 +46,7 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-31: El ADMIN puede registrar y corregir periodos pasados y sus datos, para digitalizar información en papel; un periodo finalizado no se puede reabrir (PA007).
 - RN-32: La fecha de fin de un semestre no finalizado no puede quedar en el pasado (PA005).
 - RN-33: Un periodo con secciones no se elimina (PA006).
+- RN-90: El inicio de un semestre que ya comenzó no puede pasar a una fecha futura (PA009): sus notas, lecciones e informes quedarían en un semestre "no iniciado".
 - RN-87: Modificar las fechas de un periodo no puede dejar fuera registros ya hechos: lecciones fuera de un semestre, matrículas o retiros posteriores al fin del periodo, experiencias CAS fuera del periodo ni seguimientos de monografía anteriores a su inicio (PA008).
 
 ## Secciones
@@ -75,9 +77,9 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-57: Modificar una matrícula es trasladarla a otra sección del mismo año (con las limitaciones de RN-58) o registrar/anular su retiro. La fecha de retiro no puede ser futura, anterior a la matrícula ni posterior al fin del periodo (MA003), ni dejar fuera registros ya hechos: debe ser posterior a su última ausencia o tardía y al fin de los semestres en que ya tiene nota o informe CAS (MA009).
 - RN-59: Un profesor solo consulta los estudiantes de una sección si imparte en ella o es su guía (AD003).
 - RN-60: No se elimina un estudiante o una sección con matrículas (23001).
-- RN-65: Con el mismo acceso de RN-59, el profesor consulta la ficha de un estudiante de la sección: sus datos personales y su matrícula, incluido el motivo de retiro, que puede ver cualquier profesor con acceso a la sección (NF009 si no está matriculado en ella).
+- RN-65: Con el mismo acceso de RN-59, el profesor consulta la ficha de un estudiante de la sección: sus datos personales y su matrícula, incluido el motivo de retiro, que puede ver cualquier profesor con acceso a la sección (NF009 si no está matriculado en ella, exista o no la cédula: el profesor no puede averiguar si una cédula existe fuera de sus secciones).
 
 ## Auditoría y seguridad
-- RN-24: Toda operación que modifica datos registra una entrada en `api.logs`, sin contraseñas ni hashes.
+- RN-24: Toda operación que modifica datos registra una entrada en `api.logs`, sin contraseñas ni hashes. La operación y su auditoría se confirman juntas (si falla una, no queda ninguna). La entrada guarda el id y el correo del actor y los conserva aunque el usuario se elimine.
 - RN-34: Todo intento de login fallido se audita (`LOGIN_FALLIDO`) con el correo intentado, el motivo y si bloqueó la cuenta; al cliente se le sigue respondiendo genérico.
-- RN-52: La reutilización de un refresh token ya rotado revoca todo el acceso del usuario y se audita (SESION_REUTILIZADA).
+- RN-52: La reutilización de un refresh token ya rotado revoca todo el acceso del usuario y se audita (SESION_REUTILIZADA). Excepción: dentro de los 10 s siguientes a la rotación se responde AU007 sin revocar (dos pestañas del mismo navegador que refrescan a la vez); el reuso no obtiene sesión en ningún caso.

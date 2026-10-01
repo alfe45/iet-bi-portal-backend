@@ -63,7 +63,7 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
             datosAnteriores: anteriores.ComoJson());
     }
 
-    public Task<List<Prorroga>> ListarProrrogasAsync(ConsultaProrrogas consulta) => repo.ListarProrrogasAsync(consulta);
+    public Task<List<Prorroga>> ListarProrrogasAsync(Guid actorId, ConsultaProrrogas consulta) => repo.ListarProrrogasAsync(actorId, consulta);
 
     private static string IdAsignacion(ConsultaNotasAsignacion r) =>
         $"{r.Anio}/{r.Nivel}-{r.Numero}/{r.CodigoAsignatura.Trim().ToUpperInvariant()}/{Semestres.Normalizar(r.Semestre)}";

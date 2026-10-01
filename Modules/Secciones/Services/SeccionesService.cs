@@ -25,10 +25,10 @@ public class SeccionesService(SeccionesRepository repo, ILogsService logs)
     }
 
     /// <summary>CU19: listado paginado con filtros opcionales.</summary>
-    public Task<ResultadoPaginado<Seccion>> ListarAsync(ConsultaSecciones consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<Seccion>> ListarAsync(Guid actorId, ConsultaSecciones consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU19: detalle, o null si no existe.</summary>
-    public Task<Seccion?> ObtenerAsync(int anio, int nivel, int numero) => repo.ObtenerAsync(anio, nivel, numero);
+    public Task<Seccion?> ObtenerAsync(Guid actorId, int anio, int nivel, int numero) => repo.ObtenerAsync(actorId, anio, nivel, numero);
 
     /// <summary>CU20: elimina una sección.</summary>
     public async Task EliminarAsync(Guid actorId, int anio, int nivel, int numero)

@@ -22,13 +22,13 @@ public class AdminProfesoresController(ProfesoresService profesores) : AdminCont
     /// <summary>CU07: listado paginado; ?busqueda= por nombre, apellidos, cédula o correo.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaConBusqueda consulta) =>
-        Ok(await profesores.ListarAsync(consulta));
+        Ok(await profesores.ListarAsync(ActorId, consulta));
 
     /// <summary>CU07: detalle por cédula. 404 (NF002) si no existe.</summary>
     [HttpGet("{cedula}")]
     public async Task<IActionResult> Obtener(string cedula)
     {
-        var profesor = await profesores.ObtenerAsync(cedula);
+        var profesor = await profesores.ObtenerAsync(ActorId, cedula);
         return profesor is null ? this.ApiError("NF002") : Ok(profesor);
     }
 

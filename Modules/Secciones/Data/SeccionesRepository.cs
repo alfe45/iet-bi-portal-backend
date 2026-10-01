@@ -16,19 +16,19 @@ public class SeccionesRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_registrar_seccion($1, $2::integer, $3::integer, $4::integer)",
             actorId, r.Anio, r.Nivel, r.Numero);
 
-    public async Task<ResultadoPaginado<Seccion>> ListarAsync(ConsultaSecciones c)
+    public async Task<ResultadoPaginado<Seccion>> ListarAsync(Guid actorId, ConsultaSecciones c)
     {
         var elementos = await db.ListarAsync(
-            $"SELECT {Columnas} FROM academico.fn_admin_listar_secciones($1::integer, $2::integer, $3, $4)",
-            Leer, c.Anio, c.Nivel, c.Pagina, c.TamanoPagina);
+            $"SELECT {Columnas} FROM academico.fn_admin_listar_secciones($1, $2::integer, $3::integer, $4, $5)",
+            Leer, actorId, c.Anio, c.Nivel, c.Pagina, c.TamanoPagina);
         var total = await db.EscalarAsync<long>(
-            "SELECT academico.fn_admin_contar_secciones($1::integer, $2::integer)", c.Anio, c.Nivel);
+            "SELECT academico.fn_admin_contar_secciones($1, $2::integer, $3::integer)", actorId, c.Anio, c.Nivel);
         return new ResultadoPaginado<Seccion>(elementos, c.Pagina, c.TamanoPagina, total);
     }
 
-    public Task<Seccion?> ObtenerAsync(int anio, int nivel, int numero) =>
+    public Task<Seccion?> ObtenerAsync(Guid actorId, int anio, int nivel, int numero) =>
         db.PrimeroOpcionalAsync(
-            $"SELECT {Columnas} FROM academico.fn_admin_obtener_seccion($1, $2, $3)", Leer, anio, nivel, numero);
+            $"SELECT {Columnas} FROM academico.fn_admin_obtener_seccion($1, $2, $3, $4)", Leer, actorId, anio, nivel, numero);
 
     /// <summary>Elimina la sección y devuelve el snapshot previo en JSON. Errores: NF006, SE006, 23001.</summary>
     public Task<string> EliminarAsync(Guid actorId, int anio, int nivel, int numero) =>

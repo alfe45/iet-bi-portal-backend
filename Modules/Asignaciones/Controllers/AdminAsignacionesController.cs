@@ -24,7 +24,7 @@ public class AdminAsignacionesController(AsignacionesService asignaciones) : Adm
     /// <summary>CU31: listado paginado; filtros opcionales ?anio=&amp;nivel=&amp;numero=&amp;codigoAsignatura=&amp;cedulaProfesor=.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaAsignaciones consulta) =>
-        Ok(await asignaciones.ListarAsync(consulta));
+        Ok(await asignaciones.ListarAsync(ActorId, consulta));
 
     /// <summary>CU32: reemplaza al profesor. 404 (NF008 y partes); 409 (AD001/AD002).</summary>
     [HttpPut(RutaAsignacion + "/profesor")]

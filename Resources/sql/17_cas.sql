@@ -172,6 +172,8 @@ DECLARE
     v_nuevo JSONB;
 BEGIN
     SELECT * INTO v_ids FROM academico.fn_obtener_mi_asignacion_cas(p_id_usuario, p_anio, p_cedula_estudiante);
+    -- RP-57: un traslado o retiro simultáneo espera, o se espera a él, antes de validar EV004 (abajo, con datos frescos).
+    PERFORM 1 FROM academico.matriculas WHERE id_matricula = v_ids.id_matricula FOR SHARE;
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_ids.id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
 
@@ -244,6 +246,8 @@ DECLARE
     v_prev JSONB;
 BEGIN
     SELECT * INTO v_ids FROM academico.fn_obtener_mi_asignacion_cas(p_id_usuario, p_anio, p_cedula_estudiante);
+    -- RP-57: un traslado o retiro simultáneo espera, o se espera a él, antes de validar EV004 (abajo, con datos frescos).
+    PERFORM 1 FROM academico.matriculas WHERE id_matricula = v_ids.id_matricula FOR SHARE;
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_ids.id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
 

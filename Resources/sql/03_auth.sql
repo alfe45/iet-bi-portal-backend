@@ -36,6 +36,7 @@ CREATE TABLE api.usuario_roles (
     CONSTRAINT fk_usuario_roles_asignado_por FOREIGN KEY (asignado_por) REFERENCES api.usuarios (id_usuario) ON DELETE SET NULL
 );
 CREATE INDEX ix_usuario_roles_rol ON api.usuario_roles (rol);
+CREATE INDEX ix_usuario_roles_asignado_por ON api.usuario_roles (asignado_por);
 
 CREATE TABLE api.sesiones (
     id_sesion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,6 +63,7 @@ CREATE TABLE api.bootstrap_admin (
     CONSTRAINT ck_bootstrap_admin_unico CHECK (id_bootstrap = 1),
     CONSTRAINT fk_bootstrap_admin_usuario FOREIGN KEY (id_usuario) REFERENCES api.usuarios (id_usuario) ON DELETE SET NULL
 );
+CREATE INDEX ix_bootstrap_admin_usuario ON api.bootstrap_admin (id_usuario);
 
 -- ============================================================
 -- INSERCIÓN DE USUARIOS (interna; la usan bootstrap y CU02)
@@ -240,8 +242,11 @@ BEGIN
 END;
 $$;
 
--- out_status: 'ok' | 'invalid' (no existe / usuario inactivo) | 'expired' |
+-- out_status: 'ok' | 'invalid' (no existe / usuario inactivo / reuso dentro de la ventana de gracia) | 'expired' |
 --             'reused' (token ya rotado => robo: se revoca todo el acceso del usuario).
+-- Ventana de gracia (RN-52): si el token se rotó hace menos de 10 s, el reuso es casi siempre otra pestaña del mismo
+-- navegador que refrescó a la vez; se responde 'invalid' (no se emite sesión) sin revocar las demás. Trade-off: un
+-- ladrón que reuse el token en esos 10 s no dispara la revocación, pero tampoco obtiene sesión.
 -- En 'reused' la función NO lanza excepción: así el revocado se confirma (commit).
 CREATE OR REPLACE FUNCTION auth.fn_rotar_sesion(
     p_old_token_hash TEXT,
@@ -270,6 +275,11 @@ BEGIN
 
     -- Reutilización de un token ya rotado (posible robo): se revoca todo y se devuelve el dueño
     -- para auditarlo (sin email ni roles: no se emite sesión).
+    IF v_sesion.rotado_en IS NOT NULL AND v_sesion.rotado_en > clock_timestamp() - INTERVAL '10 seconds' THEN
+        RETURN QUERY SELECT 'invalid'::TEXT, NULL::UUID, NULL::CITEXT, NULL::api.roles[];
+        RETURN;
+    END IF;
+
     IF v_sesion.rotado_en IS NOT NULL THEN
         CALL api.sp_revocar_acceso(v_sesion.id_usuario);
         RETURN QUERY SELECT 'reused'::TEXT, v_sesion.id_usuario, NULL::CITEXT, NULL::api.roles[];

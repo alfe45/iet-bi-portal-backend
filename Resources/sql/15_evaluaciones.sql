@@ -278,11 +278,15 @@ DECLARE
     v_vistas TEXT[] := ARRAY[]::TEXT[];
     v_cambios JSONB := '[]'::jsonb;
 BEGIN
+    -- RP-57: el tipo de la asignatura (escala, AS006) y las matrículas (traslado, retiro) no cambian mientras se califica.
+    PERFORM academico.fn_bloquear_asignatura((SELECT a.id_asignatura FROM academico.asignaciones_docentes a WHERE a.id_asignacion = v_id_asignacion));
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
+    PERFORM academico.fn_bloquear_matriculas((v.periodo).id_periodo,
+        ARRAY(SELECT api.fn_limpiar_cedula(x->>'cedulaEstudiante') FROM jsonb_array_elements(COALESCE(p_notas, '[]'::jsonb)) x));
 
     FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(p_notas, '[]'::jsonb)) LOOP
-        v_cedula := api.fn_limpiar(v_item->>'cedulaEstudiante');
+        v_cedula := api.fn_limpiar_cedula(v_item->>'cedulaEstudiante');
         IF v_cedula = ANY (v_vistas) THEN
             PERFORM api.fn_lanzar_excepcion('EV005', 'Un estudiante aparece más de una vez.');
         END IF;
@@ -358,7 +362,7 @@ BEGIN
     DELETE FROM academico.envios_notas WHERE id_asignacion = v_id_asignacion AND semestre = p_semestre;
     v_envio_anulado := FOUND;
 
-    RETURN jsonb_build_object('cedulaEstudiante', api.fn_limpiar(p_cedula_estudiante), 'nota', v_prev.nota,
+    RETURN jsonb_build_object('cedulaEstudiante', api.fn_limpiar_cedula(p_cedula_estudiante), 'nota', v_prev.nota,
                               'observaciones', v_prev.observaciones, 'envioAnulado', v_envio_anulado);
 END;
 $$;
@@ -594,14 +598,15 @@ END;
 $$;
 
 -- Prórrogas, con filtros opcionales por año y profesor.
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_prorrogas(p_anio INTEGER, p_cedula_profesor TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_prorrogas(p_id_usuario_actor UUID, p_anio INTEGER, p_cedula_profesor TEXT)
 RETURNS SETOF academico.prorroga_detalle
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (d.fila).*
     FROM academico.fn_prorrogas_detalle() d
     WHERE (p_anio IS NULL OR (d.fila).anio = p_anio)
-      AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar(p_cedula_profesor))
+      AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar_cedula(p_cedula_profesor))
     ORDER BY (d.fila).anio DESC, (d.fila).semestre, (d.fila).nombre_profesor;
 $$;

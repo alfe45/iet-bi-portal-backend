@@ -22,7 +22,7 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-09: Un usuario tiene varios roles mediante la tabla `api.usuario_roles`.
 - RP-10: PROFESOR_REGULAR es el rol base; los demás se suman.
 - RP-11: El JWT lleva un claim `role` por cada rol; se usa `[Authorize(Roles = "A,B")]` (OR).
-- RP-12: Toda función SQL de administración empieza con `api.fn_validar_admin_activo`.
+- RP-12: Toda función SQL de administración empieza con `api.fn_validar_admin_activo`, también las de lectura (`fn_admin_listar_*`, `fn_admin_contar_*`, `fn_admin_obtener_*`): reciben el actor como primer parámetro.
 
 ## Errores
 - RP-13: Las funciones SQL lanzan errores con `api.fn_lanzar_excepcion(codigo, mensaje)`; nunca texto plano.
@@ -57,12 +57,14 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-50: Las funciones `LANGUAGE sql` validan las tablas al crearse: si referencian tablas de un script posterior deben ser plpgsql.
 - RP-55: Las listas que se guardan de una vez (notas de una asignación, experiencias CAS) viajan a la función SQL como JSONB (`$n::jsonb`, serializado en camelCase); las listas de cédulas, como `text[]`.
 - RP-56: Los informes (reporte de bandas, informe CAS) se devuelven como datos JSON; el PDF lo arma el front.
+- RP-57: Concurrencia: una regla que depende de otra fila se valida después de bloquearla, en las dos funciones que pueden chocar: FOR UPDATE quien la cambia (revocar rol, desactivar, trasladar, retirar, eliminar, modificar asignatura) y FOR SHARE quien depende de ella (`api.fn_bloquear_usuario` vía `fn_profesor_tiene_rol_activo`, `academico.fn_bloquear_matriculas`, `academico.fn_bloquear_asignatura`, `academico.fn_bloquear_seccion_10_anterior`). Un `IF EXISTS` sin bloqueo deja pasar dos peticiones simultáneas (campaña QA del 01/10/2026: lote 14).
+- RP-59: Las cédulas que entran a una función se limpian con `api.fn_limpiar_cedula` (trim + mayúsculas); la tabla solo admite mayúsculas (CHECK).
 - RP-49: Las secciones se referencian desde otros módulos con `academico.fn_obtener_id_seccion(año, nivel, número)` (NF006) y las asignaturas con `academico.fn_obtener_id_asignatura(código)` (NF007).
 
 ## C#
 - RP-32: Flujo fijo: Controller → Service → Repository → función SQL. El Repository solo llama funciones SQL, sin SQL de tablas.
 - RP-33: Acceso a datos común en `Common/Data/DbExtensions.cs`; no se repite código de comandos Npgsql.
-- RP-34: Paginación común en `Common/Models` (`ConsultaPaginada`, `ResultadoPaginado`); los listados usan `ListarPaginadoAsync`.
+- RP-34: Paginación común en `Common/Models` (`ConsultaPaginada`, `ResultadoPaginado`); los listados llaman a `fn_admin_listar_*` y a `fn_admin_contar_*` (dos consultas, para que el total sea correcto aunque la página esté fuera de rango).
 - RP-35: DTOs de request son `class` con propiedades settable, no `record` con atributos `[property: ...]`.
 - RP-36: Los errores de negocio conocidos se devuelven con `this.ApiError(codigo)`.
 - RP-37: El namespace refleja la carpeta.
@@ -77,5 +79,6 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-46: Cada módulo se registra con `Add<Nombre>Module` y se conecta en `Program.cs`.
 
 ## Auditoría
+- RP-58: Las peticiones que modifican datos (POST/PUT/PATCH/DELETE) corren en una transacción (`TransaccionPorPeticionFilter`): la función SQL y `ILogsService.RegistrarAsync` se confirman juntas. Se confirma si la acción no lanzó excepción, aunque responda 4xx (login fallido, refresh reutilizado).
 - RP-38: Todo servicio que muta datos llama a `ILogsService.RegistrarAsync` con una constante de `AccionesLog` (nombres en español, descritos en `log_codes.md`); nunca strings sueltos.
 - RP-39: Nunca se registra contraseña ni hash.

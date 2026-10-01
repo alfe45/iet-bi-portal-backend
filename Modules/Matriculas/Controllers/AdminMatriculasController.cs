@@ -33,13 +33,13 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
     /// &amp;estado=&amp;busqueda= (historial de un estudiante: ?cedulaEstudiante=).</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaMatriculas consulta) =>
-        Ok(await matriculas.ListarAsync(consulta));
+        Ok(await matriculas.ListarAsync(ActorId, consulta));
 
     /// <summary>CU24: detalle. 404 (NF009) si no existe.</summary>
     [HttpGet(RutaMatricula)]
     public async Task<IActionResult> Obtener(int anio, string cedula)
     {
-        var matricula = await matriculas.ObtenerAsync(anio, cedula);
+        var matricula = await matriculas.ObtenerAsync(ActorId, anio, cedula);
         return matricula is null ? this.ApiError("NF009") : Ok(matricula);
     }
 

@@ -49,7 +49,7 @@ AS $$
 DECLARE
     v_id BIGINT;
 BEGIN
-    SELECT id_profesor INTO v_id FROM academico.profesores WHERE cedula = api.fn_limpiar(p_cedula);
+    SELECT id_profesor INTO v_id FROM academico.profesores WHERE cedula = api.fn_limpiar_cedula(p_cedula);
 
     IF v_id IS NULL THEN
         PERFORM api.fn_lanzar_excepcion('NF002', 'El profesor no existe.');
@@ -153,38 +153,40 @@ END;
 $$;
 
 -- CU 31 - Consultar asignaciones. Todos los filtros son opcionales (NULL = todos).
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaciones(
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaciones(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT, p_cedula_profesor TEXT,
     p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.asignacion_docente
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (d.fila).*
     FROM academico.fn_asignaciones_detalle() d
     WHERE (p_anio IS NULL OR (d.fila).anio = p_anio)
       AND (p_nivel IS NULL OR (d.fila).nivel = p_nivel)
       AND (p_numero IS NULL OR (d.fila).numero = p_numero)
       AND (p_codigo_asignatura IS NULL OR (d.fila).codigo_asignatura = academico.fn_normalizar_codigo_asignatura(p_codigo_asignatura))
-      AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar(p_cedula_profesor))
+      AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar_cedula(p_cedula_profesor))
     ORDER BY (d.fila).anio DESC, (d.fila).nivel, (d.fila).numero, (d.fila).asignatura, (d.fila).nombre_profesor
     LIMIT api.fn_tamano_pagina(p_tamano_pagina)
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_asignaciones(
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_asignaciones(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT, p_cedula_profesor TEXT)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*)
     FROM academico.fn_asignaciones_detalle() d
     WHERE (p_anio IS NULL OR (d.fila).anio = p_anio)
       AND (p_nivel IS NULL OR (d.fila).nivel = p_nivel)
       AND (p_numero IS NULL OR (d.fila).numero = p_numero)
       AND (p_codigo_asignatura IS NULL OR (d.fila).codigo_asignatura = academico.fn_normalizar_codigo_asignatura(p_codigo_asignatura))
-      AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar(p_cedula_profesor));
+      AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar_cedula(p_cedula_profesor));
 $$;
 
 -- CU 32 - Modificar asignación: reemplazar al profesor (ej. sustitución de un docente). Se conserva

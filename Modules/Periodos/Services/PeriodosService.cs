@@ -21,11 +21,11 @@ public class PeriodosService(PeriodosRepository repo, ILogsService logs)
     }
 
     /// <summary>CU15: listado paginado (más reciente primero).</summary>
-    public Task<ResultadoPaginado<PeriodoAcademico>> ListarAsync(int pagina, int tamanoPagina) =>
-        repo.ListarAsync(pagina, tamanoPagina);
+    public Task<ResultadoPaginado<PeriodoAcademico>> ListarAsync(Guid actorId, int pagina, int tamanoPagina) =>
+        repo.ListarAsync(actorId, pagina, tamanoPagina);
 
     /// <summary>CU15: detalle por año, o null si no existe.</summary>
-    public Task<PeriodoAcademico?> ObtenerAsync(int anio) => repo.ObtenerAsync(anio);
+    public Task<PeriodoAcademico?> ObtenerAsync(Guid actorId, int anio) => repo.ObtenerAsync(actorId, anio);
 
     /// <summary>Periodo en curso (año y semestre actual), o null si hoy no cae en ningún periodo.</summary>
     public Task<PeriodoAcademico?> ObtenerActualAsync() => repo.ObtenerActualAsync();

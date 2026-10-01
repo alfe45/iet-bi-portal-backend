@@ -42,7 +42,7 @@ AS $$
 DECLARE
     v_id BIGINT;
 BEGIN
-    SELECT id_estudiante INTO v_id FROM academico.estudiantes WHERE cedula = api.fn_limpiar(p_cedula);
+    SELECT id_estudiante INTO v_id FROM academico.estudiantes WHERE cedula = api.fn_limpiar_cedula(p_cedula);
 
     IF v_id IS NULL THEN
         PERFORM api.fn_lanzar_excepcion('NF003', 'El estudiante no existe.');
@@ -68,7 +68,7 @@ LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
-    v_cedula TEXT := api.fn_limpiar(p_cedula);
+    v_cedula TEXT := api.fn_limpiar_cedula(p_cedula);
     v_email CITEXT := api.fn_limpiar(p_email::TEXT)::CITEXT;
 BEGIN
     PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
@@ -94,11 +94,12 @@ $$;
 
 -- CU 11 - Consultar estudiantes
 -- Búsqueda opcional por nombre, apellidos, cédula o correo (sin mayúsculas ni acentos).
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_estudiantes(p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_estudiantes(p_id_usuario_actor UUID, p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.estudiante_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT e.nombre, e.primer_apellido, e.segundo_apellido, e.cedula,
            e.numero_celular, e.email, e.fecha_nacimiento, e.fecha_registro
     FROM academico.estudiantes e
@@ -108,25 +109,27 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_estudiantes(p_busqueda TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_estudiantes(p_id_usuario_actor UUID, p_busqueda TEXT)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*)
     FROM academico.estudiantes e
     WHERE api.fn_coincide(concat_ws(' ', e.nombre, e.primer_apellido, e.segundo_apellido, e.cedula, e.email), p_busqueda);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_estudiante(p_cedula TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_estudiante(p_id_usuario_actor UUID, p_cedula TEXT)
 RETURNS SETOF academico.estudiante_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT e.nombre, e.primer_apellido, e.segundo_apellido, e.cedula,
            e.numero_celular, e.email, e.fecha_nacimiento, e.fecha_registro
     FROM academico.estudiantes e
-    WHERE e.cedula = api.fn_limpiar(p_cedula);
+    WHERE e.cedula = api.fn_limpiar_cedula(p_cedula);
 $$;
 
 -- CU 12 - Modificar estudiante. La fecha de nacimiento solo se revalida (ES004) si cambia; la edad se valida al matricular.
@@ -152,7 +155,7 @@ BEGIN
 
     SELECT * INTO v_prev
     FROM academico.estudiantes e
-    WHERE e.cedula = api.fn_limpiar(p_cedula)
+    WHERE e.cedula = api.fn_limpiar_cedula(p_cedula)
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -211,7 +214,7 @@ BEGIN
 
     SELECT e.id_estudiante, to_jsonb(e) INTO v_id, v_prev
     FROM academico.estudiantes e
-    WHERE e.cedula = api.fn_limpiar(p_cedula)
+    WHERE e.cedula = api.fn_limpiar_cedula(p_cedula)
     FOR UPDATE;
 
     IF NOT FOUND THEN

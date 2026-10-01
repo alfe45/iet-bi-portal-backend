@@ -21,10 +21,10 @@ public class ProfesoresService(ProfesoresRepository repo, ILogsService logs)
     }
 
     /// <summary>CU07: listado paginado con búsqueda opcional (nombre, apellidos, cédula o correo).</summary>
-    public Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(ConsultaConBusqueda consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(Guid actorId, ConsultaConBusqueda consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU07: detalle por cédula, o null si no existe.</summary>
-    public Task<ProfesorAdmin?> ObtenerAsync(string cedula) => repo.ObtenerAsync(cedula);
+    public Task<ProfesorAdmin?> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
     /// <summary>CU08: modifica un profesor. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
     public async Task ActualizarAsync(Guid actorId, string cedula, ActualizarProfesorRequest request)
