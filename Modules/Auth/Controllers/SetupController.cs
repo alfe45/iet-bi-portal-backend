@@ -1,57 +1,46 @@
 using System.Security.Cryptography;
 using System.Text;
-using iet_bi_portal_backend.Modules.Auth.Models;
-using iet_bi_portal_backend.Modules.Auth.Services;
-using iet_bi_portal_backend.Modules.Auth.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using iet_bi_portal_backend.Common.Controllers;
+using iet_bi_portal_backend.Modules.Auth.Models;
+using iet_bi_portal_backend.Modules.Auth.Services;
+using iet_bi_portal_backend.Modules.Auth.Settings;
+using iet_bi_portal_backend.Modules.Errors;
 
 namespace iet_bi_portal_backend.Modules.Auth.Controllers;
 
-[ApiController]
 [Route("api/setup")]
 [EnableRateLimiting("auth")]
-public class SetupController : ControllerBase
+public class SetupController(AuthService auth, IOptions<BootstrapOptions> bootstrap) : ApiControllerBase
 {
-    private readonly AuthService _auth;
-    private readonly BootstrapOptions _bootstrap;
+    private readonly BootstrapOptions _bootstrap = bootstrap.Value;
 
-    public SetupController(AuthService auth, IOptions<BootstrapOptions> bootstrap)
-    {
-        _auth = auth;
-        _bootstrap = bootstrap.Value;
-    }
-
+    /// <summary>Crea el primer administrador (una sola vez). 201; 403 (AU009) token inválido;
+    /// 409 (AU001) ya existe; 409 (TA001) correo en uso.</summary>
     [AllowAnonymous]
-    [HttpPost("first-admin")]
-    public async Task<IActionResult> CreateFirstAdmin(
-        BootstrapAdminRequest request,
+    [HttpPost("primer-admin")]
+    public async Task<IActionResult> CrearPrimerAdmin(
+        PrimerAdminRequest request,
         [FromHeader(Name = "X-Bootstrap-Token")] string? bootstrapToken)
     {
-        if (!IsAuthorized(bootstrapToken))
-            return StatusCode(StatusCodes.Status403Forbidden, new { codigo = "BOOTSTRAP_UNAUTHORIZED", mensaje = "No autorizado." });
+        if (!EsAutorizado(bootstrapToken))
+            return this.ApiError("AU009");
 
-        // Si ya existe el admin inicial o el correo está en uso, la excepción
-        // sube desde la DB (AP004/AP005) y GlobalExceptionHandler la traduce.
-        var userId = await _auth.BootstrapAdminAsync(request.Email, request.Password);
-
-        return StatusCode(StatusCodes.Status201Created, new
-        {
-            id = userId,
-            email = request.Email.Trim().ToLowerInvariant()
-        });
+        var (id, email) = await auth.CrearPrimerAdminAsync(request.Email, request.Contrasena);
+        return StatusCode(StatusCodes.Status201Created, new { id, email });
     }
 
-    private bool IsAuthorized(string? providedToken)
+    private bool EsAutorizado(string? tokenRecibido)
     {
-        if (string.IsNullOrEmpty(_bootstrap.Secret) || string.IsNullOrEmpty(providedToken))
+        if (string.IsNullOrEmpty(_bootstrap.Secret) || string.IsNullOrEmpty(tokenRecibido))
             return false;
 
-        var expected = Encoding.UTF8.GetBytes(_bootstrap.Secret);
-        var provided = Encoding.UTF8.GetBytes(providedToken);
+        var esperado = Encoding.UTF8.GetBytes(_bootstrap.Secret);
+        var recibido = Encoding.UTF8.GetBytes(tokenRecibido);
 
-        return expected.Length == provided.Length && CryptographicOperations.FixedTimeEquals(expected, provided);
+        return esperado.Length == recibido.Length && CryptographicOperations.FixedTimeEquals(esperado, recibido);
     }
 }
