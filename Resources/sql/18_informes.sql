@@ -36,18 +36,20 @@ SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_id_seccion BIGINT := academico.fn_validar_guia_seccion(p_id_usuario, p_anio, p_nivel, p_numero);
-    v_cedula TEXT := api.fn_limpiar(p_cedula_estudiante);
+    v_cedula TEXT := api.fn_limpiar_cedula(p_cedula_estudiante);
+    v_id_matricula BIGINT;
 BEGIN
-    IF v_cedula IS NOT NULL AND NOT EXISTS (
-        SELECT 1 FROM academico.fn_matriculas_del_semestre(v_id_seccion, p_semestre) ms
-        JOIN academico.estudiantes e ON e.id_estudiante = ms.id_estudiante
-        WHERE e.cedula = v_cedula
-    ) THEN
+    SELECT ms.id_matricula INTO v_id_matricula
+    FROM academico.fn_matriculas_del_semestre(v_id_seccion, p_semestre) ms
+    JOIN academico.estudiantes e ON e.id_estudiante = ms.id_estudiante
+    WHERE e.cedula = v_cedula;
+
+    IF v_cedula IS NOT NULL AND v_id_matricula IS NULL THEN
         PERFORM api.fn_lanzar_excepcion('NF009', 'El estudiante no está matriculado en la sección ese semestre.');
     END IF;
 
     RETURN QUERY
-    WITH conteo AS (SELECT * FROM academico.fn_conteo_ausentismo(v_id_seccion, NULL, p_semestre))
+    WITH conteo AS (SELECT * FROM academico.fn_conteo_ausentismo(v_id_seccion, NULL, p_semestre, v_id_matricula))
     SELECT (d.fila).cedula_estudiante, (d.fila).nombre_estudiante,
            asg.codigo, asg.nombre::TEXT, asg.tipo, (ad.fila).nombre_profesor,
            academico.fn_nota_minima(asg.tipo)::VARCHAR(3),

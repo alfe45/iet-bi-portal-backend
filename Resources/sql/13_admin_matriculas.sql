@@ -103,6 +103,23 @@ AS $$
     );
 $$;
 
+-- RP-57: bloquea (FOR SHARE) las matrículas del periodo de los estudiantes indicados, antes de validar que estén en
+-- la sección a una fecha (lecciones, notas, informes CAS). Traslado, retiro y eliminación las bloquean FOR UPDATE: si
+-- ocurren a la vez, una operación espera a la otra y valida contra el estado ya confirmado (MA008, MA009, LE003, EV004).
+CREATE OR REPLACE FUNCTION academico.fn_bloquear_matriculas(p_id_periodo BIGINT, p_cedulas TEXT[])
+RETURNS VOID
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    PERFORM 1 FROM academico.matriculas m
+    JOIN academico.estudiantes e ON e.id_estudiante = m.id_estudiante
+    WHERE m.id_periodo = p_id_periodo AND e.cedula = ANY (p_cedulas)
+    ORDER BY m.id_matricula
+    FOR SHARE OF m;
+END;
+$$;
+
 -- MA007 si la matrícula de nivel 10 ya tiene continuidad en nivel 11 (no se retira ni se elimina).
 CREATE OR REPLACE FUNCTION academico.fn_validar_sin_continuidad(p_id_matricula BIGINT)
 RETURNS VOID
@@ -187,7 +204,8 @@ BEGIN
     WHERE s.id_seccion = v_id_seccion;
 
     v_estudiante.id_estudiante := academico.fn_obtener_id_estudiante(p_cedula_estudiante);
-    SELECT * INTO v_estudiante FROM academico.estudiantes WHERE id_estudiante = v_estudiante.id_estudiante;
+    -- RP-57: una matrícula a la vez por estudiante (MA001/MA005 entre periodos distintos).
+    SELECT * INTO v_estudiante FROM academico.estudiantes WHERE id_estudiante = v_estudiante.id_estudiante FOR UPDATE;
 
     IF EXISTS (SELECT 1 FROM academico.matriculas
                WHERE id_estudiante = v_estudiante.id_estudiante AND id_periodo = v_periodo.id_periodo) THEN
@@ -203,15 +221,19 @@ BEGIN
     IF p_nivel = 10 THEN
         -- RN-01: la edad se valida al ingresar al programa (nivel 10), a la fecha de inicio del periodo.
         PERFORM academico.fn_validar_edad_estudiante(v_estudiante.fecha_nacimiento, v_periodo.inicio_semestre_i);
-    ELSIF NOT EXISTS (
-        -- MA004: nivel 11 exige nivel 10 del año anterior, mismo número de sección y sin retiro.
-        SELECT 1
+    ELSE
+        -- MA004: nivel 11 exige nivel 10 del año anterior, mismo número de sección y sin retiro. FOR SHARE (RP-57): si a
+        -- la vez se elimina o se retira esa matrícula de nivel 10, la condición se reevalúa sobre la fila confirmada.
+        PERFORM 1
         FROM academico.matriculas m
         JOIN academico.secciones s ON s.id_seccion = m.id_seccion
         JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
         WHERE m.id_estudiante = v_estudiante.id_estudiante
           AND s.nivel = 10 AND s.numero = p_numero AND p.anio = p_anio - 1 AND m.fecha_retiro IS NULL
-    ) THEN
+        FOR SHARE OF m;
+    END IF;
+
+    IF p_nivel = 11 AND NOT FOUND THEN
         PERFORM api.fn_lanzar_excepcion('MA004', 'Para matricular en nivel 11 el estudiante debe haber cursado nivel 10 el año anterior en la sección con el mismo número.');
     END IF;
 
@@ -255,6 +277,10 @@ BEGIN
 
     v_id_seccion_10 := academico.fn_obtener_id_seccion(p_anio - 1, 10, p_numero);
     v_fecha := academico.fn_validar_fecha_matricula(v_periodo, p_fecha_matricula);
+
+    -- RP-57: la 10-N y sus matrículas no cambian mientras se suben (eliminar la 10-N, retiros, eliminaciones).
+    PERFORM academico.fn_bloquear_seccion_10_anterior(p_anio, p_numero);
+    PERFORM 1 FROM academico.matriculas WHERE id_seccion = v_id_seccion_10 ORDER BY id_matricula FOR SHARE;
 
     SELECT s.id_seccion INTO v_id_seccion_11
     FROM academico.secciones s
@@ -305,18 +331,19 @@ AS $$
     WHERE (p_anio IS NULL OR (d.fila).anio = p_anio)
       AND (p_nivel IS NULL OR (d.fila).nivel = p_nivel)
       AND (p_numero IS NULL OR (d.fila).numero = p_numero)
-      AND (p_cedula_estudiante IS NULL OR (d.fila).cedula_estudiante = api.fn_limpiar(p_cedula_estudiante))
+      AND (p_cedula_estudiante IS NULL OR (d.fila).cedula_estudiante = api.fn_limpiar_cedula(p_cedula_estudiante))
       AND (p_estado IS NULL OR (d.fila).estado = p_estado)
       AND api.fn_coincide(d.apellidos_nombre || ' ' || (d.fila).cedula_estudiante, p_busqueda);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_matriculas(
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_matriculas(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_cedula_estudiante TEXT,
     p_estado academico.estado_matricula, p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.matricula_detalle
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (f.fila).*
     FROM academico.fn_matriculas_filtradas(p_anio, p_nivel, p_numero, p_cedula_estudiante, p_estado, p_busqueda) f
     ORDER BY (f.fila).anio DESC, (f.fila).nivel, (f.fila).numero, f.apellidos_nombre
@@ -324,22 +351,24 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_matriculas(
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_matriculas(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_cedula_estudiante TEXT,
     p_estado academico.estado_matricula, p_busqueda TEXT)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*)
     FROM academico.fn_matriculas_filtradas(p_anio, p_nivel, p_numero, p_cedula_estudiante, p_estado, p_busqueda);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_matricula(p_anio INTEGER, p_cedula_estudiante TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_matricula(p_id_usuario_actor UUID, p_anio INTEGER, p_cedula_estudiante TEXT)
 RETURNS SETOF academico.matricula_detalle
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (f.fila).*
     FROM academico.fn_matriculas_filtradas(p_anio, NULL, NULL, p_cedula_estudiante, NULL, NULL) f;
 $$;
@@ -539,8 +568,8 @@ END;
 $$;
 
 -- Profesor Regular CU05 - Ficha de un estudiante de una sección (RN-65): datos personales y su matrícula
--- en esa sección, incluido el motivo de retiro. Mismo acceso que CU04 (AD003); NF003 si el estudiante no
--- existe y NF009 si no está matriculado en la sección.
+-- en esa sección, incluido el motivo de retiro. Mismo acceso que CU04 (AD003); NF009 si el estudiante no está
+-- matriculado en la sección, exista o no (no se revela si una cédula existe fuera de las secciones del profesor).
 CREATE TYPE academico.ficha_estudiante AS (
     cedula VARCHAR(20),
     nombre VARCHAR(100),
@@ -569,7 +598,7 @@ DECLARE
     v_ficha academico.ficha_estudiante;
 BEGIN
     PERFORM academico.fn_validar_acceso_seccion(p_id_usuario, v_id_seccion);
-    v_id_estudiante := academico.fn_obtener_id_estudiante(p_cedula_estudiante);
+    SELECT id_estudiante INTO v_id_estudiante FROM academico.estudiantes WHERE cedula = api.fn_limpiar_cedula(p_cedula_estudiante);
 
     SELECT e.cedula, e.nombre, e.primer_apellido, e.segundo_apellido, e.numero_celular, e.email, e.fecha_nacimiento,
            (d.fila).anio, (d.fila).seccion, (d.fila).fecha_matricula, (d.fila).estado,

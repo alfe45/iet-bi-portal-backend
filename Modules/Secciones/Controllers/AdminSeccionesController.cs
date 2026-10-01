@@ -24,13 +24,13 @@ public class AdminSeccionesController(SeccionesService secciones) : AdminControl
     /// <summary>CU19: listado paginado; filtros opcionales ?anio=2026&amp;nivel=10.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaSecciones consulta) =>
-        Ok(await secciones.ListarAsync(consulta));
+        Ok(await secciones.ListarAsync(ActorId, consulta));
 
     /// <summary>CU19: detalle. 404 (NF006) si no existe.</summary>
     [HttpGet(RutaSeccion)]
     public async Task<IActionResult> Obtener(int anio, int nivel, int numero)
     {
-        var seccion = await secciones.ObtenerAsync(anio, nivel, numero);
+        var seccion = await secciones.ObtenerAsync(ActorId, anio, nivel, numero);
         return seccion is null ? this.ApiError("NF006") : Ok(seccion);
     }
 

@@ -21,9 +21,9 @@ public class MonografiasService(MonografiasRepository repo, ILogsService logs)
     }
 
     /// <summary>Administrador CU35.</summary>
-    public Task<ResultadoPaginado<Monografia>> ListarAsync(ConsultaMonografias consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<Monografia>> ListarAsync(Guid actorId, ConsultaMonografias consulta) => repo.ListarAsync(actorId, consulta);
 
-    public Task<Monografia> ObtenerAsync(string cedula) => repo.ObtenerAsync(cedula);
+    public Task<Monografia> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
     /// <summary>Administrador CU36. Registra log solo si hubo cambios.</summary>
     public async Task ModificarAsync(Guid actorId, string cedula, ModificarMonografiaRequest request)

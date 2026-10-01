@@ -86,13 +86,13 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_quitar_prorroga($1, $2, $3::academico.numero_semestre, $4::text)::text",
             actorId, anio, Semestres.Normalizar(semestre), cedula);
 
-    public Task<List<Prorroga>> ListarProrrogasAsync(ConsultaProrrogas c) =>
+    public Task<List<Prorroga>> ListarProrrogasAsync(Guid actorId, ConsultaProrrogas c) =>
         db.ListarAsync(
             "SELECT anio, semestre::text, cedula_profesor, nombre_profesor, fin_semestre, fecha_limite " +
-            "FROM academico.fn_admin_listar_prorrogas($1::integer, $2::text)",
+            "FROM academico.fn_admin_listar_prorrogas($1, $2::integer, $3::text)",
             r => new Prorroga(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3),
                 r.GetFieldValue<DateOnly>(4), r.GetFieldValue<DateOnly>(5)),
-            c.Anio, c.CedulaProfesor);
+            actorId, c.Anio, c.CedulaProfesor);
 
     private static string? Texto(NpgsqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
 }

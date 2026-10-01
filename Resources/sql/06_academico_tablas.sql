@@ -27,7 +27,7 @@ CREATE TABLE academico.profesores (
     CONSTRAINT uq_profesores_cedula UNIQUE (cedula),
     CONSTRAINT ck_profesores_nombre CHECK (length(trim(nombre)) >= 2),
     CONSTRAINT ck_profesores_primer_apellido CHECK (length(trim(primer_apellido)) >= 2),
-    CONSTRAINT ck_profesores_cedula CHECK (cedula ~ '^[A-Za-z0-9-]{5,20}$'),
+    CONSTRAINT ck_profesores_cedula CHECK (cedula ~ '^[A-Z0-9-]{5,20}$'),   -- en mayúsculas (api.fn_limpiar_cedula)
     CONSTRAINT ck_profesores_fecha_nacimiento CHECK (fecha_nacimiento >= DATE '1900-01-01')   -- "no futura": api.fn_validar_fecha_nacimiento (PR005)
 );
 
@@ -47,7 +47,7 @@ CREATE TABLE academico.estudiantes (
     CONSTRAINT uq_estudiantes_email UNIQUE (email),
     CONSTRAINT ck_estudiantes_nombre CHECK (length(trim(nombre)) >= 2),
     CONSTRAINT ck_estudiantes_primer_apellido CHECK (length(trim(primer_apellido)) >= 2),
-    CONSTRAINT ck_estudiantes_cedula CHECK (cedula ~ '^[A-Za-z0-9-]{5,20}$'),
+    CONSTRAINT ck_estudiantes_cedula CHECK (cedula ~ '^[A-Z0-9-]{5,20}$'),   -- en mayúsculas (api.fn_limpiar_cedula)
     CONSTRAINT ck_estudiantes_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
@@ -150,6 +150,7 @@ CREATE TABLE academico.matriculas (
     CONSTRAINT ck_matriculas_motivo_sin_retiro CHECK (fecha_retiro IS NOT NULL OR motivo_retiro IS NULL)
 );
 CREATE INDEX ix_matriculas_seccion ON academico.matriculas(id_seccion);
+CREATE INDEX ix_matriculas_seccion_periodo ON academico.matriculas(id_seccion, id_periodo);   -- FK compuesta
 
 -- LECCIONES: clase que el profesor de una asignación registra cuando la imparte (no depende de un horario).
 -- Se identifica por id_leccion (RP-53): la fecha y la hora se pueden corregir. Reglas que dependen de la
@@ -227,6 +228,7 @@ CREATE TABLE academico.prorrogas (
     CONSTRAINT fk_prorrogas_profesor FOREIGN KEY (id_profesor) REFERENCES academico.profesores(id_profesor) ON DELETE CASCADE,
     CONSTRAINT fk_prorrogas_periodo FOREIGN KEY (id_periodo) REFERENCES academico.periodos_academicos(id_periodo) ON DELETE CASCADE
 );
+CREATE INDEX ix_prorrogas_periodo ON academico.prorrogas(id_periodo);
 
 -- MONOGRAFÍAS: una por estudiante; empieza con su matrícula de nivel 10 y sigue en su nivel 11 (RN-78). Un
 -- coordinador la tutela en una materia SUPERIOR o MEDIO. Se opera por la cédula del estudiante.
@@ -246,6 +248,8 @@ CREATE TABLE academico.monografias (
     CONSTRAINT uq_monografias_estudiante UNIQUE (id_estudiante)
 );
 CREATE INDEX ix_monografias_coordinador ON academico.monografias(id_coordinador);
+CREATE INDEX ix_monografias_asignatura ON academico.monografias(id_asignatura);
+CREATE INDEX ix_monografias_matricula_inicio ON academico.monografias(id_matricula_inicio);
 
 -- SEGUIMIENTO DE MONOGRAFÍAS: observaciones fechadas del coordinador (RN-80). Se identifican por id.
 CREATE TABLE academico.seguimientos_monografia (
@@ -273,6 +277,7 @@ CREATE TABLE academico.reportes_monografia (
     CONSTRAINT fk_reportes_monografia_periodo FOREIGN KEY (id_periodo) REFERENCES academico.periodos_academicos(id_periodo) ON DELETE RESTRICT,
     CONSTRAINT ck_reportes_monografia_observaciones CHECK (length(trim(observaciones)) >= 3)
 );
+CREATE INDEX ix_reportes_monografia_periodo ON academico.reportes_monografia(id_periodo);
 
 -- INFORMES CAS: informe semestral del profesor CAS por estudiante (RN-83). Comparte la clave de la nota
 -- (asignación CAS, matrícula, semestre): así el informe "apunta" a la nota CAS del estudiante.

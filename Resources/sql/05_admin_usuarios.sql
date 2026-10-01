@@ -73,6 +73,16 @@ AS $$
     WHERE u.id_usuario = p_id_usuario;
 $$;
 
+-- CU 03 (administrador): el mismo detalle, validando que el actor sea ADMIN (RP-12).
+CREATE OR REPLACE FUNCTION auth.fn_admin_obtener_usuario(p_id_usuario_actor UUID, p_id_usuario UUID)
+RETURNS SETOF api.usuario_admin
+LANGUAGE sql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);
+    SELECT * FROM auth.fn_obtener_usuario_detalle(p_id_usuario);
+$$;
+
 -- Filtros opcionales: p_busqueda (correo, cédula o nombre del perfil de profesor) y p_rol.
 CREATE OR REPLACE FUNCTION auth.fn_usuarios_filtrados(p_busqueda TEXT, p_rol api.roles)
 RETURNS SETOF api.usuarios
@@ -89,12 +99,13 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION auth.fn_admin_listar_usuarios(
+CREATE OR REPLACE FUNCTION auth.fn_admin_listar_usuarios(p_id_usuario_actor UUID, 
     p_busqueda TEXT, p_rol api.roles, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF api.usuario_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (auth.fn_a_usuario_admin(u)).*
     FROM auth.fn_usuarios_filtrados(p_busqueda, p_rol) u
     ORDER BY u.creado_en DESC, u.id_usuario
@@ -102,11 +113,12 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION auth.fn_admin_contar_usuarios(p_busqueda TEXT, p_rol api.roles)
+CREATE OR REPLACE FUNCTION auth.fn_admin_contar_usuarios(p_id_usuario_actor UUID, p_busqueda TEXT, p_rol api.roles)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*) FROM auth.fn_usuarios_filtrados(p_busqueda, p_rol);
 $$;
 
@@ -172,7 +184,51 @@ END;
 $$;
 
 -- ============================================================
--- CU 04 - Activar / desactivar
+-- TRUE si el usuario tiene responsabilidades vigentes que dependen del rol (RN-40, RN-49, RN-82, RN-78): guía de una
+-- sección o asignaciones (CAS incluido) en un periodo no finalizado, o monografías sin terminar. La usan revocar rol
+-- (AU016-AU019) y desactivar (AU020). plpgsql: las tablas de academico se crean en 06 (RP-50).
+-- ============================================================
+CREATE OR REPLACE FUNCTION auth.fn_rol_en_uso(p_id_usuario UUID, p_rol api.roles)
+RETURNS BOOLEAN
+LANGUAGE plpgsql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    RETURN CASE p_rol
+        WHEN 'GUIA' THEN EXISTS (
+            SELECT 1
+            FROM academico.secciones s
+            JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
+            JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+            WHERE pr.id_usuario = p_id_usuario AND academico.fn_estado_periodo(p) <> 'FINALIZADO')
+        WHEN 'PROFESOR_REGULAR' THEN EXISTS (
+            SELECT 1
+            FROM academico.asignaciones_docentes a
+            JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
+            JOIN academico.secciones s ON s.id_seccion = a.id_seccion
+            JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+            WHERE pr.id_usuario = p_id_usuario AND academico.fn_estado_periodo(p) <> 'FINALIZADO')
+        WHEN 'PROFESOR_CAS' THEN EXISTS (
+            SELECT 1
+            FROM academico.asignaciones_docentes a
+            JOIN academico.asignaturas asg ON asg.id_asignatura = a.id_asignatura
+            JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
+            JOIN academico.secciones s ON s.id_seccion = a.id_seccion
+            JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+            WHERE pr.id_usuario = p_id_usuario AND asg.codigo = 'CAS' AND academico.fn_estado_periodo(p) <> 'FINALIZADO')
+        WHEN 'COORD_MONOGRAFIA' THEN EXISTS (
+            SELECT 1
+            FROM academico.monografias mo
+            JOIN academico.profesores pr ON pr.id_profesor = mo.id_coordinador
+            WHERE pr.id_usuario = p_id_usuario AND mo.estado <> 'TERMINADA')
+        ELSE FALSE
+    END;
+END;
+$$;
+
+-- ============================================================
+-- CU 04 - Activar / desactivar. AU020: no se desactiva a quien tiene responsabilidades vigentes (decisión del
+-- 01/10/2026, misma regla que AU016-AU019): primero se reasignan.
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_cambiar_estado_usuario(
     p_id_usuario_actor UUID,
@@ -190,7 +246,8 @@ BEGIN
 
     SELECT u.activo INTO v_activo_actual
     FROM api.usuarios u
-    WHERE u.id_usuario = p_id_usuario_objetivo;
+    WHERE u.id_usuario = p_id_usuario_objetivo
+    FOR UPDATE;   -- RP-57: serializa con asignaciones que exigen usuario activo
 
     IF NOT FOUND THEN
         PERFORM api.fn_lanzar_excepcion('NF001', 'El usuario no existe.');
@@ -206,6 +263,10 @@ BEGIN
         END IF;
         PERFORM api.fn_validar_no_ultimo_admin(p_id_usuario_objetivo, 'AU011',
             'No se puede desactivar al último administrador activo del sistema.');
+        IF auth.fn_rol_en_uso(p_id_usuario_objetivo, 'GUIA') OR auth.fn_rol_en_uso(p_id_usuario_objetivo, 'PROFESOR_REGULAR')
+           OR auth.fn_rol_en_uso(p_id_usuario_objetivo, 'PROFESOR_CAS') OR auth.fn_rol_en_uso(p_id_usuario_objetivo, 'COORD_MONOGRAFIA') THEN
+            PERFORM api.fn_lanzar_excepcion('AU020', 'El usuario tiene secciones, asignaciones o monografías vigentes.');
+        END IF;
     END IF;
 
     UPDATE api.usuarios SET activo = p_activo WHERE id_usuario = p_id_usuario_objetivo;
@@ -266,6 +327,9 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF001', 'El usuario no existe.');
     END IF;
 
+    -- RP-57: serializa con quien asigna algo que exige este rol (fn_profesor_tiene_rol_activo toma FOR SHARE).
+    PERFORM api.fn_bloquear_usuario(p_id_usuario_objetivo, TRUE);
+
     IF NOT EXISTS (SELECT 1 FROM api.usuario_roles WHERE id_usuario = p_id_usuario_objetivo AND rol = p_rol) THEN
         RETURN 'SIN_CAMBIOS';
     END IF;
@@ -282,52 +346,17 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('AU005', 'No se puede quitar el único rol que tiene el usuario.');
     END IF;
 
-    -- El front activa los módulos según los roles: un guía de un periodo no finalizado debe conservar GUIA.
-    IF p_rol = 'GUIA' AND EXISTS (
-        SELECT 1
-        FROM academico.secciones s
-        JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
-        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
-        WHERE pr.id_usuario = p_id_usuario_objetivo
-          AND academico.fn_estado_periodo(p) <> 'FINALIZADO'
-    ) THEN
+    -- El front activa los módulos según los roles: quien tiene responsabilidades vigentes conserva el rol que exigen.
+    IF p_rol = 'GUIA' AND auth.fn_rol_en_uso(p_id_usuario_objetivo, p_rol) THEN
         PERFORM api.fn_lanzar_excepcion('AU016', 'El usuario es guía de una sección en un periodo no finalizado.');
     END IF;
-
-    -- Igual para PROFESOR_REGULAR: un profesor con asignaciones en un periodo no finalizado lo conserva.
-    IF p_rol = 'PROFESOR_REGULAR' AND EXISTS (
-        SELECT 1
-        FROM academico.asignaciones_docentes a
-        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
-        JOIN academico.secciones s ON s.id_seccion = a.id_seccion
-        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
-        WHERE pr.id_usuario = p_id_usuario_objetivo
-          AND academico.fn_estado_periodo(p) <> 'FINALIZADO'
-    ) THEN
+    IF p_rol = 'PROFESOR_REGULAR' AND auth.fn_rol_en_uso(p_id_usuario_objetivo, p_rol) THEN
         PERFORM api.fn_lanzar_excepcion('AU017', 'El usuario tiene asignaciones docentes en un periodo no finalizado.');
     END IF;
-
-    -- PROFESOR_CAS: un profesor que imparte CAS en un periodo no finalizado lo conserva (RN-82).
-    IF p_rol = 'PROFESOR_CAS' AND EXISTS (
-        SELECT 1
-        FROM academico.asignaciones_docentes a
-        JOIN academico.asignaturas asg ON asg.id_asignatura = a.id_asignatura
-        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
-        JOIN academico.secciones s ON s.id_seccion = a.id_seccion
-        JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
-        WHERE pr.id_usuario = p_id_usuario_objetivo AND asg.codigo = 'CAS'
-          AND academico.fn_estado_periodo(p) <> 'FINALIZADO'
-    ) THEN
+    IF p_rol = 'PROFESOR_CAS' AND auth.fn_rol_en_uso(p_id_usuario_objetivo, p_rol) THEN
         PERFORM api.fn_lanzar_excepcion('AU018', 'El usuario imparte CAS en un periodo no finalizado.');
     END IF;
-
-    -- COORD_MONOGRAFIA: un coordinador con monografías sin terminar lo conserva (RN-78).
-    IF p_rol = 'COORD_MONOGRAFIA' AND EXISTS (
-        SELECT 1
-        FROM academico.monografias mo
-        JOIN academico.profesores pr ON pr.id_profesor = mo.id_coordinador
-        WHERE pr.id_usuario = p_id_usuario_objetivo AND mo.estado <> 'TERMINADA'
-    ) THEN
+    IF p_rol = 'COORD_MONOGRAFIA' AND auth.fn_rol_en_uso(p_id_usuario_objetivo, p_rol) THEN
         PERFORM api.fn_lanzar_excepcion('AU019', 'El usuario coordina monografías sin terminar.');
     END IF;
 

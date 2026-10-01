@@ -17,7 +17,7 @@ public class ProfesorMatriculasController(MatriculasService matriculas) : ApiCon
         Ok(await matriculas.ListarEstudiantesSeccionAsync(ActorId, anio, nivel, numero));
 
     /// <summary>CU05: ficha del estudiante (datos personales y matrícula, incluido el motivo de retiro, RN-65).
-    /// 404 (NF006/NF003); 404 (NF009) si no está matriculado en la sección; 403 (AD003).</summary>
+    /// 404 (NF006); 404 (NF009) si no está matriculado en la sección, exista o no la cédula; 403 (AD003).</summary>
     [HttpGet("{anio:int}/{nivel:int}/{numero:int}/estudiantes/{cedula}")]
     public async Task<IActionResult> ObtenerEstudiante(int anio, int nivel, int numero, string cedula) =>
         Ok(await matriculas.ObtenerEstudianteSeccionAsync(ActorId, anio, nivel, numero, cedula));

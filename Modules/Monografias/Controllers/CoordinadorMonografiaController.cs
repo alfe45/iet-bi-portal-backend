@@ -22,7 +22,7 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
     [HttpGet("{cedula}")]
     public async Task<IActionResult> Obtener(string cedula) => Ok(await monografias.ObtenerMiaAsync(ActorId, cedula));
 
-    /// <summary>CU02: cambia el estado (RN-79). 404 (NF003/NF013); 403 (AD006).</summary>
+    /// <summary>CU02: cambia el estado (RN-79). 404 (NF003/NF013); 403 (AD006); 409 (MO007) una monografía TERMINADA no cambia.</summary>
     [HttpPut("{cedula}/estado")]
     public async Task<IActionResult> CambiarEstado(string cedula, CambiarEstadoMonografiaRequest request)
     {

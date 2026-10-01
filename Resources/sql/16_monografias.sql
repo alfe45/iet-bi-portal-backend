@@ -138,6 +138,11 @@ AS $$
 DECLARE
     v_periodo academico.periodos_academicos%ROWTYPE;
 BEGIN
+    -- RP-57: el tipo de la materia (AS006) y el cupo del coordinador (MO003) no cambian mientras se valida: dos altas
+    -- simultáneas para el mismo coordinador se serializan en la fila del profesor.
+    PERFORM academico.fn_bloquear_asignatura(p_id_asignatura);
+    PERFORM 1 FROM academico.profesores WHERE id_profesor = p_id_coordinador FOR UPDATE;
+
     IF NOT EXISTS (SELECT 1 FROM academico.asignaturas WHERE id_asignatura = p_id_asignatura AND tipo IN ('SUPERIOR', 'MEDIO')) THEN
         PERFORM api.fn_lanzar_excepcion('MO002', 'La materia de la monografía debe ser una asignatura SUPERIOR o MEDIO.');
     END IF;
@@ -286,7 +291,7 @@ BEGIN
     PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
 
     v_id_matricula := academico.fn_obtener_id_matricula(p_anio, p_cedula_estudiante);
-    SELECT * INTO v_matricula FROM academico.matriculas WHERE id_matricula = v_id_matricula;
+    SELECT * INTO v_matricula FROM academico.matriculas WHERE id_matricula = v_id_matricula FOR SHARE;   -- RP-57 (MO004)
 
     IF v_matricula.fecha_retiro IS NOT NULL
        OR (SELECT nivel FROM academico.secciones WHERE id_seccion = v_matricula.id_seccion) <> 10 THEN
@@ -318,34 +323,36 @@ AS $$
     SELECT d.apellidos_nombre, d.fila
     FROM academico.fn_monografias_detalle() d
     WHERE (p_anio_inicio IS NULL OR (d.fila).anio_inicio = p_anio_inicio)
-      AND (p_cedula_coordinador IS NULL OR (d.fila).cedula_coordinador = api.fn_limpiar(p_cedula_coordinador))
+      AND (p_cedula_coordinador IS NULL OR (d.fila).cedula_coordinador = api.fn_limpiar_cedula(p_cedula_coordinador))
       AND (p_codigo_asignatura IS NULL OR (d.fila).codigo_asignatura = academico.fn_normalizar_codigo_asignatura(p_codigo_asignatura))
       AND (p_estado IS NULL OR (d.fila).estado = p_estado);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_monografias(
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_monografias(p_id_usuario_actor UUID, 
     p_anio_inicio INTEGER, p_cedula_coordinador TEXT, p_codigo_asignatura TEXT, p_estado academico.estado_monografia,
     p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.monografia_detalle
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (f.fila).*
     FROM academico.fn_monografias_filtradas(p_anio_inicio, p_cedula_coordinador, p_codigo_asignatura, p_estado) f
     ORDER BY (f.fila).anio_inicio DESC, f.apellidos_nombre
     LIMIT api.fn_tamano_pagina(p_tamano_pagina) OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_monografias(
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_monografias(p_id_usuario_actor UUID, 
     p_anio_inicio INTEGER, p_cedula_coordinador TEXT, p_codigo_asignatura TEXT, p_estado academico.estado_monografia)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*) FROM academico.fn_monografias_filtradas(p_anio_inicio, p_cedula_coordinador, p_codigo_asignatura, p_estado);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_monografia(p_cedula_estudiante TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_monografia(p_id_usuario_actor UUID, p_cedula_estudiante TEXT)
 RETURNS SETOF academico.monografia_detalle
 LANGUAGE plpgsql STABLE
 SET search_path = academico, auth, api, public
@@ -353,6 +360,7 @@ AS $$
 DECLARE
     v_id BIGINT := academico.fn_obtener_id_monografia(p_cedula_estudiante);
 BEGIN
+    PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12
     RETURN QUERY SELECT (d.fila).* FROM academico.fn_monografias_detalle() d WHERE d.id_monografia = v_id;
 END;
 $$;
@@ -491,6 +499,11 @@ BEGIN
     IF v_mono.estado = p_estado THEN
         out_status := 'SIN_CAMBIOS';
         RETURN;
+    END IF;
+
+    -- RN-79: TERMINADA es un estado final (decisión del 01/10/2026): no se reabre.
+    IF v_mono.estado = 'TERMINADA' THEN
+        PERFORM api.fn_lanzar_excepcion('MO007', 'Una monografía terminada no cambia de estado.');
     END IF;
 
     out_datos_anteriores := academico.fn_snapshot_monografia(v_mono.id_monografia);
@@ -667,7 +680,7 @@ DECLARE
 BEGIN
     RETURN QUERY
     SELECT (r.fila).* FROM academico.fn_reportes_monografia_seccion(v_id_seccion, p_semestre) r
-    WHERE p_cedula_estudiante IS NULL OR (r.fila).cedula_estudiante = api.fn_limpiar(p_cedula_estudiante);
+    WHERE p_cedula_estudiante IS NULL OR (r.fila).cedula_estudiante = api.fn_limpiar_cedula(p_cedula_estudiante);
 END;
 $$;
 

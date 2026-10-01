@@ -28,10 +28,12 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
 
     /// <summary>CU03: listado paginado con búsqueda y filtro por rol (en el servidor: filtrar en el
     /// frontend solo vería la página actual).</summary>
-    public Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(ConsultaUsuarios consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(Guid actorId, ConsultaUsuarios consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU01 / CU03: detalle de un usuario, o null si no existe.</summary>
     public Task<UsuarioAdmin?> ObtenerAsync(Guid id) => repo.ObtenerAsync(id);
+
+    public Task<UsuarioAdmin?> ObtenerAdminAsync(Guid actorId, Guid id) => repo.ObtenerAdminAsync(actorId, id);
 
     /// <summary>CU04: modifica el email. Registra auditoría solo si hubo cambios.</summary>
     public async Task ActualizarEmailAsync(Guid actorId, Guid idObjetivo, string emailNuevo)

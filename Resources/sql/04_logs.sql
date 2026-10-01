@@ -6,7 +6,9 @@ SET search_path = academico, api, auth, public;
 -- LOGS
 CREATE TABLE api.logs (
     id_log UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_usuario UUID NULL,                    -- quién lo hizo (NULL = sistema/background)
+    id_usuario UUID NULL,                    -- quién lo hizo (NULL = sistema/background). Sin FK: la auditoría
+                                             -- conserva al actor aunque su usuario se elimine.
+    email_usuario TEXT NULL,                 -- correo del actor al momento de la acción (snapshot)
     accion TEXT NOT NULL,                     -- 'LOGIN', 'ASIGNAR_ROL', etc. (catálogo en Modules/Logs/log_codes.md)
     tabla_afectada TEXT NULL,                 -- 'api.usuario_roles', si aplica
     id_registro_afectado TEXT NULL,           -- PK de la fila afectada, como texto
@@ -15,7 +17,6 @@ CREATE TABLE api.logs (
     direccion_ip TEXT NULL,
     agente_usuario TEXT NULL,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_logs_usuario FOREIGN KEY (id_usuario) REFERENCES api.usuarios (id_usuario) ON DELETE SET NULL,
     CONSTRAINT ck_logs_accion_not_empty CHECK (trim(accion) <> '')
 );
 
@@ -44,11 +45,12 @@ DECLARE
     v_id_log UUID;
 BEGIN
     INSERT INTO api.logs (
-        id_usuario, accion, tabla_afectada, id_registro_afectado,
+        id_usuario, email_usuario, accion, tabla_afectada, id_registro_afectado,
         datos_anteriores, datos_nuevos, direccion_ip, agente_usuario
     )
     VALUES (
-        p_id_usuario, upper(trim(p_accion)), p_tabla_afectada, p_id_registro_afectado,
+        p_id_usuario, (SELECT u.email::TEXT FROM api.usuarios u WHERE u.id_usuario = p_id_usuario),
+        upper(trim(p_accion)), p_tabla_afectada, p_id_registro_afectado,
         p_datos_anteriores, p_datos_nuevos, p_direccion_ip, p_agente_usuario
     )
     RETURNING id_log INTO v_id_log;

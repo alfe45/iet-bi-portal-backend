@@ -185,11 +185,12 @@ END;
 $$;
 
 -- CU 15 - Consultar periodos académicos (más reciente primero)
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_periodos(p_pagina INTEGER, p_tamano_pagina INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_periodos(p_id_usuario_actor UUID, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.periodo_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (academico.fn_a_periodo_admin(p)).*
     FROM academico.periodos_academicos p
     ORDER BY p.anio DESC
@@ -197,19 +198,21 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_periodos()
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_periodos(p_id_usuario_actor UUID)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*) FROM academico.periodos_academicos;
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_periodo(p_anio INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_periodo(p_id_usuario_actor UUID, p_anio INTEGER)
 RETURNS SETOF academico.periodo_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (academico.fn_a_periodo_admin(p)).*
     FROM academico.periodos_academicos p
     WHERE p.anio = p_anio;
@@ -307,6 +310,13 @@ BEGIN
     -- II semestre (periodo no finalizado): su fin no puede quedar en el pasado.
     IF academico.fn_estado_periodo(v_prev) <> 'FINALIZADO' AND v_nuevo.fin_semestre_ii < v_hoy THEN
         PERFORM api.fn_lanzar_excepcion('PA005', 'La fecha de fin de un semestre no finalizado no puede quedar en el pasado.');
+    END IF;
+
+    -- PA009: un semestre que ya inició (y tiene o puede tener notas, lecciones e informes) no vuelve a "no iniciado".
+    IF academico.fn_estado_periodo(v_prev) <> 'FINALIZADO'
+       AND ((v_hoy >= v_prev.inicio_semestre_i AND v_nuevo.inicio_semestre_i > v_hoy)
+            OR (v_hoy >= v_prev.inicio_semestre_ii AND v_nuevo.inicio_semestre_ii > v_hoy)) THEN
+        PERFORM api.fn_lanzar_excepcion('PA009', 'El inicio de un semestre que ya comenzó no puede pasar a una fecha futura.');
     END IF;
 
     -- PA008: las nuevas fechas no dejan fuera registros del periodo: lecciones fuera de un semestre (LE001), matrículas

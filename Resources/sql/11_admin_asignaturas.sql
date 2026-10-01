@@ -44,6 +44,19 @@ BEGIN
 END;
 $$;
 
+-- RP-57: bloquea la asignatura (FOR SHARE) para quien depende de su tipo o sus niveles (asignar, calificar, monografía);
+-- fn_admin_actualizar_asignatura la bloquea FOR UPDATE. El FK de una asignación solo toma KEY SHARE, que no choca con
+-- un UPDATE de tipo o niveles: sin esto, AS005/AS006/AS007 se podían violar con peticiones simultáneas.
+CREATE OR REPLACE FUNCTION academico.fn_bloquear_asignatura(p_id_asignatura BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    PERFORM 1 FROM academico.asignaturas WHERE id_asignatura = p_id_asignatura FOR SHARE;
+END;
+$$;
+
 -- RN-39: AS005 si la asignatura no se imparte en ese nivel (ej. Cívica en 11).
 -- La usan las asignaciones docentes al asignar una asignatura a una sección.
 CREATE OR REPLACE FUNCTION academico.fn_validar_asignatura_en_nivel(p_id_asignatura BIGINT, p_nivel INTEGER)
@@ -52,6 +65,8 @@ LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 BEGIN
+    PERFORM academico.fn_bloquear_asignatura(p_id_asignatura);
+
     IF NOT EXISTS (
         SELECT 1 FROM academico.asignaturas a
         WHERE a.id_asignatura = p_id_asignatura
@@ -129,12 +144,13 @@ END;
 $$;
 
 -- CU 27 - Consultar asignaturas. Filtros opcionales por tipo y nivel (NULL = todos).
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaturas(
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaturas(p_id_usuario_actor UUID, 
     p_tipo academico.tipo_asignatura, p_nivel INTEGER, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.asignatura_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT a.codigo, a.nombre, a.tipo, a.descripcion, a.imparte_nivel_10, a.imparte_nivel_11
     FROM academico.asignaturas a
     WHERE (p_tipo IS NULL OR a.tipo = p_tipo)
@@ -144,22 +160,24 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_asignaturas(p_tipo academico.tipo_asignatura, p_nivel INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_asignaturas(p_id_usuario_actor UUID, p_tipo academico.tipo_asignatura, p_nivel INTEGER)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*)
     FROM academico.asignaturas a
     WHERE (p_tipo IS NULL OR a.tipo = p_tipo)
       AND (p_nivel IS NULL OR (p_nivel = 10 AND a.imparte_nivel_10) OR (p_nivel = 11 AND a.imparte_nivel_11));
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_asignatura(p_codigo TEXT)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_asignatura(p_id_usuario_actor UUID, p_codigo TEXT)
 RETURNS SETOF academico.asignatura_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT a.codigo, a.nombre, a.tipo, a.descripcion, a.imparte_nivel_10, a.imparte_nivel_11
     FROM academico.asignaturas a
     WHERE a.codigo = academico.fn_normalizar_codigo_asignatura(p_codigo);

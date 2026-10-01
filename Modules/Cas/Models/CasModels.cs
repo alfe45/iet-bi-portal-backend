@@ -16,6 +16,7 @@ public class ExperienciaCasRequest : IValidatableObject
     public bool Actividad { get; set; }
     public bool Servicio { get; set; }
 
+    [MaxLength(7, ErrorMessage = "Hay 7 resultados de aprendizaje como máximo.")]
     public List<int> ResultadosAprendizaje { get; set; } = [];
 
     public bool Carpeta { get; set; }

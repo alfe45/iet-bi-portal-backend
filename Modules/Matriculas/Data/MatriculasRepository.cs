@@ -25,21 +25,21 @@ public class MatriculasRepository(NpgsqlDataSource db)
             x => new SeccionSubida(x.GetBoolean(0), x.GetFieldValue<string[]>(1), x.GetFieldValue<string[]>(2)),
             actorId, r.Anio, r.Numero, r.FechaMatricula);
 
-    public async Task<ResultadoPaginado<Matricula>> ListarAsync(ConsultaMatriculas c)
+    public async Task<ResultadoPaginado<Matricula>> ListarAsync(Guid actorId, ConsultaMatriculas c)
     {
         var estado = c.Estado?.ToUpperInvariant();
         var elementos = await db.ListarAsync(
             $"SELECT {Columnas} FROM academico.fn_admin_listar_matriculas(" +
-            "$1::integer, $2::integer, $3::integer, $4::text, $5::academico.estado_matricula, $6::text, $7, $8)",
-            Leer, c.Anio, c.Nivel, c.Numero, c.CedulaEstudiante, estado, c.Busqueda, c.Pagina, c.TamanoPagina);
+            "$1, $2::integer, $3::integer, $4::integer, $5::text, $6::academico.estado_matricula, $7::text, $8, $9)",
+            Leer, actorId, c.Anio, c.Nivel, c.Numero, c.CedulaEstudiante, estado, c.Busqueda, c.Pagina, c.TamanoPagina);
         var total = await db.EscalarAsync<long>(
-            "SELECT academico.fn_admin_contar_matriculas($1::integer, $2::integer, $3::integer, $4::text, $5::academico.estado_matricula, $6::text)",
-            c.Anio, c.Nivel, c.Numero, c.CedulaEstudiante, estado, c.Busqueda);
+            "SELECT academico.fn_admin_contar_matriculas($1, $2::integer, $3::integer, $4::integer, $5::text, $6::academico.estado_matricula, $7::text)",
+            actorId, c.Anio, c.Nivel, c.Numero, c.CedulaEstudiante, estado, c.Busqueda);
         return new ResultadoPaginado<Matricula>(elementos, c.Pagina, c.TamanoPagina, total);
     }
 
-    public Task<Matricula?> ObtenerAsync(int anio, string cedula) =>
-        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_matricula($1, $2::text)", Leer, anio, cedula);
+    public Task<Matricula?> ObtenerAsync(Guid actorId, int anio, string cedula) =>
+        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM academico.fn_admin_obtener_matricula($1, $2, $3::text)", Leer, actorId, anio, cedula);
 
     /// <summary>Devuelve OK/SIN_CAMBIOS y el snapshot previo. Errores: NF003, NF004, NF006, NF009, MA006, MA008.</summary>
     public Task<(string Estado, string? Anteriores)> CambiarSeccionAsync(Guid actorId, int anio, string cedula, CambiarSeccionRequest r) =>
@@ -71,7 +71,7 @@ public class MatriculasRepository(NpgsqlDataSource db)
             $"SELECT {Columnas} FROM academico.fn_profesor_listar_estudiantes_seccion($1, $2, $3, $4)",
             Leer, idUsuario, anio, nivel, numero);
 
-    /// <summary>Ficha de un estudiante de la sección (Profesor Regular CU05). Errores: NF006, AD003, NF003, NF009.</summary>
+    /// <summary>Ficha de un estudiante de la sección (Profesor Regular CU05). Errores: NF006, AD003, NF009.</summary>
     public Task<FichaEstudiante> ObtenerEstudianteSeccionAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula) =>
         db.PrimeroAsync(
             "SELECT cedula, nombre, primer_apellido, segundo_apellido, numero_celular, email::text, fecha_nacimiento, " +

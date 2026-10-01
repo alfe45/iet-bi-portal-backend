@@ -18,14 +18,14 @@ public class AsignacionesRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_registrar_asignacion($1, $2::integer, $3::integer, $4::integer, $5::text, $6::text)",
             actorId, r.Anio, r.Nivel, r.Numero, r.CodigoAsignatura, r.CedulaProfesor);
 
-    public async Task<ResultadoPaginado<Asignacion>> ListarAsync(ConsultaAsignaciones c)
+    public async Task<ResultadoPaginado<Asignacion>> ListarAsync(Guid actorId, ConsultaAsignaciones c)
     {
         var elementos = await db.ListarAsync(
-            $"SELECT {Columnas} FROM academico.fn_admin_listar_asignaciones($1::integer, $2::integer, $3::integer, $4::text, $5::text, $6, $7)",
-            Leer, c.Anio, c.Nivel, c.Numero, c.CodigoAsignatura, c.CedulaProfesor, c.Pagina, c.TamanoPagina);
+            $"SELECT {Columnas} FROM academico.fn_admin_listar_asignaciones($1, $2::integer, $3::integer, $4::integer, $5::text, $6::text, $7, $8)",
+            Leer, actorId, c.Anio, c.Nivel, c.Numero, c.CodigoAsignatura, c.CedulaProfesor, c.Pagina, c.TamanoPagina);
         var total = await db.EscalarAsync<long>(
-            "SELECT academico.fn_admin_contar_asignaciones($1::integer, $2::integer, $3::integer, $4::text, $5::text)",
-            c.Anio, c.Nivel, c.Numero, c.CodigoAsignatura, c.CedulaProfesor);
+            "SELECT academico.fn_admin_contar_asignaciones($1, $2::integer, $3::integer, $4::integer, $5::text, $6::text)",
+            actorId, c.Anio, c.Nivel, c.Numero, c.CodigoAsignatura, c.CedulaProfesor);
         return new ResultadoPaginado<Asignacion>(elementos, c.Pagina, c.TamanoPagina, total);
     }
 

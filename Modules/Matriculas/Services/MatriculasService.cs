@@ -33,10 +33,10 @@ public class MatriculasService(MatriculasRepository repo, ILogsService logs)
     }
 
     /// <summary>CU24: listado / historial paginado con filtros opcionales.</summary>
-    public Task<ResultadoPaginado<Matricula>> ListarAsync(ConsultaMatriculas consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<Matricula>> ListarAsync(Guid actorId, ConsultaMatriculas consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU24: detalle, o null si no existe.</summary>
-    public Task<Matricula?> ObtenerAsync(int anio, string cedula) => repo.ObtenerAsync(anio, cedula);
+    public Task<Matricula?> ObtenerAsync(Guid actorId, int anio, string cedula) => repo.ObtenerAsync(actorId, anio, cedula);
 
     /// <summary>CU23: traslado a otra sección del mismo año. Registra log solo si hubo cambios.</summary>
     public async Task CambiarSeccionAsync(Guid actorId, int anio, string cedula, CambiarSeccionRequest request)

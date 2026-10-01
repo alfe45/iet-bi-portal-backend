@@ -26,7 +26,7 @@ public class AsignacionesService(AsignacionesRepository repo, ILogsService logs)
     }
 
     /// <summary>CU31: listado paginado con filtros opcionales.</summary>
-    public Task<ResultadoPaginado<Asignacion>> ListarAsync(ConsultaAsignaciones consulta) => repo.ListarAsync(consulta);
+    public Task<ResultadoPaginado<Asignacion>> ListarAsync(Guid actorId, ConsultaAsignaciones consulta) => repo.ListarAsync(actorId, consulta);
 
     /// <summary>CU32: reemplaza al profesor de la asignación. Registra log solo si hubo cambios.</summary>
     public async Task CambiarProfesorAsync(

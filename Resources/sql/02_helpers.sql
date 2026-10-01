@@ -37,6 +37,14 @@ AS $$
     SELECT NULLIF(trim(p_texto), '');
 $$;
 
+-- Cédula (RN-09/RN-11): se guarda y se busca en mayúsculas, así 'est-0001' y 'EST-0001' son la misma persona.
+CREATE OR REPLACE FUNCTION api.fn_limpiar_cedula(p_cedula TEXT)
+RETURNS TEXT
+LANGUAGE sql IMMUTABLE
+AS $$
+    SELECT upper(NULLIF(trim(p_cedula), ''));
+$$;
+
 -- ------------------------------------------------------------
 -- Fecha actual en hora de Costa Rica. Toda regla que dependa de "hoy" usa esta función
 -- (no CURRENT_DATE, que depende del TimeZone de la sesión/servidor).
@@ -179,15 +187,37 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesores: TRUE si el usuario del profesor está activo y tiene el rol dado. Lo usan las
--- asignaciones operativas (guía de sección, asignaciones docentes) en periodos no finalizados.
+-- Concurrencia (RP-57): bloquea la fila del usuario. FOR UPDATE lo usan quienes cambian su estado o sus roles
+-- (desactivar, revocar rol); FOR SHARE, quienes dependen de que conserve un rol activo (asignar guía, asignación,
+-- CAS, monografía). Así una revocación y una asignación simultáneas se serializan y la segunda ve a la primera.
 -- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION academico.fn_profesor_tiene_rol_activo(p_id_profesor BIGINT, p_rol api.roles)
-RETURNS BOOLEAN
-LANGUAGE plpgsql STABLE
+CREATE OR REPLACE FUNCTION api.fn_bloquear_usuario(p_id_usuario UUID, p_exclusivo BOOLEAN)
+RETURNS VOID
+LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 BEGIN
+    IF p_exclusivo THEN
+        PERFORM 1 FROM api.usuarios WHERE id_usuario = p_id_usuario FOR UPDATE;
+    ELSE
+        PERFORM 1 FROM api.usuarios WHERE id_usuario = p_id_usuario FOR SHARE;
+    END IF;
+END;
+$$;
+
+-- ------------------------------------------------------------
+-- Profesores: TRUE si el usuario del profesor está activo y tiene el rol dado. Lo usan las
+-- asignaciones operativas (guía de sección, asignaciones docentes) en periodos no finalizados.
+-- Bloquea el usuario (FOR SHARE) antes de leer sus roles (RP-57): VOLATILE.
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION academico.fn_profesor_tiene_rol_activo(p_id_profesor BIGINT, p_rol api.roles)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    PERFORM api.fn_bloquear_usuario((SELECT pr.id_usuario FROM academico.profesores pr WHERE pr.id_profesor = p_id_profesor), FALSE);
+
     RETURN EXISTS (
         SELECT 1
         FROM academico.profesores pr

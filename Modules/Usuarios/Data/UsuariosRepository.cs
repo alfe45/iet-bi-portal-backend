@@ -16,19 +16,24 @@ public class UsuariosRepository(NpgsqlDataSource db)
         db.EscalarAsync<Guid>(
             "SELECT auth.fn_admin_registrar_usuario($1, $2::academico.citext, $3)", actorId, email, contrasenaHash);
 
-    public async Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(ConsultaUsuarios c)
+    public async Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(Guid actorId, ConsultaUsuarios c)
     {
         var rol = c.Rol?.ToUpperInvariant();
         var elementos = await db.ListarAsync(
-            $"SELECT {Columnas} FROM auth.fn_admin_listar_usuarios($1::text, $2::api.roles, $3, $4)",
-            Leer, c.Busqueda, rol, c.Pagina, c.TamanoPagina);
+            $"SELECT {Columnas} FROM auth.fn_admin_listar_usuarios($1, $2::text, $3::api.roles, $4, $5)",
+            Leer, actorId, c.Busqueda, rol, c.Pagina, c.TamanoPagina);
         var total = await db.EscalarAsync<long>(
-            "SELECT auth.fn_admin_contar_usuarios($1::text, $2::api.roles)", c.Busqueda, rol);
+            "SELECT auth.fn_admin_contar_usuarios($1, $2::text, $3::api.roles)", actorId, c.Busqueda, rol);
         return new ResultadoPaginado<UsuarioAdmin>(elementos, c.Pagina, c.TamanoPagina, total);
     }
 
+    /// <summary>Perfil propio (cualquier autenticado).</summary>
     public Task<UsuarioAdmin?> ObtenerAsync(Guid id) =>
         db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM auth.fn_obtener_usuario_detalle($1)", Leer, id);
+
+    /// <summary>Detalle de un usuario para el ADMIN (la DB valida el actor, RP-12).</summary>
+    public Task<UsuarioAdmin?> ObtenerAdminAsync(Guid actorId, Guid id) =>
+        db.PrimeroOpcionalAsync($"SELECT {Columnas} FROM auth.fn_admin_obtener_usuario($1, $2)", Leer, actorId, id);
 
     public Task<(string Estado, string EmailAnterior)> ActualizarEmailAsync(Guid actorId, Guid idObjetivo, string email) =>
         db.PrimeroAsync(

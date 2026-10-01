@@ -69,6 +69,22 @@ AS $$
         WHERE p.anio = p_anio AND s.nivel = p_nivel AND s.numero = p_numero);
 $$;
 
+-- RP-57: bloquea (FOR SHARE) la sección 10-N del año anterior a p_anio; FALSE si no existe. La usan crear la 11-N y
+-- subir la sección; eliminar la 10-N la bloquea FOR UPDATE.
+CREATE OR REPLACE FUNCTION academico.fn_bloquear_seccion_10_anterior(p_anio INTEGER, p_numero INTEGER)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    PERFORM 1 FROM academico.secciones s
+    JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+    WHERE p.anio = p_anio - 1 AND s.nivel = 10 AND s.numero = p_numero
+    FOR SHARE OF s;
+    RETURN FOUND;
+END;
+$$;
+
 -- CU 18 - Registrar sección. Devuelve el nombre ("10-1"). Una sección de nivel 11 solo se crea si
 -- existió la 10-N del año anterior (SE005, RN-62); su guía no se hereda (RN-63).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_seccion(
@@ -101,7 +117,8 @@ BEGIN
     END IF;
 
     -- RN-62: la sección de nivel 11 es la continuación de la 10-N del año anterior (la sección sube completa).
-    IF p_nivel = 11 AND NOT academico.fn_existe_seccion(p_anio - 1, 10, p_numero) THEN
+    -- FOR SHARE (RP-57): si a la vez se elimina la 10-N, una de las dos espera y ve el resultado de la otra.
+    IF p_nivel = 11 AND NOT academico.fn_bloquear_seccion_10_anterior(p_anio, p_numero) THEN
         PERFORM api.fn_lanzar_excepcion('SE005', 'Para crear la sección de nivel 11 debe existir la sección de nivel 10 con el mismo número el año anterior.');
     END IF;
 
@@ -113,12 +130,13 @@ END;
 $$;
 
 -- CU 19 - Consultar secciones. Filtros opcionales por año y nivel (NULL = todos).
-CREATE OR REPLACE FUNCTION academico.fn_admin_listar_secciones(
+CREATE OR REPLACE FUNCTION academico.fn_admin_listar_secciones(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.seccion_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (academico.fn_a_seccion_admin(s)).*
     FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
@@ -129,11 +147,12 @@ AS $$
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_contar_secciones(p_anio INTEGER, p_nivel INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_contar_secciones(p_id_usuario_actor UUID, p_anio INTEGER, p_nivel INTEGER)
 RETURNS BIGINT
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT COUNT(*)
     FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
@@ -141,11 +160,12 @@ AS $$
       AND (p_nivel IS NULL OR s.nivel = p_nivel);
 $$;
 
-CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_seccion(p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER)
+CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_seccion(p_id_usuario_actor UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER)
 RETURNS SETOF academico.seccion_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
+    SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
     SELECT (academico.fn_a_seccion_admin(s)).*
     FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
@@ -219,7 +239,7 @@ BEGIN
     WHERE id_seccion = v_id_seccion
     FOR UPDATE;
 
-    SELECT * INTO v_profesor FROM academico.profesores WHERE cedula = api.fn_limpiar(p_cedula_profesor);
+    SELECT * INTO v_profesor FROM academico.profesores WHERE cedula = api.fn_limpiar_cedula(p_cedula_profesor);
     IF NOT FOUND THEN
         PERFORM api.fn_lanzar_excepcion('NF002', 'El profesor no existe.');
     END IF;

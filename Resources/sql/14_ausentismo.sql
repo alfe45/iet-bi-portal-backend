@@ -197,7 +197,7 @@ LANGUAGE sql IMMUTABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT COALESCE(array_agg(DISTINCT c), ARRAY[]::TEXT[])
-    FROM (SELECT api.fn_limpiar(x) AS c FROM unnest(COALESCE(p_cedulas, ARRAY[]::TEXT[])) x) t
+    FROM (SELECT api.fn_limpiar_cedula(x) AS c FROM unnest(COALESCE(p_cedulas, ARRAY[]::TEXT[])) x) t
     WHERE c IS NOT NULL;
 $$;
 
@@ -227,6 +227,9 @@ BEGIN
 
     SELECT * INTO v_leccion FROM academico.lecciones WHERE id_leccion = p_id_leccion;
     SELECT id_seccion INTO v_id_seccion FROM academico.asignaciones_docentes WHERE id_asignacion = v_leccion.id_asignacion;
+
+    -- RP-57: un traslado o retiro simultáneo espera, o se espera a él, antes de validar LE003.
+    PERFORM academico.fn_bloquear_matriculas((SELECT s.id_periodo FROM academico.secciones s WHERE s.id_seccion = v_id_seccion), v_cedulas);
 
     -- Matrículas vigentes a la fecha de la lección de los estudiantes indicados: [{id_matricula, tardia}].
     SELECT COALESCE(jsonb_agg(jsonb_build_object('id_matricula', m.id_matricula, 'tardia', e.cedula = ANY (v_tardias))), '[]'::jsonb)
@@ -299,8 +302,10 @@ $$;
 -- RN-70: conteo por estudiante (matrícula) y asignación de la sección. Las lecciones que cuentan para un
 -- estudiante son las registradas mientras estuvo matriculado (desde su matrícula y antes de su retiro). Las
 -- llegadas tardías se cuentan aparte (RN-86). p_id_asignacion NULL = todas; p_semestre NULL = todo el año.
--- Lo usan el resumen de ausentismo y el reporte de bandas.
-CREATE OR REPLACE FUNCTION academico.fn_conteo_ausentismo(p_id_seccion BIGINT, p_id_asignacion BIGINT, p_semestre academico.numero_semestre)
+-- Lo usan el resumen de ausentismo y el reporte de bandas. p_id_matricula NULL = todos (el reporte de un solo
+-- estudiante filtra aquí: con SET search_path la función no se inlinea y si no calcularía toda la sección).
+CREATE OR REPLACE FUNCTION academico.fn_conteo_ausentismo(p_id_seccion BIGINT, p_id_asignacion BIGINT, p_semestre academico.numero_semestre,
+                                                          p_id_matricula BIGINT DEFAULT NULL)
 RETURNS TABLE(id_matricula BIGINT, id_asignacion BIGINT, lecciones INTEGER, ausencias INTEGER, justificadas INTEGER, tardias INTEGER)
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
@@ -319,6 +324,7 @@ AS $$
          AND (p_semestre IS NULL OR academico.fn_semestre_en_fecha(p, l.fecha) = p_semestre)
     LEFT JOIN academico.ausencias au ON au.id_leccion = l.id_leccion AND au.id_matricula = m.id_matricula
     WHERE m.id_seccion = p_id_seccion AND (p_id_asignacion IS NULL OR a.id_asignacion = p_id_asignacion)
+      AND (p_id_matricula IS NULL OR m.id_matricula = p_id_matricula)
     GROUP BY m.id_matricula, a.id_asignacion;
 $$;
 
@@ -463,7 +469,7 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF011', 'El estudiante no tiene una ausencia en esa lección.');
     END IF;
 
-    out_datos_anteriores := jsonb_build_object('idLeccion', p_id_leccion, 'cedulaEstudiante', api.fn_limpiar(p_cedula_estudiante),
+    out_datos_anteriores := jsonb_build_object('idLeccion', p_id_leccion, 'cedulaEstudiante', api.fn_limpiar_cedula(p_cedula_estudiante),
                                                'justificacion', v_ausencia.justificacion);
 
     IF v_ausencia.justificacion IS NOT DISTINCT FROM v_justificacion THEN

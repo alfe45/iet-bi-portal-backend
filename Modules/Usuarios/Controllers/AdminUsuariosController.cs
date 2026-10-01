@@ -23,13 +23,13 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
     /// <summary>CU03: listado paginado; filtros opcionales ?busqueda= (correo, cédula o nombre del profesor) y ?rol=.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaUsuarios consulta) =>
-        Ok(await usuarios.ListarAsync(consulta));
+        Ok(await usuarios.ListarAsync(ActorId, consulta));
 
     /// <summary>CU03: detalle. 404 (NF001) si no existe.</summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Obtener(Guid id)
     {
-        var usuario = await usuarios.ObtenerAsync(id);
+        var usuario = await usuarios.ObtenerAdminAsync(ActorId, id);
         return usuario is null ? this.ApiError("NF001") : Ok(usuario);
     }
 
@@ -57,7 +57,8 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU04: desactiva un usuario. 409 (AU010) a sí mismo; 409 (AU011) si es el último admin activo.</summary>
+    /// <summary>CU04: desactiva un usuario. 409 (AU010) a sí mismo; 409 (AU011) si es el último admin activo; 409 (AU020) si es guía,
+    /// tiene asignaciones (CAS incluido) en un periodo no finalizado o coordina monografías sin terminar.</summary>
     [HttpPost("{id:guid}/desactivar")]
     public async Task<IActionResult> Desactivar(Guid id)
     {
