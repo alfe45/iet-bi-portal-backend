@@ -1,116 +1,63 @@
-﻿using iet_bi_portal_backend.Modules.Auth.Models;
-using iet_bi_portal_backend.Modules.Auth.Security;
-using iet_bi_portal_backend.Modules.Auth.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.IdentityModel.JsonWebTokens;
+using iet_bi_portal_backend.Common.Controllers;
+using iet_bi_portal_backend.Modules.Auth.Models;
+using iet_bi_portal_backend.Modules.Auth.Services;
+using iet_bi_portal_backend.Modules.Errors;
 
 namespace iet_bi_portal_backend.Modules.Auth.Controllers;
 
-[ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public class AuthController : ControllerBase
+public class AuthController(AuthService auth) : ApiControllerBase
 {
-    private readonly AuthService _auth;
-
-    public AuthController(AuthService auth) => _auth = auth;
-
-    /// <summary> Registra un nuevo usuario con rol PROFESOR. 
-    /// Devuelve 201 Created con el access token y refresh token si se creó correctamente, 
-    /// o 409 Conflict si el correo ya está en uso. </summary>
-    [AllowAnonymous]
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
-    {
-        var result = await _auth.RegisterAsync(request.Email, request.Password, GetClientInfo());
-
-        return result is null
-            ? Conflict(new { error = "No se pudo completar el registro. Verifica los datos o intenta iniciar sesión." })
-            : StatusCode(StatusCodes.Status201Created, result);
-    }
-
-    /// <summary> Inicia sesión con correo y contraseña. 
-    /// Devuelve 200 OK con el access token y refresh token si las credenciales son correctas, 
-    /// o 401 Unauthorized si no lo son. </summary>
+    /// <summary>Inicia sesión. 200 con tokens; 401 (AU006) credenciales inválidas; 403 (AU014/AU015) cuenta desactivada o bloqueada
+    /// (sin evaluar la contraseña: así el bloqueo no sirve para adivinarla).</summary>
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
-        var result = await _auth.LoginAsync(request.Email, request.Password, GetClientInfo());
+        var resultado = await auth.LoginAsync(request.Email, request.Contrasena, Cliente);
 
-        return result is null
-            ? Unauthorized(new { error = "Credenciales inválidas." })
-            : Ok(result);
+        return resultado.Respuesta is { } respuesta
+            ? Ok(respuesta)
+            : this.ApiError(resultado.CodigoError!);
     }
 
-    /// <summary> Renueva el access token usando el refresh token. 
-    /// Devuelve 200 OK con el nuevo access token y refresh token si la operación es exitosa,
-    /// o 401 Unauthorized si el refresh token es inválido o ha expirado. </summary>
-    [AllowAnonymous]
-    [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh(RefreshRequest request)
-    {
-        var result = await _auth.RefreshAsync(request.RefreshToken, GetClientInfo());
-
-        return result is null
-            ? Unauthorized(new { error = "Sesión inválida o expirada. Inicia sesión de nuevo." })
-            : Ok(result);
-    }
-
-    /// <summary> Cierra la sesión del usuario. </summary>
+    /// <summary>Cierra la sesión del refresh token enviado. Siempre 204 (no revela si el token existía).</summary>
     [AllowAnonymous]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(LogoutRequest request)
     {
-        await _auth.LogoutAsync(request.RefreshToken);
+        await auth.LogoutAsync(request.RefreshToken, Cliente);
         return NoContent();
     }
 
-    /// <summary> Cierra todas las sesiones del usuario. </summary>
+    /// <summary>Renueva el access token con el refresh token. 200 con tokens nuevos, o 401 (AU007).</summary>
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(RefreshRequest request)
+    {
+        var resultado = await auth.RefreshAsync(request.RefreshToken, Cliente);
+        return resultado is null ? this.ApiError("AU007") : Ok(resultado);
+    }
+
+    /// <summary>Cierra todas las sesiones del usuario autenticado.</summary>
     [Authorize]
     [HttpPost("logout-all")]
     public async Task<IActionResult> LogoutAll()
     {
-        if (User.GetUserId() is not { } userId) return Unauthorized();
-
-        await _auth.LogoutAllAsync(userId);
+        await auth.LogoutAllAsync(ActorId);
         return NoContent();
     }
 
-    /// <summary> Cambia la contraseña del usuario. </summary>
+    /// <summary>Cambia la contraseña propia. 204; 400 (AU008) si la contraseña actual es incorrecta.</summary>
     [Authorize]
-    [HttpPost("change-password")]
-    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    [HttpPost("cambiar-contrasena")]
+    public async Task<IActionResult> CambiarContrasena(CambiarContrasenaRequest request)
     {
-        if (User.GetUserId() is not { } userId) return Unauthorized();
-
-        var ok = await _auth.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
-
-        return ok
-            ? NoContent()
-            : BadRequest(new { error = "La contraseña actual es incorrecta." });
-    }
-
-    /// <summary> Endpoint de prueba para verificar que el JWT funciona. 
-    /// Cualquier usuario autenticado, sin importar cuáles roles tenga, puede consultar su propia identidad. 
-    /// Devuelve TODOS los roles del usuario. </summary>
-    [Authorize]
-    [HttpGet("me")]
-    public IActionResult Me() => Ok(new
-    {
-        id = User.GetUserId(),
-        email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value,
-        roles = User.FindAll(AuthClaims.Role).Select(c => c.Value).ToArray()
-    });
-
-
-    /// <summary> Obtiene la información del cliente. </summary>
-    private ClientInfo GetClientInfo()
-    {
-        var userAgent = Request.Headers.UserAgent.ToString();
-        if (userAgent.Length > 300) userAgent = userAgent[..300];
-        return new ClientInfo(HttpContext.Connection.RemoteIpAddress?.ToString(), userAgent);
+        var ok = await auth.CambiarContrasenaAsync(ActorId, request.ContrasenaActual, request.ContrasenaNueva);
+        return ok ? NoContent() : this.ApiError("AU008");
     }
 }

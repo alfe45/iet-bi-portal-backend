@@ -33,3 +33,5 @@ skills-lock.json
 
 # borradores
 Resources/drafts/
+# pruebas locales (tests/README.md)
+tests/

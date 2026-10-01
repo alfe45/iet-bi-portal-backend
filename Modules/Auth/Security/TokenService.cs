@@ -4,47 +4,45 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using iet_bi_portal_backend.Common.Security;
 using iet_bi_portal_backend.Modules.Auth.Settings;
 
 namespace iet_bi_portal_backend.Modules.Auth.Security;
 
 public record AccessToken(string Token, DateTime ExpiresAt);
 
-/// <summary> Servicio para crear y validar tokens JWT y refresh tokens. </summary>
+/// <summary>Crea access tokens JWT y refresh tokens.</summary>
 public interface ITokenService
 {
-    AccessToken CreateAccessToken(Guid userId, string email, IEnumerable<string> roles);
-    string GenerateRefreshToken();
-    string Hash(string token);
+    AccessToken CrearAccessToken(Guid idUsuario, string email, IEnumerable<string> roles);
+    string GenerarRefreshToken();
+    string Hashear(string token);
 }
 
-/// <summary> Servicio para crear y validar tokens JWT y refresh tokens. </summary>
 public class TokenService : ITokenService
 {
     private readonly JwtOptions _jwt;
-    private readonly SigningCredentials _credentials;
+    private readonly SigningCredentials _credenciales;
     private readonly JsonWebTokenHandler _handler = new();
 
-    /// <summary> Crea un servicio para crear y validar tokens JWT y refresh tokens. </summary>
     public TokenService(IOptions<JwtOptions> options)
     {
         _jwt = options.Value;
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.SecretKey));
-        _credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var clave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.SecretKey));
+        _credenciales = new SigningCredentials(clave, SecurityAlgorithms.HmacSha256);
     }
 
-    /// <summary> Crea un access token JWT para un usuario autenticado. </summary>
-    public AccessToken CreateAccessToken(Guid userId, string email, IEnumerable<string> roles)
+    public AccessToken CrearAccessToken(Guid idUsuario, string email, IEnumerable<string> roles)
     {
-        var now = DateTime.UtcNow;
-        var expires = now.AddMinutes(_jwt.AccessTokenMinutes);
+        var ahora = DateTime.UtcNow;
+        var expira = ahora.AddMinutes(_jwt.AccessTokenMinutes);
 
         var claims = new List<Claim>
-    {
-        new(JwtRegisteredClaimNames.Sub, userId.ToString()),
-        new(JwtRegisteredClaimNames.Email, email),
-        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-    };
+        {
+            new(JwtRegisteredClaimNames.Sub, idUsuario.ToString()),
+            new(JwtRegisteredClaimNames.Email, email),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
         claims.AddRange(roles.Select(r => new Claim(AuthClaims.Role, r)));
 
         var descriptor = new SecurityTokenDescriptor
@@ -52,17 +50,17 @@ public class TokenService : ITokenService
             Subject = new ClaimsIdentity(claims),
             Issuer = _jwt.Issuer,
             Audience = _jwt.Audience,
-            IssuedAt = now, // <- explícito, lo usa la revocación
-            Expires = expires,
-            SigningCredentials = _credentials
+            IssuedAt = ahora,   // explícito: lo usa la revocación (iat vs tokens_invalidados_desde)
+            Expires = expira,
+            SigningCredentials = _credenciales
         };
 
-        return new AccessToken(_handler.CreateToken(descriptor), expires);
+        return new AccessToken(_handler.CreateToken(descriptor), expira);
     }
 
-    /// <summary> Genera un refresh token aleatorio de 32 bytes codificado en hexadecimal. </summary>
-    public string GenerateRefreshToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    /// <summary>Refresh token aleatorio de 32 bytes en hexadecimal.</summary>
+    public string GenerarRefreshToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 
-    /// <summary> Calcula el hash SHA256 de un refresh token. </summary>
-    public string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+    /// <summary>SHA256 del token (en la base solo se guarda el hash).</summary>
+    public string Hashear(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

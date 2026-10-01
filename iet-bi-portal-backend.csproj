@@ -13,11 +13,19 @@
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
+
+    <!-- Always: un catálogo desactualizado en bin/ convierte errores de negocio en 500. -->
+    <None Include="Modules/Errors/error_codes.json" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <!-- Borradores locales (en .gitignore): no se compilan ni se publican. -->
+  <ItemGroup>
+    <Compile Remove="Resources/drafts/**" />
+    <Content Remove="Resources/drafts/**" />
+    <None Remove="Resources/drafts/**" />
   </ItemGroup>
 
 </Project>
