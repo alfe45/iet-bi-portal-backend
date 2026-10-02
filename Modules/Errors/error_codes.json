@@ -124,6 +124,8 @@
   "22P02": { "status": 400, "mensaje": "Uno de los valores enviados no tiene un formato válido." },
   "22021": { "status": 400, "mensaje": "El texto enviado contiene caracteres no válidos." },
   "22P05": { "status": 400, "mensaje": "El texto enviado contiene caracteres no válidos." },
+  "40P01": { "status": 409, "mensaje": "La operación chocó con otra simultánea y no se aplicó. Inténtalo de nuevo." },
+  "40001": { "status": 409, "mensaje": "La operación chocó con otra simultánea y no se aplicó. Inténtalo de nuevo." },
   "23001": { "status": 409, "mensaje": "No se puede eliminar porque todavía tiene datos asociados." },
   "23503": { "status": 409, "mensaje": "La operación entra en conflicto con registros relacionados (el registro referenciado no existe o todavía tiene datos asociados)." }
 }

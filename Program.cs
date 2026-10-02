@@ -75,11 +75,17 @@ catch (Exception ex)
 app.UseExceptionHandler();
 
 // Cabeceras de seguridad: las respuestas traen datos personales (Ley 8968): no se guardan en caché ni se reinterpretan.
+// OnStarting: se aplican justo antes de enviar, también en las respuestas de error (UseExceptionHandler limpia las
+// cabeceras ya puestas al manejar una excepción).
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.XContentTypeOptions = "nosniff";
-    context.Response.Headers.CacheControl = "no-store";
-    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        return Task.CompletedTask;
+    });
     await next();
 });
 
