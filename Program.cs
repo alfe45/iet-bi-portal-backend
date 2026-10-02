@@ -34,6 +34,10 @@ builder.WebHost.ConfigureKestrel(o =>
 
 // Toda petición que modifica datos va en una transacción: operación y auditoría juntas (RP-58).
 builder.Services.AddControllers(o => o.Filters.Add<TransaccionPorPeticionFilter>());
+builder.Services.AddCors(o => o.AddPolicy("frontend-local", policy => policy
+    .WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddCommon();
 
@@ -73,6 +77,7 @@ catch (Exception ex)
 }
 
 app.UseExceptionHandler();
+app.UseCors("frontend-local");
 
 // Cabeceras de seguridad: las respuestas traen datos personales (Ley 8968): no se guardan en caché ni se reinterpretan.
 // OnStarting: se aplican justo antes de enviar, también en las respuestas de error (UseExceptionHandler limpia las
@@ -98,4 +103,3 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthModule();
 app.MapControllers();
 app.Run();
-
