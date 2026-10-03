@@ -3,8 +3,7 @@
     "http": {
       "commandName": "Project",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ENV_FILE": ".env.local"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5149"
@@ -12,29 +11,10 @@
     "https": {
       "commandName": "Project",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ENV_FILE": ".env.local"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7128;http://localhost:5149"
-    },
-    "local": {
-      "commandName": "Project",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ENV_FILE": ".env.local"
-      },
-      "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5149"
-    },
-    "produccion": {
-      "commandName": "Project",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ENV_FILE": ".env"
-      },
-      "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5149"
     },
     "Container (Dockerfile)": {
       "commandName": "Docker",
