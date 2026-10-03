@@ -1,0 +1,37 @@
+# Salidas de compilación y publicación de .NET
+bin/
+obj/
+artifacts/
+TestResults/
+
+# Estado local del IDE y preferencias de usuario
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Archivos locales de asistentes de IA
+.agents/
+.codex/
+.claude/
+.cursor/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+SKILL.md
+skills-lock.json
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+
+#environment files
+.env
+.env.*
+!.env.example
+
+# borradores
+Resources/drafts/
+# pruebas locales (tests/README.md)
+tests/
