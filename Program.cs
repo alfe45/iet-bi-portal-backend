@@ -18,6 +18,7 @@ using iet_bi_portal_backend.Modules.Periodos;
 using iet_bi_portal_backend.Modules.Profesores;
 using iet_bi_portal_backend.Modules.Secciones;
 using iet_bi_portal_backend.Modules.Usuarios;
+using Microsoft.AspNetCore.HttpOverrides;
 using Npgsql;
 
 // ENV_FILE elige el archivo de variables (lo fijan los perfiles de launchSettings.json); sin ella, .env.
@@ -34,6 +35,27 @@ builder.WebHost.ConfigureKestrel(o =>
 
 // Toda petición que modifica datos va en una transacción: operación y auditoría juntas (RP-58).
 builder.Services.AddControllers(o => o.Filters.Add<TransaccionPorPeticionFilter>());
+// CORS_ORIGINS: orígenes del frontend separados por comas (en Render, la URL pública del frontend); sin ella, el Angular local.
+var origenesCors = (builder.Configuration["CORS_ORIGINS"] ?? "http://localhost:4200,http://127.0.0.1:4200")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+builder.Services.AddCors(o => o.AddPolicy("frontend", policy => policy
+    .WithOrigins(origenesCors)
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
+// CONFIAR_PROXY=true solo detrás de un proxy inverso (Render): toma la IP real del cliente y el esquema de
+// X-Forwarded-For/Proto. Sin esto el rate limiting de /auth agrupa a todos los usuarios bajo la IP del proxy.
+// No activarlo si la API es accesible directamente: un cliente podría falsificar su IP con la cabecera.
+var confiarProxy = string.Equals(builder.Configuration["CONFIAR_PROXY"], "true", StringComparison.OrdinalIgnoreCase);
+if (confiarProxy)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        o.KnownIPNetworks.Clear();
+        o.KnownProxies.Clear();
+    });
+}
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddCommon();
 
@@ -72,14 +94,23 @@ catch (Exception ex)
     app.Logger.LogWarning(ex, "No se pudo verificar los privilegios del usuario de base de datos.");
 }
 
+if (confiarProxy)
+    app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseCors("frontend");
 
 // Cabeceras de seguridad: las respuestas traen datos personales (Ley 8968): no se guardan en caché ni se reinterpretan.
+// OnStarting: se aplican justo antes de enviar, también en las respuestas de error (UseExceptionHandler limpia las
+// cabeceras ya puestas al manejar una excepción).
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.XContentTypeOptions = "nosniff";
-    context.Response.Headers.CacheControl = "no-store";
-    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        return Task.CompletedTask;
+    });
     await next();
 });
 
@@ -92,4 +123,3 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthModule();
 app.MapControllers();
 app.Run();
-
