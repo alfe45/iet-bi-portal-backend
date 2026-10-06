@@ -1,6 +1,7 @@
-# Blueprint de Render: API (Docker) + PostgreSQL administrado.
+# Blueprint de Render: API (Docker). La base de datos vive en Neon (ver README), no en Render.
+# El servicio actual (iet-bi-portal-api) se creó desde el Dashboard con esta misma configuración; este archivo
+# sirve para recrearlo. Aplicarlo con el servicio existente crea uno duplicado.
 # Cada push a la rama develop redespliega la API (autoDeployTrigger: commit).
-# La base se crea vacía: los scripts Resources/sql/01..19 se ejecutan una sola vez a mano (ver README).
 services:
   - type: web
     name: iet-bi-portal-api
@@ -18,30 +19,21 @@ services:
         value: "8080"
       - key: CONFIAR_PROXY
         value: "true"
-      # URL(s) del frontend separadas por comas; se llena en el Dashboard.
+      # URL(s) del frontend separadas por comas, incluidos los orígenes locales (http://localhost:4200).
       - key: CORS_ORIGINS
         sync: false
 
+      # Neon: endpoint directo (sin -pooler) y la cuenta svc_api creada por 01_roles_schemas.sql.
       - key: DB_HOST
-        fromDatabase:
-          name: iet-bi-portal-db
-          property: host
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: iet-bi-portal-db
-          property: port
+        value: "5432"
       - key: DB_NAME
-        fromDatabase:
-          name: iet-bi-portal-db
-          property: database
+        value: ietbi
       - key: DB_USER
-        fromDatabase:
-          name: iet-bi-portal-db
-          property: user
+        value: svc_api
       - key: DB_PASSWORD
-        fromDatabase:
-          name: iet-bi-portal-db
-          property: password
+        sync: false
 
       - key: JWT_KEY
         generateValue: true
@@ -60,11 +52,3 @@ services:
         value: "2"
       - key: ADMIN_BOOTSTRAP_TOKEN
         generateValue: true
-
-databases:
-  - name: iet-bi-portal-db
-    databaseName: ietbi
-    plan: free
-    region: virginia
-    postgresMajorVersion: "18"
-
