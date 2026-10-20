@@ -646,11 +646,11 @@ Authorization: Bearer {{tokenProfe}}
 DELETE {{host}}/api/profesor/cas/informes/{{anio}}/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
-### Profesor Regular CU07 - Eliminar la nota CAS (corrección; anula el envío si lo había)
+### Profesor Regular CU07 - Eliminar la nota CAS (corrección; quita la confirmación si la había)
 DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/CAS/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
-### Profesor Regular CU07 - Eliminar la nota de MAT (anula el envío: hay que volver a enviar)
+### Profesor Regular CU07 - Eliminar la nota de MAT (quita la confirmación: hay que volver a confirmar)
 DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/MAT/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
