@@ -43,7 +43,7 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-24: El login hace una verificación dummy cuando el correo no existe.
 
 ## SQL
-- RP-25: Orden de scripts: 01 roles/esquemas, 02 helpers, 03 auth, 04 logs, 05 admin usuarios, 06 tablas académico, 07 admin profesores, 08 admin estudiantes, 09 admin periodos, 10 admin secciones, 11 admin asignaturas, 12 admin asignaciones, 13 admin matrículas, 14 ausentismo, 15 evaluaciones, 16 monografías, 17 CAS, 18 informes, 19 views; 20 catálogo de asignaturas del Instituto (opcional, para una base nueva; las pruebas no lo ejecutan).
+- RP-25: Orden de scripts: 01 roles/esquemas, 02 helpers, 03 auth, 04 logs, 05 admin usuarios, 06 tablas académico, 07 admin profesores, 08 admin estudiantes, 09 admin periodos, 10 admin secciones, 11 admin asignaturas, 12 admin asignaciones, 13 admin matrículas, 14 ausentismo, 15 evaluaciones, 16 monografías, 17 CAS, 18 informes, 19 views; 20 catálogo de asignaturas del Instituto (opcional, para una base nueva; las pruebas no lo ejecutan). El 01 crea las cuentas `svc_api` (la que usa la API) y `svc_admin` con sus permisos, salvo con `ietbi.crear_roles=off` (servidores donde las cuentas las administra otro); las contraseñas se ponen aparte con `ALTER ROLE`, nunca en el script.
 - RP-26: Lógica repetida en 2 o más funciones va a `02_helpers.sql`.
 - RP-27: Los scripts se escriben para crear desde cero; no se cuidan datos previos. Después de ejecutarlos hay que reiniciar la API: Npgsql guarda en caché los OID de los tipos (citext, enums) y los recrea el script.
 - RP-28: Las reglas que dependen de la fecha actual se validan en función; las demás, con CHECK en la tabla.
