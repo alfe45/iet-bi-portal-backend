@@ -66,7 +66,7 @@ public class AdminUsuariosController(UsuariosService usuarios) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU04: otorga un rol. 201 si se asignó; 204 si ya lo tenía.</summary>
+    /// <summary>CU04: otorga un rol. 201 si se asignó; 204 si ya lo tenía; 409 (AU021) COORD_CAS ya lo tiene otro usuario (RN-91).</summary>
     [HttpPost("{id:guid}/roles")]
     public async Task<IActionResult> AsignarRol(Guid id, RolRequest request)
     {

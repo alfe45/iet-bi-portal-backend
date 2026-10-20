@@ -14,14 +14,15 @@ public class CasRepository(NpgsqlDataSource db)
 
     private const string ColumnasInforme =
         "anio, semestre::text, seccion, cedula_estudiante, nombre_estudiante, email_estudiante, cedula_profesor, nombre_profesor, " +
-        "perfil, entrevista_1, entrevista_2, entrevista_final, observaciones, nota, nota_enviada, modificado_en, experiencias::text";
+        "perfil, entrevista_1, entrevista_2, entrevista_final, observaciones, nota, nota_confirmada, modificado_en, experiencias::text, " +
+        "nombre_coordinador_cas";
 
     private const string ColumnasProgreso =
         "anio, seccion, cedula_estudiante, nombre_estudiante, nombre_profesor, semestre::text, tiene_informe, experiencias, perfil, " +
-        "entrevistas, nota, nota_enviada";
+        "entrevistas, nota, nota_confirmada";
 
     /// <summary>Devuelve OK/SIN_CAMBIOS y el informe previo (null si es nuevo). Errores: NF004, NF003, NF009, AD004, EV002,
-    /// EV003, EV004, CA001.</summary>
+    /// EV003, EV004, CA001, CA002.</summary>
     public Task<(string Estado, string? Anteriores)> GuardarInformeAsync(Guid idUsuario, int anio, string semestre, string cedula, GuardarInformeCasRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text FROM academico.fn_profesor_cas_guardar_informe(" +
@@ -76,7 +77,8 @@ public class CasRepository(NpgsqlDataSource db)
         r.IsDBNull(13) ? null : r.GetString(13),
         r.GetBoolean(14),
         r.GetDateTime(15),
-        JsonSerializer.Deserialize<List<ExperienciaCas>>(r.GetString(16), Json) ?? []);
+        JsonSerializer.Deserialize<List<ExperienciaCas>>(r.GetString(16), Json) ?? [],
+        r.IsDBNull(17) ? null : r.GetString(17));
 
     private static ProgresoCas LeerProgreso(NpgsqlDataReader r) => new(
         r.GetInt32(0),

@@ -9,7 +9,7 @@ CREATE TYPE academico.seccion_admin AS (
     anio INTEGER,
     nivel SMALLINT,
     numero SMALLINT,
-    nombre TEXT,                 -- "10-1"
+    nombre TEXT,                 -- "11-1"
     cedula_guia VARCHAR(20),
     nombre_guia TEXT,            -- NULL si no tiene guía
     cantidad_estudiantes BIGINT  -- matrículas no retiradas
@@ -69,9 +69,9 @@ AS $$
         WHERE p.anio = p_anio AND s.nivel = p_nivel AND s.numero = p_numero);
 $$;
 
--- RP-57: bloquea (FOR SHARE) la sección 10-N del año anterior a p_anio; FALSE si no existe. La usan crear la 11-N y
--- subir la sección; eliminar la 10-N la bloquea FOR UPDATE.
-CREATE OR REPLACE FUNCTION academico.fn_bloquear_seccion_10_anterior(p_anio INTEGER, p_numero INTEGER)
+-- RP-57: bloquea (FOR SHARE) la sección 11-N del año anterior a p_anio; FALSE si no existe. La usan crear la 12-N y
+-- subir la sección; eliminar la 11-N la bloquea FOR UPDATE.
+CREATE OR REPLACE FUNCTION academico.fn_bloquear_seccion_11_anterior(p_anio INTEGER, p_numero INTEGER)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
@@ -79,14 +79,15 @@ AS $$
 BEGIN
     PERFORM 1 FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
-    WHERE p.anio = p_anio - 1 AND s.nivel = 10 AND s.numero = p_numero
+    WHERE p.anio = p_anio - 1 AND s.nivel = 11 AND s.numero = p_numero
     FOR SHARE OF s;
     RETURN FOUND;
 END;
 $$;
 
--- CU 18 - Registrar sección. Devuelve el nombre ("10-1"). Una sección de nivel 11 solo se crea si
--- existió la 10-N del año anterior (SE005, RN-62); su guía no se hereda (RN-63).
+-- CU 18 - Registrar sección. Devuelve el nombre ("11-1"). Una sección de nivel 12 solo se crea si
+-- existió la 11-N del año anterior (SE005, RN-62). Registrada a mano nace sin guía ni asignaciones; subir la
+-- sección (fn_admin_subir_seccion) sí copia los profesores de la 11-N (RN-63).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_seccion(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -107,7 +108,7 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF004', 'El periodo académico no existe.');
     END IF;
 
-    IF p_nivel IS NULL OR p_nivel NOT IN (10, 11) OR p_numero IS NULL OR p_numero NOT BETWEEN 1 AND 99 THEN
+    IF p_nivel IS NULL OR p_nivel NOT IN (11, 12) OR p_numero IS NULL OR p_numero NOT BETWEEN 1 AND 99 THEN
         PERFORM api.fn_lanzar_excepcion('SE002', 'La sección no es válida.');
     END IF;
 
@@ -116,10 +117,10 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('SE001', 'Ya existe esa sección en el periodo.');
     END IF;
 
-    -- RN-62: la sección de nivel 11 es la continuación de la 10-N del año anterior (la sección sube completa).
-    -- FOR SHARE (RP-57): si a la vez se elimina la 10-N, una de las dos espera y ve el resultado de la otra.
-    IF p_nivel = 11 AND NOT academico.fn_bloquear_seccion_10_anterior(p_anio, p_numero) THEN
-        PERFORM api.fn_lanzar_excepcion('SE005', 'Para crear la sección de nivel 11 debe existir la sección de nivel 10 con el mismo número el año anterior.');
+    -- RN-62: la sección de nivel 12 es la continuación de la 11-N del año anterior (la sección sube completa).
+    -- FOR SHARE (RP-57): si a la vez se elimina la 11-N, una de las dos espera y ve el resultado de la otra.
+    IF p_nivel = 12 AND NOT academico.fn_bloquear_seccion_11_anterior(p_anio, p_numero) THEN
+        PERFORM api.fn_lanzar_excepcion('SE005', 'Para crear la sección de nivel 12 debe existir la sección de nivel 11 con el mismo número el año anterior.');
     END IF;
 
     INSERT INTO academico.secciones (id_periodo, nivel, numero)
@@ -137,9 +138,10 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT (academico.fn_a_seccion_admin(s)).*
+    SELECT f.*   -- LATERAL: (f(s)).* llamaría a la función una vez por columna
     FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+    CROSS JOIN LATERAL academico.fn_a_seccion_admin(s) f
     WHERE (p_anio IS NULL OR p.anio = p_anio)
       AND (p_nivel IS NULL OR s.nivel = p_nivel)
     ORDER BY p.anio DESC, s.nivel, s.numero
@@ -166,13 +168,14 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT (academico.fn_a_seccion_admin(s)).*
+    SELECT f.*
     FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
+    CROSS JOIN LATERAL academico.fn_a_seccion_admin(s) f
     WHERE p.anio = p_anio AND s.nivel = p_nivel AND s.numero = p_numero;
 $$;
 
--- CU 20 - Eliminar sección. Devuelve el snapshot previo. Una 10-N que ya continúa como 11-N el año
+-- CU 20 - Eliminar sección. Devuelve el snapshot previo. Una 11-N que ya continúa como 12-N el año
 -- siguiente no se elimina (SE006, RN-62). Si otras entidades la referencian (matrículas,
 -- asignaciones...) con FK RESTRICT, Postgres lanza 23503.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_seccion(
@@ -198,8 +201,8 @@ BEGIN
     WHERE id_seccion = v_id_seccion
     FOR UPDATE;
 
-    IF p_nivel = 10 AND academico.fn_existe_seccion(p_anio + 1, 11, p_numero) THEN
-        PERFORM api.fn_lanzar_excepcion('SE006', 'La sección de nivel 10 ya continúa en nivel 11 el año siguiente.');
+    IF p_nivel = 11 AND academico.fn_existe_seccion(p_anio + 1, 12, p_numero) THEN
+        PERFORM api.fn_lanzar_excepcion('SE006', 'La sección de nivel 11 ya continúa en nivel 12 el año siguiente.');
     END IF;
 
     v_prev := to_jsonb(academico.fn_a_seccion_admin(v_seccion));
@@ -326,10 +329,11 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    SELECT (academico.fn_a_seccion_admin(s)).*
+    SELECT f.*
     FROM academico.secciones s
     JOIN academico.periodos_academicos p ON p.id_periodo = s.id_periodo
     JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
+    CROSS JOIN LATERAL academico.fn_a_seccion_admin(s) f
     WHERE pr.id_usuario = p_id_usuario AND p.anio = v_anio
     ORDER BY s.nivel, s.numero;
 END;

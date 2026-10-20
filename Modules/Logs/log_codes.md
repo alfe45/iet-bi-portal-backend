@@ -23,9 +23,11 @@ REVOCAR_ROL             // Se le quitó un rol a un usuario (rol en datos_anteri
 ELIMINAR_USUARIO        // Un administrador eliminó a un usuario (email + roles en datos_anteriores).
 
 # Profesores
-REGISTRAR_PROFESOR      // Alta de perfil de profesor (usuario + datos en datos_nuevos).
+REGISTRAR_PROFESOR      // Alta de perfil de profesor (datos y cuenta opcional en datos_nuevos, nunca la contraseña).
 MODIFICAR_PROFESOR      // Modificación de un profesor (datos_anteriores = snapshot previo, datos_nuevos = datos nuevos).
 ELIMINAR_PROFESOR       // Eliminación del perfil de profesor (datos_anteriores = snapshot previo).
+CREAR_CUENTA_PROFESOR   // Se creó o vinculó la cuenta de un profesor (datos_nuevos = idUsuario, email, roles, vinculada).
+QUITAR_CUENTA_PROFESOR  // Se quitó la cuenta de un profesor y se eliminó el usuario (datos_anteriores = idUsuario, email, roles).
 
 # Estudiantes
 REGISTRAR_ESTUDIANTE    // Alta de estudiante.
@@ -37,7 +39,7 @@ REGISTRAR_PERIODO       // Alta de un periodo académico (año + fechas de los d
 MODIFICAR_PERIODO       // Modificación de las fechas de un periodo (datos_anteriores / datos_nuevos).
 ELIMINAR_PERIODO        // Eliminación de un periodo sin secciones (datos_anteriores = snapshot previo).
 
-# Secciones (id_registro_afectado = "año/nivel-número", ej. "2026/10-1")
+# Secciones (id_registro_afectado = "año/nivel-número", ej. "2026/11-1")
 REGISTRAR_SECCION       // Alta de una sección (año, nivel, número en datos_nuevos).
 ELIMINAR_SECCION        // Eliminación de una sección (datos_anteriores = snapshot previo, incluye guía).
 ASIGNAR_GUIA            // Se asoció o reemplazó el profesor guía (datos_anteriores = sección con guía previo, datos_nuevos = cédula nueva).
@@ -48,7 +50,7 @@ REGISTRAR_ASIGNATURA    // Alta de una asignatura (datos en datos_nuevos).
 MODIFICAR_ASIGNATURA    // Modificación (datos_anteriores = snapshot previo, datos_nuevos = datos nuevos).
 ELIMINAR_ASIGNATURA     // Eliminación (datos_anteriores = snapshot previo).
 
-# Asignaciones docentes (id_registro_afectado = "año/nivel-número/código/cédula", ej. "2026/10-1/MAT/1-1111-1111")
+# Asignaciones docentes (id_registro_afectado = "año/nivel-número/código/cédula", ej. "2026/11-1/MAT/1-1111-1111")
 REGISTRAR_ASIGNACION        // Se asignó a un profesor una asignatura en una sección (datos_nuevos = request).
 CAMBIAR_PROFESOR_ASIGNACION // Se reemplazó al profesor (datos_anteriores = asignación previa; id con la cédula nueva).
 ELIMINAR_ASIGNACION         // Eliminación (datos_anteriores = snapshot previo).
@@ -59,8 +61,9 @@ CAMBIAR_SECCION_MATRICULA   // Traslado a otra sección del mismo año (datos_an
 REGISTRAR_RETIRO_MATRICULA  // Registro o corrección del retiro (fecha y motivo en datos_nuevos).
 ANULAR_RETIRO_MATRICULA     // Anulación del retiro (datos_anteriores = matrícula con el retiro).
 ELIMINAR_MATRICULA          // Eliminación (datos_anteriores = snapshot previo).
-SUBIR_SECCION               // Matrícula masiva en 11-N de los estudiantes de 10-N del año anterior (id = "año/11-N";
-                            // datos_nuevos = { fechaMatricula, seccionCreada, matriculados: [cédulas] }). No se registra si no hubo cambios.
+SUBIR_SECCION               // Matrícula masiva en 12-N de los estudiantes de 11-N del año anterior y copia de sus profesores (id = "año/12-N";
+                            // datos_nuevos = { fechaMatricula, seccionCreada, matriculados: [cédulas], guiaCopiado: cédula,
+                            // asignacionesCopiadas: ["código/cédula"] }). No se registra si no hubo cambios.
 
 # Ausentismo (id_registro_afectado = id de la lección, ej. "15"; en justificaciones "15/cédula")
 REGISTRAR_LECCION               // El profesor registró una lección con sus ausentes (datos_nuevos = request).
@@ -69,13 +72,14 @@ ELIMINAR_LECCION                // Eliminación de la lección y sus ausencias (
 JUSTIFICAR_AUSENCIA             // Se justificó o se cambió la justificación de una ausencia (datos_anteriores / datos_nuevos).
 ANULAR_JUSTIFICACION_AUSENCIA   // La ausencia vuelve a quedar injustificada (datos_anteriores = justificación previa).
 
-# Evaluaciones (id_registro_afectado = "año/nivel-número/código/semestre", ej. "2026/10-1/MAT/II_SEMESTRE";
+# Evaluaciones (id_registro_afectado = "año/nivel-número/código/semestre", ej. "2026/11-1/MAT/II_SEMESTRE";
 # prórrogas = "año/semestre/cédula del profesor")
-REGISTRAR_NOTAS     // Registro o corrección de notas y observaciones (datos_anteriores = [{cedulaEstudiante, nota, observaciones}]
-                    // previos de lo que cambió, nota null si era nueva; datos_nuevos = notas enviadas). No se registra si no hubo cambios.
+REGISTRAR_NOTAS     // Registro o corrección de notas y observaciones (datos_anteriores = { notas: [{cedulaEstudiante, nota,
+                    // observaciones}] previos de lo que cambió, nota null si era nueva; confirmacionAnulada: si quitó la
+                    // confirmación }; datos_nuevos = notas recibidas). No se registra si no hubo cambios.
 ELIMINAR_NOTA       // Corrección: se eliminó la nota de un estudiante (id = ".../cédula"; datos_anteriores = nota previa y
-                    // envioAnulado: si anuló el envío de la asignación).
-ENVIAR_NOTAS        // El profesor envió al guía las notas del semestre (solo la primera vez).
+                    // confirmacionAnulada: si quitó la confirmación de la asignación).
+CONFIRMAR_NOTAS     // El profesor confirmó las notas del semestre (no se registra si ya estaban confirmadas).
 OTORGAR_PRORROGA    // El ADMIN otorgó o cambió una prórroga (datos_anteriores = prórroga previa, datos_nuevos = fechaLimite).
 QUITAR_PRORROGA     // El ADMIN quitó la prórroga (datos_anteriores = prórroga previa).
 
