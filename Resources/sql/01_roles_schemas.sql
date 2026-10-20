@@ -1,6 +1,9 @@
 -- ============================================================
 -- ROLES, ESQUEMAS Y PERMISOS INICIALES
--- Para el server de la UCR ejecutar solo el primer bloque de codigo, para localhost ejecutar todo el script (quitar el FALSE).
+-- Por defecto crea las cuentas de acceso (svc_api, svc_admin) y sus permisos; sus contraseñas se ponen después
+-- con ALTER ROLE ... PASSWORD (nunca en el script). Donde las cuentas las administra otro (server de la UCR),
+-- ejecutar con la opción ietbi.crear_roles=off para crear solo esquemas y extensiones:
+--   PGOPTIONS="-c ietbi.crear_roles=off" psql ... -f 01_roles_schemas.sql   (o SET ietbi.crear_roles = off; antes del script)
 -- ============================================================
 BEGIN;
     -- ============================================================
@@ -34,7 +37,7 @@ BEGIN;
 -- ============================================================
 DO $$
 BEGIN
-    IF (FALSE) THEN
+    IF coalesce(current_setting('ietbi.crear_roles', true), 'on') <> 'off' THEN
         -- Rol de administración
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bi_admin') THEN
             CREATE ROLE bi_admin NOLOGIN;
