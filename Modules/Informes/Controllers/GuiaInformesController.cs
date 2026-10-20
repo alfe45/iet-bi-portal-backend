@@ -8,7 +8,8 @@ using iet_bi_portal_backend.Modules.Informes.Services;
 namespace iet_bi_portal_backend.Modules.Informes.Controllers;
 
 /// <summary>Guía CU08 (informe de notas de un estudiante) y CU09 (de toda la sección): reporte de bandas del semestre
-/// (RN-85). El backend devuelve los datos y el front arma el PDF. 403 (AD005) si no es el guía de la sección.</summary>
+/// (RN-85): las notas registradas hasta el momento y cuáles están confirmadas (RN-75), con el nombre del guía para la
+/// línea de firma. El backend devuelve los datos y el front arma el PDF. 403 (AD005) si no es el guía de la sección.</summary>
 [Route("api/profesor/guia/reporte-bandas")]
 [Authorize(Roles = Roles.Guia)]
 public class GuiaInformesController(InformesService informes) : ApiControllerBase

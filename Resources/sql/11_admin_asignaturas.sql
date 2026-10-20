@@ -9,8 +9,8 @@ CREATE TYPE academico.asignatura_admin AS (
     nombre CITEXT,
     tipo academico.tipo_asignatura,
     descripcion VARCHAR(255),
-    imparte_nivel_10 BOOLEAN,
-    imparte_nivel_11 BOOLEAN
+    imparte_nivel_11 BOOLEAN,
+    imparte_nivel_12 BOOLEAN
 );
 
 -- ------------------------------------------------------------
@@ -57,7 +57,7 @@ BEGIN
 END;
 $$;
 
--- RN-39: AS005 si la asignatura no se imparte en ese nivel (ej. Cívica en 11).
+-- RN-39: AS005 si la asignatura no se imparte en ese nivel (ej. Cívica en 12).
 -- La usan las asignaciones docentes al asignar una asignatura a una sección.
 CREATE OR REPLACE FUNCTION academico.fn_validar_asignatura_en_nivel(p_id_asignatura BIGINT, p_nivel INTEGER)
 RETURNS VOID
@@ -70,7 +70,7 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM academico.asignaturas a
         WHERE a.id_asignatura = p_id_asignatura
-          AND ((p_nivel = 10 AND a.imparte_nivel_10) OR (p_nivel = 11 AND a.imparte_nivel_11))
+          AND ((p_nivel = 11 AND a.imparte_nivel_11) OR (p_nivel = 12 AND a.imparte_nivel_12))
     ) THEN
         PERFORM api.fn_lanzar_excepcion('AS005', 'La asignatura no se imparte en ese nivel.');
     END IF;
@@ -78,12 +78,12 @@ END;
 $$;
 
 -- AS003 si no se imparte en ningún nivel. Usada por registrar y actualizar.
-CREATE OR REPLACE FUNCTION academico.fn_validar_niveles_asignatura(p_nivel_10 BOOLEAN, p_nivel_11 BOOLEAN)
+CREATE OR REPLACE FUNCTION academico.fn_validar_niveles_asignatura(p_nivel_11 BOOLEAN, p_nivel_12 BOOLEAN)
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF NOT (COALESCE(p_nivel_10, FALSE) OR COALESCE(p_nivel_11, FALSE)) THEN
+    IF NOT (COALESCE(p_nivel_11, FALSE) OR COALESCE(p_nivel_12, FALSE)) THEN
         PERFORM api.fn_lanzar_excepcion('AS003', 'La asignatura debe impartirse en al menos un nivel.');
     END IF;
 END;
@@ -108,8 +108,8 @@ CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_asignatura(
     p_nombre TEXT,
     p_tipo academico.tipo_asignatura,
     p_descripcion TEXT,
-    p_imparte_nivel_10 BOOLEAN,
-    p_imparte_nivel_11 BOOLEAN
+    p_imparte_nivel_11 BOOLEAN,
+    p_imparte_nivel_12 BOOLEAN
 )
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -133,11 +133,11 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('AS002', 'Ya existe una asignatura con ese nombre.');
     END IF;
 
-    PERFORM academico.fn_validar_niveles_asignatura(p_imparte_nivel_10, p_imparte_nivel_11);
+    PERFORM academico.fn_validar_niveles_asignatura(p_imparte_nivel_11, p_imparte_nivel_12);
     PERFORM academico.fn_validar_tipo_asignatura(v_codigo, p_tipo);
 
-    INSERT INTO academico.asignaturas (codigo, nombre, tipo, descripcion, imparte_nivel_10, imparte_nivel_11)
-    VALUES (v_codigo, v_nombre, p_tipo, api.fn_limpiar(p_descripcion), p_imparte_nivel_10, p_imparte_nivel_11);
+    INSERT INTO academico.asignaturas (codigo, nombre, tipo, descripcion, imparte_nivel_11, imparte_nivel_12)
+    VALUES (v_codigo, v_nombre, p_tipo, api.fn_limpiar(p_descripcion), p_imparte_nivel_11, p_imparte_nivel_12);
 
     RETURN v_codigo;
 END;
@@ -151,10 +151,10 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT a.codigo, a.nombre, a.tipo, a.descripcion, a.imparte_nivel_10, a.imparte_nivel_11
+    SELECT a.codigo, a.nombre, a.tipo, a.descripcion, a.imparte_nivel_11, a.imparte_nivel_12
     FROM academico.asignaturas a
     WHERE (p_tipo IS NULL OR a.tipo = p_tipo)
-      AND (p_nivel IS NULL OR (p_nivel = 10 AND a.imparte_nivel_10) OR (p_nivel = 11 AND a.imparte_nivel_11))
+      AND (p_nivel IS NULL OR (p_nivel = 11 AND a.imparte_nivel_11) OR (p_nivel = 12 AND a.imparte_nivel_12))
     ORDER BY a.nombre
     LIMIT api.fn_tamano_pagina(p_tamano_pagina)
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
@@ -169,7 +169,7 @@ AS $$
     SELECT COUNT(*)
     FROM academico.asignaturas a
     WHERE (p_tipo IS NULL OR a.tipo = p_tipo)
-      AND (p_nivel IS NULL OR (p_nivel = 10 AND a.imparte_nivel_10) OR (p_nivel = 11 AND a.imparte_nivel_11));
+      AND (p_nivel IS NULL OR (p_nivel = 11 AND a.imparte_nivel_11) OR (p_nivel = 12 AND a.imparte_nivel_12));
 $$;
 
 CREATE OR REPLACE FUNCTION academico.fn_admin_obtener_asignatura(p_id_usuario_actor UUID, p_codigo TEXT)
@@ -178,7 +178,7 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT a.codigo, a.nombre, a.tipo, a.descripcion, a.imparte_nivel_10, a.imparte_nivel_11
+    SELECT a.codigo, a.nombre, a.tipo, a.descripcion, a.imparte_nivel_11, a.imparte_nivel_12
     FROM academico.asignaturas a
     WHERE a.codigo = academico.fn_normalizar_codigo_asignatura(p_codigo);
 $$;
@@ -191,8 +191,8 @@ CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_asignatura(
     p_nombre TEXT,
     p_tipo academico.tipo_asignatura,
     p_descripcion TEXT,
-    p_imparte_nivel_10 BOOLEAN,
-    p_imparte_nivel_11 BOOLEAN
+    p_imparte_nivel_11 BOOLEAN,
+    p_imparte_nivel_12 BOOLEAN
 )
 RETURNS TABLE(out_status TEXT, out_datos_anteriores JSONB)
 LANGUAGE plpgsql
@@ -213,20 +213,20 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF007', 'La asignatura no existe.');
     END IF;
 
-    PERFORM academico.fn_validar_niveles_asignatura(p_imparte_nivel_10, p_imparte_nivel_11);
+    PERFORM academico.fn_validar_niveles_asignatura(p_imparte_nivel_11, p_imparte_nivel_12);
     PERFORM academico.fn_validar_tipo_asignatura(v_prev.codigo, p_tipo);
 
     v_nuevo := v_prev;
     v_nuevo.nombre := api.fn_limpiar(p_nombre)::CITEXT;
     v_nuevo.tipo := p_tipo;
     v_nuevo.descripcion := api.fn_limpiar(p_descripcion);
-    v_nuevo.imparte_nivel_10 := p_imparte_nivel_10;
     v_nuevo.imparte_nivel_11 := p_imparte_nivel_11;
+    v_nuevo.imparte_nivel_12 := p_imparte_nivel_12;
 
     -- Comparación sensible a mayúsculas: corregir "matemáticas" -> "Matemáticas" es un cambio.
-    IF (v_nuevo.nombre::TEXT, v_nuevo.tipo, v_nuevo.descripcion, v_nuevo.imparte_nivel_10, v_nuevo.imparte_nivel_11)
+    IF (v_nuevo.nombre::TEXT, v_nuevo.tipo, v_nuevo.descripcion, v_nuevo.imparte_nivel_11, v_nuevo.imparte_nivel_12)
        IS NOT DISTINCT FROM
-       (v_prev.nombre::TEXT, v_prev.tipo, v_prev.descripcion, v_prev.imparte_nivel_10, v_prev.imparte_nivel_11) THEN
+       (v_prev.nombre::TEXT, v_prev.tipo, v_prev.descripcion, v_prev.imparte_nivel_11, v_prev.imparte_nivel_12) THEN
         RETURN QUERY SELECT 'SIN_CAMBIOS'::TEXT, NULL::JSONB;
         RETURN;
     END IF;
@@ -250,7 +250,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM academico.asignaciones_docentes a
                JOIN academico.secciones s ON s.id_seccion = a.id_seccion
                WHERE a.id_asignatura = v_prev.id_asignatura
-                 AND ((s.nivel = 10 AND NOT v_nuevo.imparte_nivel_10) OR (s.nivel = 11 AND NOT v_nuevo.imparte_nivel_11))) THEN
+                 AND ((s.nivel = 11 AND NOT v_nuevo.imparte_nivel_11) OR (s.nivel = 12 AND NOT v_nuevo.imparte_nivel_12))) THEN
         PERFORM api.fn_lanzar_excepcion('AS007', 'La asignatura tiene asignaciones en un nivel que se quiere quitar.');
     END IF;
 
@@ -258,8 +258,8 @@ BEGIN
     SET nombre = v_nuevo.nombre,
         tipo = v_nuevo.tipo,
         descripcion = v_nuevo.descripcion,
-        imparte_nivel_10 = v_nuevo.imparte_nivel_10,
-        imparte_nivel_11 = v_nuevo.imparte_nivel_11
+        imparte_nivel_11 = v_nuevo.imparte_nivel_11,
+        imparte_nivel_12 = v_nuevo.imparte_nivel_12
     WHERE id_asignatura = v_prev.id_asignatura;
 
     RETURN QUERY SELECT 'OK'::TEXT, to_jsonb(v_prev) - 'id_asignatura';

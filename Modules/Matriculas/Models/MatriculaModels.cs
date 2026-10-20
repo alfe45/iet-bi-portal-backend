@@ -23,8 +23,9 @@ public class RegistrarMatriculaRequest
     public DateOnly? FechaMatricula { get; set; }
 }
 
-/// <summary>CU22 - Subir la sección (RN-64): matricula en la 11-{Numero} de {Anio} a todos los estudiantes sin retiro de la
-/// 10-{Numero} del año anterior; crea la 11-N si no existe. FechaMatricula opcional (como en la matrícula individual).</summary>
+/// <summary>CU22 - Subir la sección (RN-64): matricula en la 12-{Numero} de {Anio} a todos los estudiantes sin retiro de la
+/// 11-{Numero} del año anterior; crea la 12-N si no existe y le copia el guía y las asignaciones (RN-63). FechaMatricula
+/// opcional (como en la matrícula individual).</summary>
 public class SubirSeccionRequest
 {
     [Required]
@@ -36,8 +37,11 @@ public class SubirSeccionRequest
     public DateOnly? FechaMatricula { get; set; }
 }
 
-/// <summary>Resultado de subir la sección: si se creó la 11-N, cédulas matriculadas y omitidas (ya tenían matrícula en el año).</summary>
-public record SeccionSubida(bool SeccionCreada, string[] Matriculados, string[] Omitidos);
+/// <summary>Resultado de subir la sección: si se creó la 12-N, cédulas matriculadas y omitidas (ya tenían matrícula en el año),
+/// y los profesores copiados de la 11-N (RN-63): cédula del guía (null si no se copió) y asignaciones copiadas y omitidas
+/// ("código/cédula"; se omiten si la asignatura no se imparte en 12 o el profesor no tiene el rol).</summary>
+public record SeccionSubida(bool SeccionCreada, string[] Matriculados, string[] Omitidos,
+    string? GuiaCopiado, string[] AsignacionesCopiadas, string[] AsignacionesOmitidas);
 
 /// <summary>CU23: trasladar la matrícula a otra sección del mismo año.</summary>
 public class CambiarSeccionRequest
@@ -64,7 +68,7 @@ public class ConsultaMatriculas : ConsultaConBusqueda
 {
     public int? Anio { get; set; }
 
-    [Range(10, 11, ErrorMessage = "El nivel debe ser 10 u 11.")]
+    [Range(11, 12, ErrorMessage = "El nivel debe ser 11 u 12.")]
     public int? Nivel { get; set; }
 
     public int? Numero { get; set; }

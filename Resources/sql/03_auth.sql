@@ -37,6 +37,28 @@ CREATE TABLE api.usuario_roles (
 );
 CREATE INDEX ix_usuario_roles_rol ON api.usuario_roles (rol);
 CREATE INDEX ix_usuario_roles_asignado_por ON api.usuario_roles (asignado_por);
+-- RN-91: un solo coordinador de CAS para todas las secciones de los dos años. Las funciones lo validan antes (AU021,
+-- auth.fn_validar_rol_unico, que serializa a quienes lo asignan); el índice es la garantía final.
+CREATE UNIQUE INDEX uq_usuario_roles_coord_cas ON api.usuario_roles (rol) WHERE rol = 'COORD_CAS';
+
+-- AU021 si el rol es de un solo titular (COORD_CAS) y ya lo tiene otro usuario.
+CREATE OR REPLACE FUNCTION auth.fn_validar_rol_unico(p_id_usuario UUID, p_rol api.roles)
+RETURNS VOID
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    IF p_rol = 'COORD_CAS' THEN
+        -- RP-57: dos asignaciones simultáneas se esperan y la segunda ve a la primera (AU021, no 23505).
+        PERFORM pg_advisory_xact_lock(hashtextextended('api.usuario_roles.COORD_CAS', 0));
+    END IF;
+
+    IF p_rol = 'COORD_CAS' AND EXISTS (
+        SELECT 1 FROM api.usuario_roles WHERE rol = p_rol AND id_usuario IS DISTINCT FROM p_id_usuario) THEN
+        PERFORM api.fn_lanzar_excepcion('AU021', 'Ya hay un coordinador de CAS.');
+    END IF;
+END;
+$$;
 
 CREATE TABLE api.sesiones (
     id_sesion UUID PRIMARY KEY DEFAULT gen_random_uuid(),

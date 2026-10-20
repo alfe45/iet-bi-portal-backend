@@ -11,7 +11,7 @@ namespace iet_bi_portal_backend.Modules.Monografias.Controllers;
 public class AdminMonografiasController(MonografiasService monografias) : AdminControllerBase
 {
     /// <summary>CU34: 201. 404 (NF004/NF003/NF009/NF002/NF007); 409 (MO001) ya tiene monografía; 409 (MO002) materia no
-    /// SUPERIOR/MEDIO; 409 (MO003) grupo de 5 lleno; 409 (MO004) no es una matrícula de nivel 10 sin retiro; 409 (MO005)
+    /// SUPERIOR/MEDIO; 409 (MO003) grupo de 5 lleno; 409 (MO004) no es una matrícula de nivel 11 sin retiro; 409 (MO005)
     /// coordinador sin COORD_MONOGRAFIA.</summary>
     [HttpPost]
     public async Task<IActionResult> Registrar(RegistrarMonografiaRequest request)

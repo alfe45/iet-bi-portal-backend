@@ -11,7 +11,7 @@ public class AsignacionesService(AsignacionesRepository repo, ILogsService logs)
 {
     private const string Tabla = "academico.asignaciones_docentes";
 
-    /// <summary>Identificador de auditoría: "2026/10-1/MAT/1-1111-1111".</summary>
+    /// <summary>Identificador de auditoría: "2026/11-1/MAT/1-1111-1111".</summary>
     private static string IdRegistro(int anio, int nivel, int numero, string codigo, string cedula) =>
         $"{anio}/{nivel}-{numero}/{codigo.Trim().ToUpperInvariant()}/{cedula.Trim()}";
 

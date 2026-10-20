@@ -6,14 +6,14 @@ using iet_bi_portal_backend.Modules.Secciones.Services;
 
 namespace iet_bi_portal_backend.Modules.Secciones.Controllers;
 
-/// <summary>Administrador CU18 a CU21 (registrar, consultar y eliminar secciones; asociar el profesor guía). Se opera siempre por (año, nivel, número), ej. /2026/10/1. Exige rol ADMIN.</summary>
+/// <summary>Administrador CU18 a CU21 (registrar, consultar y eliminar secciones; asociar el profesor guía). Se opera siempre por (año, nivel, número), ej. /2026/11/1. Exige rol ADMIN.</summary>
 [Route("api/admin/secciones")]
 public class AdminSeccionesController(SeccionesService secciones) : AdminControllerBase
 {
     private const string RutaSeccion = "{anio:int}/{nivel:int}/{numero:int}";
 
     /// <summary>CU18: 201 con el nombre; 404 (NF004) periodo inexistente; 400 (SE002) nivel/número; 409 (SE001) repetida;
-    /// 409 (SE005) nivel 11 sin la 10-N del año anterior (RN-62). Para subir la sección con sus estudiantes: POST /api/admin/matriculas/subir-seccion.</summary>
+    /// 409 (SE005) nivel 12 sin la 11-N del año anterior (RN-62). Para subir la sección con sus estudiantes: POST /api/admin/matriculas/subir-seccion.</summary>
     [HttpPost]
     public async Task<IActionResult> Registrar(RegistrarSeccionRequest request)
     {
@@ -21,7 +21,7 @@ public class AdminSeccionesController(SeccionesService secciones) : AdminControl
         return StatusCode(StatusCodes.Status201Created, new { anio = request.Anio, nombre });
     }
 
-    /// <summary>CU19: listado paginado; filtros opcionales ?anio=2026&amp;nivel=10.</summary>
+    /// <summary>CU19: listado paginado; filtros opcionales ?anio=2026&amp;nivel=11.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaSecciones consulta) =>
         Ok(await secciones.ListarAsync(ActorId, consulta));
@@ -34,7 +34,7 @@ public class AdminSeccionesController(SeccionesService secciones) : AdminControl
         return seccion is null ? this.ApiError("NF006") : Ok(seccion);
     }
 
-    /// <summary>CU20: elimina la sección. 404 (NF006); 409 (23001) si tiene datos asociados; 409 (SE006) 10-N que ya continúa como 11-N.</summary>
+    /// <summary>CU20: elimina la sección. 404 (NF006); 409 (23001) si tiene datos asociados; 409 (SE006) 11-N que ya continúa como 12-N.</summary>
     [HttpDelete(RutaSeccion)]
     public async Task<IActionResult> Eliminar(int anio, int nivel, int numero)
     {

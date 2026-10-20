@@ -12,7 +12,7 @@ CREATE TYPE academico.asignacion_docente AS (
     anio INTEGER,
     nivel SMALLINT,
     numero SMALLINT,
-    seccion TEXT,                -- "10-1"
+    seccion TEXT,                -- "11-1"
     codigo_asignatura VARCHAR(10),
     asignatura TEXT,
     cedula_profesor VARCHAR(20),
@@ -138,7 +138,7 @@ BEGIN
     v_id_asignatura := academico.fn_obtener_id_asignatura(p_codigo_asignatura);
     v_id_profesor := academico.fn_obtener_id_profesor(p_cedula_profesor);
 
-    -- RN-39: la asignatura se imparte en el nivel de la sección (ej. Cívica no en 11).
+    -- RN-39: la asignatura se imparte en el nivel de la sección (ej. Cívica no en 12).
     PERFORM academico.fn_validar_asignatura_en_nivel(v_id_asignatura, p_nivel);
     PERFORM academico.fn_validar_profesor_asignable(v_id_seccion, v_id_asignatura, v_id_profesor);
 

@@ -8,13 +8,13 @@ namespace iet_bi_portal_backend.Modules.Asignaturas.Data;
 /// <summary>Acceso a las funciones de asignaturas (CU26 a CU29). Todo por código.</summary>
 public class AsignaturasRepository(NpgsqlDataSource db)
 {
-    private const string Columnas = "codigo, nombre::text, tipo::text, descripcion, imparte_nivel_10, imparte_nivel_11";
+    private const string Columnas = "codigo, nombre::text, tipo::text, descripcion, imparte_nivel_11, imparte_nivel_12";
 
     /// <summary>Devuelve el código normalizado. Errores de la DB: AU009, AS001 a AS004.</summary>
     public Task<string> RegistrarAsync(Guid actorId, RegistrarAsignaturaRequest r) =>
         db.EscalarAsync<string>(
             "SELECT academico.fn_admin_registrar_asignatura($1, $2::text, $3::text, $4::academico.tipo_asignatura, $5::text, $6::boolean, $7::boolean)",
-            actorId, r.Codigo, r.Nombre, r.Tipo.ToUpperInvariant(), r.Descripcion, r.ImparteNivel10, r.ImparteNivel11);
+            actorId, r.Codigo, r.Nombre, r.Tipo.ToUpperInvariant(), r.Descripcion, r.ImparteNivel11, r.ImparteNivel12);
 
     public async Task<ResultadoPaginado<Asignatura>> ListarAsync(Guid actorId, ConsultaAsignaturas c)
     {
@@ -35,7 +35,7 @@ public class AsignaturasRepository(NpgsqlDataSource db)
             "SELECT out_status, out_datos_anteriores::text " +
             "FROM academico.fn_admin_actualizar_asignatura($1, $2::text, $3::text, $4::academico.tipo_asignatura, $5::text, $6::boolean, $7::boolean)",
             x => (x.GetString(0), x.IsDBNull(1) ? null : x.GetString(1)),
-            actorId, codigo, r.Nombre, r.Tipo.ToUpperInvariant(), r.Descripcion, r.ImparteNivel10, r.ImparteNivel11);
+            actorId, codigo, r.Nombre, r.Tipo.ToUpperInvariant(), r.Descripcion, r.ImparteNivel11, r.ImparteNivel12);
 
     /// <summary>Elimina la asignatura y devuelve el snapshot previo en JSON. Errores: NF007, 23001.</summary>
     public Task<string> EliminarAsync(Guid actorId, string codigo) =>

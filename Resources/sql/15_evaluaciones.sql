@@ -3,8 +3,8 @@
 -- prórrogas del ADMIN. Tablas en 06.
 -- La nota es por semestre, estudiante y asignación, en la escala fija del tipo de asignatura (RN-73).
 -- El profesor registra y corrige sus notas desde el inicio del semestre hasta el cierre: la fecha de fin del
--- semestre o la prórroga que el ADMIN le dio (RN-74). Las envía al guía (RN-75); el guía y el reporte de
--- bandas solo ven notas enviadas.
+-- semestre o la prórroga que el ADMIN le dio (RN-74). El guía y el reporte de bandas ven las notas desde que se
+-- registran; al final del semestre el profesor las confirma y el guía ve cuáles están confirmadas (RN-75).
 -- ============================================================
 SET search_path = academico, api, auth, public;
 
@@ -27,12 +27,12 @@ CREATE TYPE academico.estado_notas AS (
     tipo_asignatura academico.tipo_asignatura,
     semestre academico.numero_semestre,
     fecha_cierre DATE,           -- fin del semestre o prórroga
-    enviado_en TIMESTAMPTZ,      -- NULL = sin enviar
+    confirmado_en TIMESTAMPTZ,   -- NULL = sin confirmar
     estudiantes INTEGER,
     sin_nota INTEGER
 );
 
--- Guía CU03: una fila por estudiante y asignación de la sección. nota solo si el profesor ya la envió.
+-- Guía CU03: una fila por estudiante y asignación de la sección, con la nota registrada y si el profesor ya la confirmó.
 CREATE TYPE academico.nota_seccion AS (
     cedula_estudiante VARCHAR(20),
     nombre_estudiante TEXT,
@@ -41,7 +41,7 @@ CREATE TYPE academico.nota_seccion AS (
     asignatura TEXT,
     tipo_asignatura academico.tipo_asignatura,
     nombre_profesor TEXT,
-    enviada BOOLEAN,
+    confirmada BOOLEAN,
     nota VARCHAR(3),
     nota_minima VARCHAR(3),
     aprobada BOOLEAN,
@@ -61,7 +61,7 @@ CREATE TYPE academico.aviso_notas AS (
     dias_para_cierre INTEGER,
     estudiantes INTEGER,
     sin_nota INTEGER,
-    enviada BOOLEAN,
+    confirmada BOOLEAN,
     aviso TEXT                   -- NINGUNO | INFORMATIVO | PRIORIDAD (RN-76)
 );
 
@@ -235,7 +235,7 @@ BEGIN
 
     SELECT (ad.fila).anio, (ad.fila).seccion, (ad.fila).codigo_asignatura, (ad.fila).asignatura, v.tipo, p_semestre,
            academico.fn_cierre_notas(v.id_profesor, v.periodo, p_semestre),
-           (SELECT en.enviado_en FROM academico.envios_notas en WHERE en.id_asignacion = p_id_asignacion AND en.semestre = p_semestre),
+           (SELECT cn.confirmado_en FROM academico.confirmaciones_notas cn WHERE cn.id_asignacion = p_id_asignacion AND cn.semestre = p_semestre),
            (SELECT COUNT(*)::INTEGER FROM academico.fn_notas_asignacion(p_id_asignacion, p_semestre)),
            (SELECT COUNT(*)::INTEGER FROM academico.fn_notas_asignacion(p_id_asignacion, p_semestre) n WHERE n.nota IS NULL)
     INTO r
@@ -250,7 +250,8 @@ $$;
 -- Profesor Regular CU06 / CU07 / CU09 - Registrar y modificar notas y observaciones
 -- p_notas: [{ "cedulaEstudiante": "...", "nota": "6", "observaciones": "..." }]. Registra o reemplaza la nota y
 -- las observaciones de cada estudiante indicado; los demás no cambian. EV004 si un estudiante no se califica en
--- la sección y semestre; EV005 si se repite. Devuelve 'OK' o 'SIN_CAMBIOS' y los valores previos de lo que cambió.
+-- la sección y semestre; EV005 si se repite. Si algo cambió, la asignación queda sin confirmar (RN-75).
+-- Devuelve 'OK' o 'SIN_CAMBIOS' y los valores previos de lo que cambió (más confirmacionAnulada).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_registrar_notas(
     p_id_usuario UUID,
@@ -323,16 +324,17 @@ BEGIN
     IF jsonb_array_length(v_cambios) = 0 THEN
         out_status := 'SIN_CAMBIOS';
     ELSE
+        DELETE FROM academico.confirmaciones_notas WHERE id_asignacion = v_id_asignacion AND semestre = p_semestre;
         out_status := 'OK';
-        out_datos_anteriores := v_cambios;
+        out_datos_anteriores := jsonb_build_object('notas', v_cambios, 'confirmacionAnulada', FOUND);
     END IF;
 END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU07 - Eliminar la nota de un estudiante (corrección). Anula el envío de la asignación en el
--- semestre: hay que volver a enviar (RN-75). NF009 si no tiene matrícula ese año; NF016 si no tiene nota.
--- Devuelve la nota previa y si se anuló el envío.
+-- Profesor Regular CU07 - Eliminar la nota de un estudiante (corrección). Quita la confirmación de la asignación en
+-- el semestre: hay que volver a confirmar (RN-75). NF009 si no tiene matrícula ese año; NF016 si no tiene nota.
+-- Devuelve la nota previa y si se anuló la confirmación.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_eliminar_nota(
     p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT,
@@ -346,7 +348,7 @@ DECLARE
     v RECORD;
     v_id_matricula BIGINT := academico.fn_obtener_id_matricula(p_anio, p_cedula_estudiante);
     v_prev academico.evaluaciones%ROWTYPE;
-    v_envio_anulado BOOLEAN;
+    v_confirmacion_anulada BOOLEAN;
 BEGIN
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
@@ -359,11 +361,11 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF016', 'El estudiante no tiene nota en esa asignación y semestre.');
     END IF;
 
-    DELETE FROM academico.envios_notas WHERE id_asignacion = v_id_asignacion AND semestre = p_semestre;
-    v_envio_anulado := FOUND;
+    DELETE FROM academico.confirmaciones_notas WHERE id_asignacion = v_id_asignacion AND semestre = p_semestre;
+    v_confirmacion_anulada := FOUND;
 
     RETURN jsonb_build_object('cedulaEstudiante', api.fn_limpiar_cedula(p_cedula_estudiante), 'nota', v_prev.nota,
-                              'observaciones', v_prev.observaciones, 'envioAnulado', v_envio_anulado);
+                              'observaciones', v_prev.observaciones, 'confirmacionAnulada', v_confirmacion_anulada);
 END;
 $$;
 
@@ -394,15 +396,15 @@ AS $$
 DECLARE
     v_id_asignacion BIGINT := academico.fn_obtener_mi_asignacion(p_id_usuario, p_anio, p_nivel, p_numero, p_codigo_asignatura);
 BEGIN
-    RETURN QUERY SELECT (academico.fn_estado_notas(v_id_asignacion, p_semestre)).*;
+    RETURN QUERY SELECT * FROM academico.fn_estado_notas(v_id_asignacion, p_semestre);   -- en FROM: una sola llamada
 END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU14 - Enviar el registro de bandas al guía (RN-75). EV006 si falta la nota de algún
--- estudiante. Devuelve 'OK', o 'SIN_CAMBIOS' si ya estaba enviado.
+-- Profesor Regular CU14 - Confirmar el registro de bandas al final del semestre (RN-75). EV006 si falta la nota de
+-- algún estudiante. Devuelve 'OK', o 'SIN_CAMBIOS' si ya estaba confirmado.
 -- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION academico.fn_profesor_enviar_notas(
+CREATE OR REPLACE FUNCTION academico.fn_profesor_confirmar_notas(
     p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT,
     p_semestre academico.numero_semestre)
 RETURNS TEXT
@@ -420,7 +422,7 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('EV006', 'Hay estudiantes sin nota.');
     END IF;
 
-    INSERT INTO academico.envios_notas (id_asignacion, semestre) VALUES (v_id_asignacion, p_semestre)
+    INSERT INTO academico.confirmaciones_notas (id_asignacion, semestre) VALUES (v_id_asignacion, p_semestre)
     ON CONFLICT (id_asignacion, semestre) DO NOTHING;
 
     RETURN CASE WHEN FOUND THEN 'OK' ELSE 'SIN_CAMBIOS' END;
@@ -429,7 +431,7 @@ $$;
 
 -- ------------------------------------------------------------
 -- Profesor Regular CU01 - Pantalla principal: mis asignaciones con el plazo de notas abierto y el aviso según
--- los días para el cierre (RN-76). Quedan pendientes si falta alguna nota o no las ha enviado.
+-- los días para el cierre (RN-76). Quedan pendientes si falta alguna nota o no las ha confirmado.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_avisos_notas(p_id_usuario UUID)
 RETURNS SETOF academico.aviso_notas
@@ -448,13 +450,13 @@ BEGIN
         WHERE ad.id_usuario_profesor = p_id_usuario
           AND api.fn_hoy() BETWEEN academico.fn_inicio_semestre(p, sem.s) AND academico.fn_cierre_notas(a.id_profesor, p, sem.s)
     ), conteo AS (
-        SELECT ab.*, e.estudiantes, e.sin_nota, e.enviado_en IS NOT NULL AS enviada, ab.cierre - api.fn_hoy() AS dias
+        SELECT ab.*, e.estudiantes, e.sin_nota, e.confirmado_en IS NOT NULL AS confirmada, ab.cierre - api.fn_hoy() AS dias
         FROM abiertas ab
         CROSS JOIN LATERAL academico.fn_estado_notas(ab.id_asignacion, ab.semestre) e
     )
     SELECT (c.fila).anio, (c.fila).nivel, (c.fila).numero, (c.fila).seccion, (c.fila).codigo_asignatura, (c.fila).asignatura,
-           c.semestre, c.cierre, c.dias, c.estudiantes, c.sin_nota, c.enviada,
-           CASE WHEN c.sin_nota = 0 AND c.enviada THEN 'NINGUNO'
+           c.semestre, c.cierre, c.dias, c.estudiantes, c.sin_nota, c.confirmada,
+           CASE WHEN c.sin_nota = 0 AND c.confirmada THEN 'NINGUNO'
                 WHEN c.dias <= 15 THEN 'PRIORIDAD'
                 WHEN c.dias <= 30 THEN 'INFORMATIVO'
                 ELSE 'NINGUNO' END
@@ -465,7 +467,7 @@ $$;
 
 -- ------------------------------------------------------------
 -- Guía CU03 / CU04 - Notas de una sección (RN-77): cualquier guía consulta cualquier sección. Una fila por
--- estudiante y asignación; la nota solo aparece si el profesor ya la envió.
+-- estudiante y asignación con la nota registrada hasta el momento y si el profesor ya la confirmó (RN-75).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_guia_notas_seccion(
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_semestre academico.numero_semestre)
@@ -479,17 +481,17 @@ BEGIN
     RETURN QUERY
     SELECT (d.fila).cedula_estudiante, (d.fila).nombre_estudiante, (d.fila).estado,
            (ad.fila).codigo_asignatura, (ad.fila).asignatura, asg.tipo, (ad.fila).nombre_profesor,
-           en.id_asignacion IS NOT NULL,
-           CASE WHEN en.id_asignacion IS NOT NULL THEN ev.nota END::VARCHAR(3),
+           cn.id_asignacion IS NOT NULL,
+           ev.nota,
            academico.fn_nota_minima(asg.tipo)::VARCHAR(3),
-           CASE WHEN en.id_asignacion IS NOT NULL THEN academico.fn_nota_aprobada(asg.tipo, ev.nota) END,
-           CASE WHEN en.id_asignacion IS NOT NULL THEN ev.observaciones END::VARCHAR(500)
+           academico.fn_nota_aprobada(asg.tipo, ev.nota),
+           ev.observaciones
     FROM academico.fn_matriculas_del_semestre(v_id_seccion, p_semestre) ms
     JOIN academico.fn_matriculas_detalle() d ON d.id_matricula = ms.id_matricula
     JOIN academico.asignaciones_docentes a ON a.id_seccion = v_id_seccion
     JOIN academico.asignaturas asg ON asg.id_asignatura = a.id_asignatura
     JOIN academico.fn_asignaciones_detalle() ad ON ad.id_asignacion = a.id_asignacion
-    LEFT JOIN academico.envios_notas en ON en.id_asignacion = a.id_asignacion AND en.semestre = p_semestre
+    LEFT JOIN academico.confirmaciones_notas cn ON cn.id_asignacion = a.id_asignacion AND cn.semestre = p_semestre
     LEFT JOIN academico.evaluaciones ev
            ON ev.id_asignacion = a.id_asignacion AND ev.id_matricula = ms.id_matricula AND ev.semestre = p_semestre
     ORDER BY d.apellidos_nombre, (ad.fila).asignatura, (ad.fila).nombre_profesor;

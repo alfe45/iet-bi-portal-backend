@@ -67,8 +67,9 @@ RETURNS SETOF academico.periodo_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT (academico.fn_a_periodo_admin(p)).*
+    SELECT f.*   -- LATERAL: (f(p)).* llamaría a la función una vez por columna
     FROM academico.periodos_academicos p
+    CROSS JOIN LATERAL academico.fn_a_periodo_admin(p) f
     WHERE api.fn_hoy() BETWEEN p.inicio_semestre_i AND p.fin_semestre_ii;
 $$;
 
@@ -191,8 +192,9 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT (academico.fn_a_periodo_admin(p)).*
+    SELECT f.*
     FROM academico.periodos_academicos p
+    CROSS JOIN LATERAL academico.fn_a_periodo_admin(p) f
     ORDER BY p.anio DESC
     LIMIT api.fn_tamano_pagina(p_tamano_pagina)
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
@@ -213,8 +215,9 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT (academico.fn_a_periodo_admin(p)).*
+    SELECT f.*
     FROM academico.periodos_academicos p
+    CROSS JOIN LATERAL academico.fn_a_periodo_admin(p) f
     WHERE p.anio = p_anio;
 $$;
 
@@ -238,7 +241,8 @@ BEGIN
         OR EXISTS (SELECT 1 FROM academico.experiencias_cas x
                    JOIN academico.informes_cas i ON i.id_informe = x.id_informe
                    JOIN academico.matriculas m ON m.id_matricula = i.id_matricula
-                   WHERE m.id_periodo = p.id_periodo AND x.fecha NOT BETWEEN p.inicio_semestre_i AND p.fin_semestre_ii)
+                   WHERE m.id_periodo = p.id_periodo
+                     AND (x.fecha_inicio < p.inicio_semestre_i OR COALESCE(x.fecha_fin, x.fecha_inicio) > p.fin_semestre_ii))
         OR EXISTS (SELECT 1 FROM academico.seguimientos_monografia sg
                    JOIN academico.monografias mo ON mo.id_monografia = sg.id_monografia
                    JOIN academico.matriculas m ON m.id_matricula = mo.id_matricula_inicio

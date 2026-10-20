@@ -27,7 +27,7 @@ public class ProfesorCasController(CasService cas) : ApiControllerBase
         Ok(await cas.ObtenerInformeAsync(ActorId, anio, semestre, cedula));
 
     /// <summary>CU01 / CU02: registra o reemplaza el informe (RN-83). 404 (NF004/NF003/NF009); 403 (AD004); 400 (EV004)
-    /// estudiante que no se califica en el semestre; 400 (CA001) fecha de experiencia inválida; 409 (EV002/EV003).</summary>
+    /// estudiante que no se califica en el semestre; 400 (CA001) fecha de experiencia inválida; 400 (CA002) fecha final sin inicial o anterior; 409 (EV002/EV003).</summary>
     [HttpPut(RutaInforme)]
     public async Task<IActionResult> Guardar(int anio, string semestre, string cedula, GuardarInformeCasRequest request)
     {

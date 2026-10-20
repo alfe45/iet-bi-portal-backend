@@ -10,7 +10,7 @@ public class SeccionesRepository(NpgsqlDataSource db)
 {
     private const string Columnas = "anio, nivel::int, numero::int, nombre, cedula_guia, nombre_guia, cantidad_estudiantes";
 
-    /// <summary>Devuelve el nombre de la sección ("10-1"). Errores de la DB: AU009, NF004, SE001, SE002, SE005.</summary>
+    /// <summary>Devuelve el nombre de la sección ("11-1"). Errores de la DB: AU009, NF004, SE001, SE002, SE005.</summary>
     public Task<string> RegistrarAsync(Guid actorId, RegistrarSeccionRequest r) =>
         db.EscalarAsync<string>(
             "SELECT academico.fn_admin_registrar_seccion($1, $2::integer, $3::integer, $4::integer)",

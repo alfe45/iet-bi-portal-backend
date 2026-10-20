@@ -10,10 +10,11 @@ namespace iet_bi_portal_backend.Modules.Evaluaciones.Services;
 public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
 {
     private const string TablaEvaluaciones = "academico.evaluaciones";
-    private const string TablaEnvios = "academico.envios_notas";
+    private const string TablaConfirmaciones = "academico.confirmaciones_notas";
     private const string TablaProrrogas = "academico.prorrogas";
 
-    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones. Registra log solo si hubo cambios.</summary>
+    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones (un cambio quita la confirmación, RN-75).
+    /// Registra log solo si hubo cambios.</summary>
     public async Task RegistrarNotasAsync(Guid actorId, RegistrarNotasRequest request)
     {
         var (estado, anteriores) = await repo.RegistrarNotasAsync(actorId, request);
@@ -22,7 +23,7 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request.Notas);
     }
 
-    /// <summary>CU07: elimina la nota de un estudiante y anula el envío de la asignación (RN-75).</summary>
+    /// <summary>CU07: elimina la nota de un estudiante y quita la confirmación de la asignación (RN-75).</summary>
     public async Task EliminarNotaAsync(Guid actorId, ConsultaNotasAsignacion asignacion, string cedula)
     {
         var anteriores = await repo.EliminarNotaAsync(actorId, asignacion, cedula);
@@ -34,17 +35,17 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
     public Task<NotasAsignacion> ListarNotasAsync(Guid idUsuario, ConsultaNotasAsignacion consulta) =>
         repo.ListarNotasAsync(idUsuario, consulta);
 
-    /// <summary>CU14: envía las notas al guía (RN-75). Registra log solo la primera vez.</summary>
-    public async Task EnviarNotasAsync(Guid actorId, ConsultaNotasAsignacion request)
+    /// <summary>CU14: confirma las notas del semestre (RN-75). Registra log solo si no estaban confirmadas.</summary>
+    public async Task ConfirmarNotasAsync(Guid actorId, ConsultaNotasAsignacion request)
     {
-        if (await repo.EnviarNotasAsync(actorId, request) == EstadoOperacion.Ok)
-            await logs.RegistrarAsync(actorId, AccionesLog.EnviarNotas, TablaEnvios, IdAsignacion(request));
+        if (await repo.ConfirmarNotasAsync(actorId, request) == EstadoOperacion.Ok)
+            await logs.RegistrarAsync(actorId, AccionesLog.ConfirmarNotas, TablaConfirmaciones, IdAsignacion(request));
     }
 
     /// <summary>CU01: avisos de la pantalla principal (RN-76).</summary>
     public Task<List<AvisoNotas>> AvisosAsync(Guid idUsuario) => repo.AvisosAsync(idUsuario);
 
-    /// <summary>Guía CU03 / CU04: notas enviadas de una sección (RN-77).</summary>
+    /// <summary>Guía CU03 / CU04: notas registradas de una sección y cuáles están confirmadas (RN-75, RN-77).</summary>
     public Task<List<NotaSeccion>> NotasSeccionAsync(ConsultaNotasSeccion consulta) => repo.NotasSeccionAsync(consulta);
 
     /// <summary>Otorga o cambia la prórroga (RN-74). Registra log solo si hubo cambios.</summary>

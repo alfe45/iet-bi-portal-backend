@@ -24,6 +24,7 @@ public class InformesService(InformesRepository repo)
         return filas
             .GroupBy(f => (f.Cedula, f.Nombre))
             .Select(g => new ReporteBandas(c.Anio!.Value, semestre, c.Nivel!.Value, seccion, g.Key.Cedula, g.Key.Nombre,
+                g.First().NombreGuia,
                 g.Where(f => f.Banda is not null).Select(f => f.Banda!).ToList(),
                 monografias.GetValueOrDefault(g.Key.Cedula)))
             .ToList();

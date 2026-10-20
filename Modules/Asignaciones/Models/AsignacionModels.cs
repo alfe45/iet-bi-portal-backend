@@ -35,7 +35,7 @@ public class ConsultaAsignaciones : ConsultaPaginada
 {
     public int? Anio { get; set; }
 
-    [Range(10, 11, ErrorMessage = "El nivel debe ser 10 u 11.")]
+    [Range(11, 12, ErrorMessage = "El nivel debe ser 11 u 12.")]
     public int? Nivel { get; set; }
 
     public int? Numero { get; set; }
@@ -48,7 +48,7 @@ public class ConsultaAsignaciones : ConsultaPaginada
 }
 
 /// <summary>Asignación tal como la devuelve academico.fn_*_asignaciones. Se usa también como respuesta HTTP.
-/// Seccion: "10-1".</summary>
+/// Seccion: "11-1".</summary>
 public record Asignacion(
     int Anio,
     int Nivel,

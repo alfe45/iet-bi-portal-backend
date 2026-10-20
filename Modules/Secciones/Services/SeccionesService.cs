@@ -11,10 +11,10 @@ public class SeccionesService(SeccionesRepository repo, ILogsService logs)
 {
     private const string Tabla = "academico.secciones";
 
-    /// <summary>Identificador de auditoría: "2026/10-1".</summary>
+    /// <summary>Identificador de auditoría: "2026/11-1".</summary>
     private static string IdRegistro(int anio, int nivel, int numero) => $"{anio}/{nivel}-{numero}";
 
-    /// <summary>CU18: registra una sección. Devuelve su nombre ("10-1").</summary>
+    /// <summary>CU18: registra una sección. Devuelve su nombre ("11-1").</summary>
     public async Task<string> RegistrarAsync(Guid actorId, RegistrarSeccionRequest request)
     {
         var nombre = await repo.RegistrarAsync(actorId, request);

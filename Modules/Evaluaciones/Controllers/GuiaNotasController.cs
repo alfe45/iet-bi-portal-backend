@@ -8,7 +8,7 @@ using iet_bi_portal_backend.Modules.Evaluaciones.Services;
 namespace iet_bi_portal_backend.Modules.Evaluaciones.Controllers;
 
 /// <summary>Guía CU03 / CU04 (unificados): notas de una sección por estudiante y asignación (RN-77). Cualquier guía consulta
-/// cualquier sección; la nota solo aparece si el profesor ya la envió.</summary>
+/// cualquier sección. Ve las notas desde que se registran y cuáles ya confirmó el profesor (RN-75).</summary>
 [Route("api/profesor/guia/notas")]
 [Authorize(Roles = Roles.Guia)]
 public class GuiaNotasController(EvaluacionesService evaluaciones) : ApiControllerBase
