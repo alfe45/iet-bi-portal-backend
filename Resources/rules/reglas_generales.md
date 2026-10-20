@@ -11,10 +11,10 @@ Entre paréntesis: el código de error que devuelve la API.
 - RN-04: El correo del estudiante es único, sin distinguir mayúsculas (ES002).
 
 ## Profesores
-- RN-05: Un profesor pertenece a exactamente un usuario; un usuario tiene como máximo un perfil de profesor (PR001).
+- RN-05: La cuenta de usuario del profesor es opcional (decisión de la iteración 3: los estudiantes no son usuarios y el alta se hace desde una sola vista). Un profesor tiene 0 o 1 usuario y un usuario tiene como máximo un perfil de profesor (PR001). Al registrar el profesor (CU06) se puede, en la misma operación, crear la cuenta (correo + contraseña + roles; sin roles nace con PROFESOR_REGULAR) o vincular un usuario existente, nunca las dos cosas (PR006); la cuenta también se crea o vincula después (PR007 si ya tiene). Sin cuenta el profesor no inicia sesión ni tiene roles: solo puede recibir guía o asignaciones en periodos finalizados (digitalización), porque en periodos vigentes se exige el rol activo.
 - RN-06: La cédula del profesor es única (PR002).
-- RN-07: Eliminar un profesor elimina solo el perfil; el usuario se conserva.
-- RN-08: No se puede eliminar un usuario que tiene perfil de profesor (PR003).
+- RN-07: Eliminar un profesor elimina solo el perfil; el usuario se conserva. Quitar la cuenta (CU09) elimina el usuario y conserva el profesor y su historial; no se permite si no tiene cuenta (PR008), si es la propia cuenta (AU012), el último administrador (AU013) o si tiene secciones, asignaciones o monografías vigentes (AU020).
+- RN-08: No se puede eliminar desde Usuarios un usuario que tiene perfil de profesor (PR003): se quita la cuenta desde el profesor.
 
 ## Cédula (profesores y estudiantes)
 - RN-09: La cédula es el identificador de negocio; se usa en rutas y búsquedas en lugar del id interno.

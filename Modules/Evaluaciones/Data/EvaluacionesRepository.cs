@@ -33,7 +33,7 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
     {
         object?[] args = [idUsuario, c.Anio, c.Nivel, c.Numero, c.CodigoAsignatura, Semestres.Normalizar(c.Semestre)];
         var estado = await db.PrimeroAsync(
-            "SELECT anio, seccion, codigo_asignatura, asignatura, tipo_asignatura::text, semestre::text, fecha_cierre, enviado_en, " +
+            "SELECT anio, seccion, codigo_asignatura, asignatura, tipo_asignatura::text, semestre::text, fecha_cierre, confirmado_en, " +
             $"estudiantes, sin_nota FROM academico.fn_profesor_estado_notas({Asignacion})",
             r => new EstadoNotas(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
                 r.GetFieldValue<DateOnly>(6), r.IsDBNull(7) ? null : r.GetDateTime(7), r.GetInt32(8), r.GetInt32(9)),
@@ -47,16 +47,16 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
         return new NotasAsignacion(estado, notas);
     }
 
-    /// <summary>Devuelve OK, o SIN_CAMBIOS si ya estaban enviadas. Errores: NF006, NF007, AD004, EV002, EV003, EV006.</summary>
-    public Task<string> EnviarNotasAsync(Guid idUsuario, ConsultaNotasAsignacion c) =>
+    /// <summary>Devuelve OK, o SIN_CAMBIOS si ya estaban confirmadas. Errores: NF006, NF007, AD004, EV002, EV003, EV006.</summary>
+    public Task<string> ConfirmarNotasAsync(Guid idUsuario, ConsultaNotasAsignacion c) =>
         db.EscalarAsync<string>(
-            $"SELECT academico.fn_profesor_enviar_notas({Asignacion})",
+            $"SELECT academico.fn_profesor_confirmar_notas({Asignacion})",
             idUsuario, c.Anio, c.Nivel, c.Numero, c.CodigoAsignatura, Semestres.Normalizar(c.Semestre));
 
     public Task<List<AvisoNotas>> AvisosAsync(Guid idUsuario) =>
         db.ListarAsync(
             "SELECT anio, nivel::int, numero::int, seccion, codigo_asignatura, asignatura, semestre::text, fecha_cierre, " +
-            "dias_para_cierre, estudiantes, sin_nota, enviada, aviso FROM academico.fn_profesor_avisos_notas($1)",
+            "dias_para_cierre, estudiantes, sin_nota, confirmada, aviso FROM academico.fn_profesor_avisos_notas($1)",
             r => new AvisoNotas(r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetString(3), r.GetString(4), r.GetString(5),
                 r.GetString(6), r.GetFieldValue<DateOnly>(7), r.GetInt32(8), r.GetInt32(9), r.GetInt32(10), r.GetBoolean(11),
                 r.GetString(12)),
@@ -66,7 +66,7 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
     public Task<List<NotaSeccion>> NotasSeccionAsync(ConsultaNotasSeccion c) =>
         db.ListarAsync(
             "SELECT cedula_estudiante, nombre_estudiante, estado_matricula::text, codigo_asignatura, asignatura, tipo_asignatura::text, " +
-            "nombre_profesor, enviada, nota, nota_minima, aprobada, observaciones " +
+            "nombre_profesor, confirmada, nota, nota_minima, aprobada, observaciones " +
             "FROM academico.fn_guia_notas_seccion($1::integer, $2::integer, $3::integer, $4::academico.numero_semestre)",
             r => new NotaSeccion(r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
                 r.GetString(6), r.GetBoolean(7), Texto(r, 8), Texto(r, 9), r.IsDBNull(10) ? null : r.GetBoolean(10), Texto(r, 11)),

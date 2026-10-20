@@ -87,7 +87,7 @@ public record NotaEstudiante(
     bool? Aprobada,
     string? Observaciones);
 
-/// <summary>Estado de las notas de una asignación en un semestre. FechaCierre incluye la prórroga; EnviadoEn null = sin enviar.</summary>
+/// <summary>Estado de las notas de una asignación en un semestre. FechaCierre incluye la prórroga; ConfirmadoEn null = sin confirmar.</summary>
 public record EstadoNotas(
     int Anio,
     string Seccion,
@@ -96,14 +96,14 @@ public record EstadoNotas(
     string TipoAsignatura,
     string Semestre,
     DateOnly FechaCierre,
-    DateTime? EnviadoEn,
+    DateTime? ConfirmadoEn,
     int Estudiantes,
     int SinNota);
 
 /// <summary>Profesor Regular CU08: estado y notas de la asignación.</summary>
 public record NotasAsignacion(EstadoNotas Estado, List<NotaEstudiante> Notas);
 
-/// <summary>Guía CU03: nota de un estudiante en una asignación de la sección; Nota solo si el profesor ya la envió.</summary>
+/// <summary>Guía CU03: nota registrada de un estudiante en una asignación de la sección y si el profesor ya la confirmó.</summary>
 public record NotaSeccion(
     string CedulaEstudiante,
     string NombreEstudiante,
@@ -112,14 +112,14 @@ public record NotaSeccion(
     string Asignatura,
     string TipoAsignatura,
     string NombreProfesor,
-    bool Enviada,
+    bool Confirmada,
     string? Nota,
     string? NotaMinima,
     bool? Aprobada,
     string? Observaciones);
 
 /// <summary>Profesor Regular CU01: asignación con plazo de notas abierto. Aviso: NINGUNO, INFORMATIVO (30 días o menos)
-/// o PRIORIDAD (15 días o menos) mientras falten notas o no se hayan enviado (RN-76).</summary>
+/// o PRIORIDAD (15 días o menos) mientras falten notas o no se hayan confirmado (RN-76).</summary>
 public record AvisoNotas(
     int Anio,
     int Nivel,
@@ -132,7 +132,7 @@ public record AvisoNotas(
     int DiasParaCierre,
     int Estudiantes,
     int SinNota,
-    bool Enviada,
+    bool Confirmada,
     string Aviso);
 
 /// <summary>Prórroga de un profesor en un semestre.</summary>

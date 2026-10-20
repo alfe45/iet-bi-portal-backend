@@ -3,14 +3,17 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Cas.Models;
 
-/// <summary>Fila del informe CAS: proyecto, serie de experiencias o experiencia (en el orden del formato). Fecha opcional,
-/// no futura y dentro del periodo (CA001). ResultadosAprendizaje: cuáles de los 7 resultados de aprendizaje cumple.</summary>
+/// <summary>Fila del informe CAS: proyecto, serie de experiencias o experiencia (en el orden del formato). Dos fechas
+/// opcionales (ej. "10-04" y "25-06"), no futuras y dentro del periodo (CA001); la final necesita la inicial y no es
+/// anterior (CA002). ResultadosAprendizaje: cuáles de los 7 resultados de aprendizaje cumple.</summary>
 public class ExperienciaCasRequest : IValidatableObject
 {
     [Required, StringLength(255, MinimumLength = 3, ErrorMessage = "La descripción debe tener entre 3 y 255 caracteres.")]
     public string Descripcion { get; set; } = string.Empty;
 
-    public DateOnly? Fecha { get; set; }
+    public DateOnly? FechaInicio { get; set; }
+
+    public DateOnly? FechaFin { get; set; }
 
     public bool Creatividad { get; set; }
     public bool Actividad { get; set; }
@@ -31,7 +34,7 @@ public class ExperienciaCasRequest : IValidatableObject
 }
 
 /// <summary>Profesor CAS CU01 / CU02: informe del estudiante en el semestre (RN-83). Reemplaza el informe anterior.
-/// Perfil y entrevistas: lo que el estudiante lleva cumplido hasta ese semestre.</summary>
+/// Perfil y entrevistas: lo que el estudiante lleva cumplido hasta ese semestre. Observaciones: segunda página del reporte.</summary>
 public class GuardarInformeCasRequest
 {
     public bool Perfil { get; set; }
@@ -80,7 +83,8 @@ public class ConsultaProgresoGeneral
 public record ExperienciaCas(
     int Orden,
     string Descripcion,
-    DateOnly? Fecha,
+    DateOnly? FechaInicio,
+    DateOnly? FechaFin,
     bool Creatividad,
     bool Actividad,
     bool Servicio,
@@ -90,7 +94,8 @@ public record ExperienciaCas(
     bool Pruebas);
 
 /// <summary>Informe CAS completo, con los datos para el formato del Instituto (el front arma el PDF). Nota: la nota CAS del
-/// semestre (para el coordinador, solo si el profesor ya la envió).</summary>
+/// semestre (para el coordinador, solo si el profesor ya la confirmó, RN-84). Segunda página: observaciones y líneas de firma del
+/// coordinador de CAS (<see cref="NombreCoordinadorCas"/>, null si no hay), del profesor CAS y del encargado, con fecha.</summary>
 public record InformeCas(
     int Anio,
     string Semestre,
@@ -106,9 +111,10 @@ public record InformeCas(
     bool EntrevistaFinal,
     string? Observaciones,
     string? Nota,
-    bool NotaEnviada,
+    bool NotaConfirmada,
     DateTime ModificadoEn,
-    List<ExperienciaCas> Experiencias);
+    List<ExperienciaCas> Experiencias,
+    string? NombreCoordinadorCas);
 
 /// <summary>Progreso CAS de un estudiante en el semestre (RN-84). Entrevistas: cuántas de las 3 lleva.</summary>
 public record ProgresoCas(
@@ -123,4 +129,4 @@ public record ProgresoCas(
     bool Perfil,
     int Entrevistas,
     string? Nota,
-    bool NotaEnviada);
+    bool NotaConfirmada);

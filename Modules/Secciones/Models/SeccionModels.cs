@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Secciones.Models;
 
-/// <summary>CU18: sección de un nivel (10 u 11) en el periodo de un año. Nivel y número los valida la DB (SE002).</summary>
+/// <summary>CU18: sección de un nivel (11 u 12) en el periodo de un año. Nivel y número los valida la DB (SE002).</summary>
 public class RegistrarSeccionRequest
 {
     [Required]
@@ -31,7 +31,7 @@ public class ConsultaSecciones : ConsultaPaginada
 }
 
 /// <summary>Sección tal como la devuelve academico.fn_*_seccion*. Se usa también como respuesta HTTP.
-/// Nombre: "10-1". CedulaGuia/NombreGuia son null si no tiene guía. CantidadEstudiantes: matrículas no retiradas.</summary>
+/// Nombre: "11-1". CedulaGuia/NombreGuia son null si no tiene guía. CantidadEstudiantes: matrículas no retiradas.</summary>
 public record Seccion(
     int Anio,
     int Nivel,

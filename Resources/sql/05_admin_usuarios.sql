@@ -68,8 +68,9 @@ RETURNS SETOF api.usuario_admin
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT (auth.fn_a_usuario_admin(u)).*
+    SELECT f.*   -- LATERAL: (f(u)).* llamaría a la función una vez por columna
     FROM api.usuarios u
+    CROSS JOIN LATERAL auth.fn_a_usuario_admin(u) f
     WHERE u.id_usuario = p_id_usuario;
 $$;
 
@@ -106,8 +107,9 @@ LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
     SELECT api.fn_validar_admin_activo(p_id_usuario_actor);   -- RP-12 (las lecturas también)
-    SELECT (auth.fn_a_usuario_admin(u)).*
+    SELECT f.*
     FROM auth.fn_usuarios_filtrados(p_busqueda, p_rol) u
+    CROSS JOIN LATERAL auth.fn_a_usuario_admin(u) f
     ORDER BY u.creado_en DESC, u.id_usuario
     LIMIT api.fn_tamano_pagina(p_tamano_pagina)
     OFFSET api.fn_offset(p_pagina, p_tamano_pagina);
@@ -298,6 +300,8 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF001', 'El usuario no existe.');
     END IF;
 
+    PERFORM auth.fn_validar_rol_unico(p_id_usuario_objetivo, p_rol);
+
     INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
     VALUES (p_id_usuario_objetivo, p_rol, p_id_usuario_actor)
     ON CONFLICT (id_usuario, rol) DO NOTHING;
@@ -396,7 +400,7 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM academico.profesores WHERE id_usuario = p_id_usuario_objetivo) THEN
         PERFORM api.fn_lanzar_excepcion('PR003',
-            'No se puede eliminar un usuario que tiene un perfil de profesor. Elimina primero el perfil.');
+            'No se puede eliminar un usuario que tiene un perfil de profesor. Quita la cuenta desde el profesor.');
     END IF;
 
     PERFORM api.fn_validar_no_ultimo_admin(p_id_usuario_objetivo, 'AU013',

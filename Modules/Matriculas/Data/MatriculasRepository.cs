@@ -18,11 +18,13 @@ public class MatriculasRepository(NpgsqlDataSource db)
             "SELECT academico.fn_admin_registrar_matricula($1, $2::integer, $3::integer, $4::integer, $5::text, $6::date)",
             actorId, r.Anio, r.Nivel, r.Numero, r.CedulaEstudiante, r.FechaMatricula);
 
-    /// <summary>Sube la sección 10-N del año anterior a 11-N de r.Anio. Errores: AU009, NF004, NF006, MA002.</summary>
+    /// <summary>Sube la sección 11-N del año anterior a 12-N de r.Anio. Errores: AU009, NF004, NF006, MA002.</summary>
     public Task<SeccionSubida> SubirSeccionAsync(Guid actorId, SubirSeccionRequest r) =>
         db.PrimeroAsync(
-            "SELECT seccion_creada, matriculados, omitidos FROM academico.fn_admin_subir_seccion($1, $2::integer, $3::integer, $4::date)",
-            x => new SeccionSubida(x.GetBoolean(0), x.GetFieldValue<string[]>(1), x.GetFieldValue<string[]>(2)),
+            "SELECT seccion_creada, matriculados, omitidos, guia_copiado, asignaciones_copiadas, asignaciones_omitidas " +
+            "FROM academico.fn_admin_subir_seccion($1, $2::integer, $3::integer, $4::date)",
+            x => new SeccionSubida(x.GetBoolean(0), x.GetFieldValue<string[]>(1), x.GetFieldValue<string[]>(2),
+                x.IsDBNull(3) ? null : x.GetString(3), x.GetFieldValue<string[]>(4), x.GetFieldValue<string[]>(5)),
             actorId, r.Anio, r.Numero, r.FechaMatricula);
 
     public async Task<ResultadoPaginado<Matricula>> ListarAsync(Guid actorId, ConsultaMatriculas c)

@@ -8,7 +8,7 @@ using iet_bi_portal_backend.Modules.Evaluaciones.Services;
 namespace iet_bi_portal_backend.Modules.Evaluaciones.Controllers;
 
 /// <summary>Profesor Regular CU01 (pantalla principal), CU06 a CU09 (registrar, modificar y consultar evaluaciones y sus
-/// observaciones) y CU14 (enviar el registro de bandas al guía). Solo el profesor de la asignación opera sus notas
+/// observaciones) y CU14 (confirmar el registro de bandas al final del semestre). Solo el profesor de la asignación opera sus notas
 /// (403 AD004), desde el inicio del semestre (409 EV002) hasta el cierre: fin del semestre o prórroga (409 EV003).</summary>
 [Route("api/profesor")]
 [Authorize(Roles = Roles.ProfesorRegular)]
@@ -24,7 +24,8 @@ public class ProfesorEvaluacionesController(EvaluacionesService evaluaciones) : 
     public async Task<IActionResult> Listar([FromQuery] ConsultaNotasAsignacion consulta) =>
         Ok(await evaluaciones.ListarNotasAsync(ActorId, consulta));
 
-    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones. 400 (EV001) nota fuera de la escala;
+    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones; el guía las ve desde ya y un cambio quita la
+    /// confirmación de la asignación (RN-75). 400 (EV001) nota fuera de la escala;
     /// 400 (EV004) estudiante que no se califica en la sección y semestre; 400 (EV005) repetido; 409 (EV002/EV003).</summary>
     [HttpPut("evaluaciones")]
     public async Task<IActionResult> Registrar(RegistrarNotasRequest request)
@@ -33,8 +34,8 @@ public class ProfesorEvaluacionesController(EvaluacionesService evaluaciones) : 
         return NoContent();
     }
 
-    /// <summary>CU07: elimina la nota de un estudiante (corrección); anula el envío de la asignación en el semestre, que
-    /// hay que volver a enviar. 404 (NF009/NF016); 403 (AD004); 409 (EV002/EV003).</summary>
+    /// <summary>CU07: elimina la nota de un estudiante (corrección); quita la confirmación de la asignación en el semestre,
+    /// que hay que volver a confirmar. 404 (NF009/NF016); 403 (AD004); 409 (EV002/EV003).</summary>
     [HttpDelete("evaluaciones/{anio:int}/{nivel:int}/{numero:int}/{codigo}/{semestre}/{cedula}")]
     public async Task<IActionResult> EliminarNota(int anio, int nivel, int numero, string codigo, string semestre, string cedula)
     {
@@ -43,12 +44,12 @@ public class ProfesorEvaluacionesController(EvaluacionesService evaluaciones) : 
         return NoContent();
     }
 
-    /// <summary>CU14: envía las notas del semestre al guía (RN-75); 204 también si ya estaban enviadas.
-    /// 409 (EV006) si falta alguna nota; 409 (EV002/EV003).</summary>
-    [HttpPost("evaluaciones/envio")]
-    public async Task<IActionResult> Enviar(ConsultaNotasAsignacion request)
+    /// <summary>CU14: confirma las notas del semestre (RN-75): el guía ve que están confirmadas; 204 también si ya lo
+    /// estaban. 409 (EV006) si falta alguna nota; 409 (EV002/EV003).</summary>
+    [HttpPost("evaluaciones/confirmacion")]
+    public async Task<IActionResult> Confirmar(ConsultaNotasAsignacion request)
     {
-        await evaluaciones.EnviarNotasAsync(ActorId, request);
+        await evaluaciones.ConfirmarNotasAsync(ActorId, request);
         return NoContent();
     }
 }
