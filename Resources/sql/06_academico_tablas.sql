@@ -11,7 +11,7 @@ CREATE TYPE academico.numero_semestre AS ENUM ('I_SEMESTRE','II_SEMESTRE');
 -- Estado derivado (no se guarda): RETIRADA si tiene retiro; si no, según el estado del periodo.
 CREATE TYPE academico.estado_matricula AS ENUM ('PROGRAMADA','ACTIVA','FINALIZADA','RETIRADA');
 
--- PROFESORES: perfil académico de un usuario (1 usuario -> 0..1 profesor)
+-- PROFESORES: perfil académico con cuenta de usuario opcional (1 usuario -> 0..1 profesor; profesor -> 0..1 usuario)
 CREATE TABLE academico.profesores (
     id_profesor BIGINT GENERATED ALWAYS AS IDENTITY,
     nombre VARCHAR(100) NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE academico.profesores (
     cedula VARCHAR(20) NOT NULL,
     numero_celular VARCHAR(20),
     fecha_nacimiento DATE NOT NULL,
-    id_usuario UUID NOT NULL,
+    id_usuario UUID NULL,   -- cuenta opcional (RN-05): sin cuenta el profesor existe pero no inicia sesión
     CONSTRAINT pk_profesores PRIMARY KEY (id_profesor),
     CONSTRAINT fk_profesores_usuario FOREIGN KEY (id_usuario) REFERENCES api.usuarios(id_usuario) ON DELETE RESTRICT,
     CONSTRAINT uq_profesores_usuario UNIQUE (id_usuario),
@@ -74,7 +74,7 @@ CREATE TABLE academico.periodos_academicos (
         AND EXTRACT(YEAR FROM fin_semestre_ii) = anio)
 );
 
--- SECCIONES: grupo de un nivel (10 u 11) dentro de un periodo. Se opera por (año, nivel, número), ej. 2026 "10-1".
+-- SECCIONES: grupo de un nivel (11 u 12) dentro de un periodo. Se opera por (año, nivel, número), ej. 2026 "11-1".
 -- Un guía como máximo por sección y un profesor es guía de una sola sección por periodo.
 CREATE TABLE academico.secciones (
     id_seccion BIGINT GENERATED ALWAYS AS IDENTITY,
@@ -88,27 +88,27 @@ CREATE TABLE academico.secciones (
     CONSTRAINT uq_secciones_periodo_nivel_numero UNIQUE (id_periodo, nivel, numero),
     CONSTRAINT uq_secciones_id_periodo UNIQUE (id_seccion, id_periodo),   -- destino de FKs compuestas (matrículas)
     CONSTRAINT uq_secciones_periodo_guia UNIQUE (id_periodo, id_profesor_guia),
-    CONSTRAINT ck_secciones_nivel CHECK (nivel IN (10, 11)),
+    CONSTRAINT ck_secciones_nivel CHECK (nivel IN (11, 12)),
     CONSTRAINT ck_secciones_numero CHECK (numero BETWEEN 1 AND 99)
 );
 CREATE INDEX ix_secciones_profesor_guia ON academico.secciones(id_profesor_guia);
 
 -- ASIGNATURAS: catálogo global. Se opera por código (clave natural, inmutable).
--- Los niveles en que se imparte son datos (RN-39: Cívica y Estudios Sociales solo en 10).
+-- Los niveles en que se imparte son datos (RN-39: Cívica y Estudios Sociales solo en 11).
 CREATE TABLE academico.asignaturas (
     id_asignatura BIGINT GENERATED ALWAYS AS IDENTITY,
     codigo VARCHAR(10) NOT NULL,
     nombre CITEXT NOT NULL,
     tipo academico.tipo_asignatura NOT NULL,
     descripcion VARCHAR(255),
-    imparte_nivel_10 BOOLEAN NOT NULL,
     imparte_nivel_11 BOOLEAN NOT NULL,
+    imparte_nivel_12 BOOLEAN NOT NULL,
     CONSTRAINT pk_asignaturas PRIMARY KEY (id_asignatura),
     CONSTRAINT uq_asignaturas_codigo UNIQUE (codigo),
     CONSTRAINT uq_asignaturas_nombre UNIQUE (nombre),
     CONSTRAINT ck_asignaturas_codigo CHECK (codigo ~ '^[A-Z0-9]{2,10}$'),
     CONSTRAINT ck_asignaturas_nombre CHECK (length(trim(nombre)) BETWEEN 2 AND 100),
-    CONSTRAINT ck_asignaturas_niveles CHECK (imparte_nivel_10 OR imparte_nivel_11)
+    CONSTRAINT ck_asignaturas_niveles CHECK (imparte_nivel_11 OR imparte_nivel_12)
 );
 
 -- ASIGNACIONES DOCENTES: profesor que imparte una asignatura en una sección. Puede haber varios
@@ -206,17 +206,18 @@ CREATE TABLE academico.evaluaciones (
 );
 CREATE INDEX ix_evaluaciones_matricula ON academico.evaluaciones(id_matricula);
 
--- ENVÍOS DE NOTAS: el profesor envió al guía las notas de su asignación en el semestre (RN-75). El guía y el
--- reporte de bandas solo ven notas enviadas. Es una marca de la asignación: se borra con ella.
-CREATE TABLE academico.envios_notas (
+-- CONFIRMACIONES DE NOTAS: el profesor confirmó las notas de su asignación en el semestre (RN-75). El guía ve las
+-- notas desde que se registran y sabe cuáles están confirmadas; corregir o eliminar una nota quita la confirmación.
+-- Es una marca de la asignación: se borra con ella.
+CREATE TABLE academico.confirmaciones_notas (
     id_asignacion BIGINT NOT NULL,
     semestre academico.numero_semestre NOT NULL,
-    enviado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_envios_notas PRIMARY KEY (id_asignacion, semestre),
-    CONSTRAINT fk_envios_notas_asignacion FOREIGN KEY (id_asignacion) REFERENCES academico.asignaciones_docentes(id_asignacion) ON DELETE CASCADE
+    confirmado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_confirmaciones_notas PRIMARY KEY (id_asignacion, semestre),
+    CONSTRAINT fk_confirmaciones_notas_asignacion FOREIGN KEY (id_asignacion) REFERENCES academico.asignaciones_docentes(id_asignacion) ON DELETE CASCADE
 );
 
--- PRÓRROGAS: más tiempo que el ADMIN da a un profesor para enviar y corregir notas de un semestre (RN-74).
+-- PRÓRROGAS: más tiempo que el ADMIN da a un profesor para confirmar y corregir notas de un semestre (RN-74).
 -- Sin prórroga, el cierre es la fecha de fin del semestre.
 CREATE TABLE academico.prorrogas (
     id_profesor BIGINT NOT NULL,
@@ -230,7 +231,7 @@ CREATE TABLE academico.prorrogas (
 );
 CREATE INDEX ix_prorrogas_periodo ON academico.prorrogas(id_periodo);
 
--- MONOGRAFÍAS: una por estudiante; empieza con su matrícula de nivel 10 y sigue en su nivel 11 (RN-78). Un
+-- MONOGRAFÍAS: una por estudiante; empieza con su matrícula de nivel 11 y sigue en su nivel 12 (RN-78). Un
 -- coordinador la tutela en una materia SUPERIOR o MEDIO. Se opera por la cédula del estudiante.
 CREATE TABLE academico.monografias (
     id_monografia BIGINT GENERATED ALWAYS AS IDENTITY,
@@ -303,11 +304,13 @@ CREATE INDEX ix_informes_cas_matricula ON academico.informes_cas(id_matricula);
 
 -- EXPERIENCIAS CAS: filas del informe (proyecto, serie de experiencias o experiencia), en el orden del formato.
 -- resultados_aprendizaje: cuáles de los 7 resultados de aprendizaje CAS cumple.
+-- Dos fechas opcionales por experiencia (RN-83, ej. "10-04" y "25-06"): fecha_fin solo con fecha_inicio y no anterior (CA002).
 CREATE TABLE academico.experiencias_cas (
     id_informe BIGINT NOT NULL,
     orden SMALLINT NOT NULL,
     descripcion VARCHAR(255) NOT NULL,
-    fecha DATE NULL,
+    fecha_inicio DATE NULL,
+    fecha_fin DATE NULL,
     creatividad BOOLEAN NOT NULL DEFAULT FALSE,
     actividad BOOLEAN NOT NULL DEFAULT FALSE,
     servicio BOOLEAN NOT NULL DEFAULT FALSE,
@@ -319,5 +322,6 @@ CREATE TABLE academico.experiencias_cas (
     CONSTRAINT fk_experiencias_cas_informe FOREIGN KEY (id_informe) REFERENCES academico.informes_cas(id_informe) ON DELETE CASCADE,
     CONSTRAINT ck_experiencias_cas_orden CHECK (orden BETWEEN 1 AND 30),
     CONSTRAINT ck_experiencias_cas_descripcion CHECK (length(trim(descripcion)) >= 3),
-    CONSTRAINT ck_experiencias_cas_resultados CHECK (resultados_aprendizaje <@ ARRAY[1,2,3,4,5,6,7]::SMALLINT[])
+    CONSTRAINT ck_experiencias_cas_resultados CHECK (resultados_aprendizaje <@ ARRAY[1,2,3,4,5,6,7]::SMALLINT[]),
+    CONSTRAINT ck_experiencias_cas_fechas CHECK (fecha_fin IS NULL OR (fecha_inicio IS NOT NULL AND fecha_fin >= fecha_inicio))
 );

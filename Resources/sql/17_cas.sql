@@ -3,12 +3,13 @@
 -- CAS es la asignatura TRONCAL con código 'CAS'. El profesor CAS la imparte con una asignación académica
 -- (Administrador CU38 = CU30, RN-82) y cada semestre llena un informe por estudiante con el formato del
 -- Instituto (RN-83). El informe comparte la clave de la nota CAS (asignación, matrícula, semestre); la nota
--- se registra y se envía con evaluaciones. Se opera por (año, semestre, cédula del estudiante).
+-- se registra y se confirma con evaluaciones. Se opera por (año, semestre, cédula del estudiante).
 -- ============================================================
 SET search_path = academico, api, auth, public;
 
 -- Informe completo (Profesor CAS CU03 y Coordinador CAS CU02). experiencias: JSON en el orden del formato.
--- nota: la nota CAS del semestre (para el coordinador, solo si el profesor ya la envió).
+-- nota: la nota CAS del semestre (para el coordinador, solo si el profesor ya la confirmó, RN-84).
+-- nombre_coordinador_cas: para las líneas de firma de la segunda página (RN-83; NULL si no hay coordinador).
 CREATE TYPE academico.informe_cas AS (
     anio INTEGER,
     semestre academico.numero_semestre,
@@ -24,10 +25,25 @@ CREATE TYPE academico.informe_cas AS (
     entrevista_final BOOLEAN,
     observaciones VARCHAR(2000),
     nota VARCHAR(3),
-    nota_enviada BOOLEAN,
+    nota_confirmada BOOLEAN,
     modificado_en TIMESTAMPTZ,
-    experiencias JSONB
+    experiencias JSONB,
+    nombre_coordinador_cas TEXT
 );
+
+-- Nombre del coordinador de CAS (RN-91: uno solo). El del perfil de profesor; si no tiene, su correo. NULL si no hay.
+CREATE OR REPLACE FUNCTION academico.fn_nombre_coordinador_cas()
+RETURNS TEXT
+LANGUAGE sql STABLE
+SET search_path = academico, auth, api, public
+AS $$
+    SELECT COALESCE(concat_ws(' ', pr.nombre, pr.primer_apellido, pr.segundo_apellido), u.email::TEXT)
+    FROM api.usuario_roles ur
+    JOIN api.usuarios u ON u.id_usuario = ur.id_usuario
+    LEFT JOIN academico.profesores pr ON pr.id_usuario = u.id_usuario
+    WHERE ur.rol = 'COORD_CAS'
+    LIMIT 1;
+$$;
 
 -- Progreso: una fila por estudiante y asignación CAS; tiene_informe FALSE = sin informe en el semestre.
 CREATE TYPE academico.progreso_cas AS (
@@ -42,7 +58,7 @@ CREATE TYPE academico.progreso_cas AS (
     perfil BOOLEAN,
     entrevistas INTEGER,         -- cuántas de las 3 entrevistas lleva
     nota VARCHAR(3),
-    nota_enviada BOOLEAN
+    nota_confirmada BOOLEAN
 );
 
 -- ------------------------------------------------------------
@@ -74,8 +90,8 @@ BEGIN
 END;
 $$;
 
--- Todos los informes con sus datos resueltos. p_solo_notas_enviadas: la nota solo aparece si ya se envió.
-CREATE OR REPLACE FUNCTION academico.fn_informes_cas_detalle(p_solo_notas_enviadas BOOLEAN)
+-- Todos los informes con sus datos resueltos. p_solo_confirmadas: la nota solo aparece si ya se confirmó.
+CREATE OR REPLACE FUNCTION academico.fn_informes_cas_detalle(p_solo_confirmadas BOOLEAN)
 RETURNS TABLE(id_informe BIGINT, id_asignacion BIGINT, id_matricula BIGINT, fila academico.informe_cas)
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
@@ -84,15 +100,16 @@ AS $$
            ROW((d.fila).anio, i.semestre, (d.fila).seccion, (d.fila).cedula_estudiante, (d.fila).nombre_estudiante, e.email::TEXT,
                (ad.fila).cedula_profesor, (ad.fila).nombre_profesor,
                i.perfil, i.entrevista_1, i.entrevista_2, i.entrevista_final, i.observaciones,
-               CASE WHEN NOT p_solo_notas_enviadas OR en.id_asignacion IS NOT NULL THEN ev.nota END::VARCHAR(3),
-               en.id_asignacion IS NOT NULL,
+               CASE WHEN NOT p_solo_confirmadas OR cn.id_asignacion IS NOT NULL THEN ev.nota END::VARCHAR(3),
+               cn.id_asignacion IS NOT NULL,
                i.modificado_en,
                COALESCE((SELECT jsonb_agg(jsonb_build_object(
-                             'orden', x.orden, 'descripcion', x.descripcion, 'fecha', x.fecha,
+                             'orden', x.orden, 'descripcion', x.descripcion, 'fechaInicio', x.fecha_inicio, 'fechaFin', x.fecha_fin,
                              'creatividad', x.creatividad, 'actividad', x.actividad, 'servicio', x.servicio,
                              'resultadosAprendizaje', to_jsonb(x.resultados_aprendizaje),
                              'carpeta', x.carpeta, 'reflexion', x.reflexion, 'pruebas', x.pruebas) ORDER BY x.orden)
-                         FROM academico.experiencias_cas x WHERE x.id_informe = i.id_informe), '[]'::jsonb)
+                         FROM academico.experiencias_cas x WHERE x.id_informe = i.id_informe), '[]'::jsonb),
+               academico.fn_nombre_coordinador_cas()
               )::academico.informe_cas
     FROM academico.informes_cas i
     JOIN academico.fn_matriculas_detalle() d ON d.id_matricula = i.id_matricula
@@ -101,7 +118,7 @@ AS $$
     JOIN academico.fn_asignaciones_detalle() ad ON ad.id_asignacion = i.id_asignacion
     LEFT JOIN academico.evaluaciones ev
            ON ev.id_asignacion = i.id_asignacion AND ev.id_matricula = i.id_matricula AND ev.semestre = i.semestre
-    LEFT JOIN academico.envios_notas en ON en.id_asignacion = i.id_asignacion AND en.semestre = i.semestre;
+    LEFT JOIN academico.confirmaciones_notas cn ON cn.id_asignacion = i.id_asignacion AND cn.semestre = i.semestre;
 $$;
 
 CREATE OR REPLACE FUNCTION academico.fn_snapshot_informe_cas(p_id_informe BIGINT)
@@ -109,12 +126,12 @@ RETURNS JSONB
 LANGUAGE sql STABLE
 SET search_path = academico, auth, api, public
 AS $$
-    SELECT to_jsonb(d.fila) - 'modificado_en' - 'nota' - 'nota_enviada'
+    SELECT to_jsonb(d.fila) - 'modificado_en' - 'nota' - 'nota_confirmada' - 'nombre_coordinador_cas'
     FROM academico.fn_informes_cas_detalle(FALSE) d WHERE d.id_informe = p_id_informe;
 $$;
 
 -- Progreso de las asignaciones CAS indicadas en un semestre (Profesor CAS CU03, Coordinador CAS CU01).
-CREATE OR REPLACE FUNCTION academico.fn_progreso_cas(p_ids_asignacion BIGINT[], p_semestre academico.numero_semestre, p_solo_notas_enviadas BOOLEAN)
+CREATE OR REPLACE FUNCTION academico.fn_progreso_cas(p_ids_asignacion BIGINT[], p_semestre academico.numero_semestre, p_solo_confirmadas BOOLEAN)
 RETURNS SETOF academico.progreso_cas
 LANGUAGE plpgsql STABLE
 SET search_path = academico, auth, api, public
@@ -126,8 +143,8 @@ BEGIN
            (SELECT COUNT(*)::INTEGER FROM academico.experiencias_cas x WHERE x.id_informe = i.id_informe),
            COALESCE(i.perfil, FALSE),
            (COALESCE(i.entrevista_1::INTEGER, 0) + COALESCE(i.entrevista_2::INTEGER, 0) + COALESCE(i.entrevista_final::INTEGER, 0)),
-           CASE WHEN NOT p_solo_notas_enviadas OR en.id_asignacion IS NOT NULL THEN ev.nota END::VARCHAR(3),
-           en.id_asignacion IS NOT NULL
+           CASE WHEN NOT p_solo_confirmadas OR cn.id_asignacion IS NOT NULL THEN ev.nota END::VARCHAR(3),
+           cn.id_asignacion IS NOT NULL
     FROM unnest(p_ids_asignacion) AS ids(id_asignacion)
     JOIN academico.asignaciones_docentes a ON a.id_asignacion = ids.id_asignacion
     JOIN academico.fn_asignaciones_detalle() ad ON ad.id_asignacion = a.id_asignacion
@@ -135,17 +152,18 @@ BEGIN
     JOIN academico.fn_matriculas_detalle() d ON d.id_matricula = ms.id_matricula
     LEFT JOIN academico.informes_cas i ON i.id_asignacion = a.id_asignacion AND i.id_matricula = ms.id_matricula AND i.semestre = p_semestre
     LEFT JOIN academico.evaluaciones ev ON ev.id_asignacion = a.id_asignacion AND ev.id_matricula = ms.id_matricula AND ev.semestre = p_semestre
-    LEFT JOIN academico.envios_notas en ON en.id_asignacion = a.id_asignacion AND en.semestre = p_semestre
+    LEFT JOIN academico.confirmaciones_notas cn ON cn.id_asignacion = a.id_asignacion AND cn.semestre = p_semestre
     ORDER BY (d.fila).anio DESC, (d.fila).nivel, (d.fila).numero, d.apellidos_nombre, (ad.fila).nombre_profesor;
 END;
 $$;
 
 -- ------------------------------------------------------------
 -- Profesor CAS CU01 / CU02 - Registrar o modificar el informe CAS de un estudiante en un semestre (RN-83).
--- p_experiencias: [{ descripcion, fecha, creatividad, actividad, servicio, resultadosAprendizaje: [1..7], carpeta,
--- reflexion, pruebas }], en el orden del formato (reemplaza las anteriores). Plazo como las notas (EV002 / EV003);
--- EV004 si el estudiante no se califica en el semestre; CA001 si la fecha de una experiencia es futura o está
--- fuera del periodo. Devuelve 'OK' o 'SIN_CAMBIOS' y el informe previo (NULL si es nuevo).
+-- p_experiencias: [{ descripcion, fechaInicio, fechaFin, creatividad, actividad, servicio, resultadosAprendizaje: [1..7],
+-- carpeta, reflexion, pruebas }], en el orden del formato (reemplaza las anteriores). Plazo como las notas (EV002 / EV003);
+-- EV004 si el estudiante no se califica en el semestre; CA001 si una fecha es futura o está fuera del periodo; CA002 si
+-- fechaFin va sin fechaInicio o es anterior. p_observaciones: segunda página del reporte. Devuelve 'OK' o 'SIN_CAMBIOS'
+-- y el informe previo (NULL si es nuevo).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_cas_guardar_informe(
     p_id_usuario UUID,
@@ -183,10 +201,16 @@ BEGIN
     END IF;
 
     IF EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_experiencias, '[]'::jsonb)) x
-               WHERE x->>'fecha' IS NOT NULL
-                 AND ((x->>'fecha')::DATE > api.fn_hoy()
-                      OR (x->>'fecha')::DATE NOT BETWEEN (v.periodo).inicio_semestre_i AND (v.periodo).fin_semestre_ii)) THEN
+               CROSS JOIN LATERAL (VALUES ((x->>'fechaInicio')::DATE), ((x->>'fechaFin')::DATE)) f(fecha)
+               WHERE f.fecha > api.fn_hoy()
+                  OR f.fecha NOT BETWEEN (v.periodo).inicio_semestre_i AND (v.periodo).fin_semestre_ii) THEN
         PERFORM api.fn_lanzar_excepcion('CA001', 'La fecha de una experiencia CAS no es válida.');
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(p_experiencias, '[]'::jsonb)) x
+               WHERE x->>'fechaFin' IS NOT NULL
+                 AND (x->>'fechaInicio' IS NULL OR (x->>'fechaFin')::DATE < (x->>'fechaInicio')::DATE)) THEN
+        PERFORM api.fn_lanzar_excepcion('CA002', 'La fecha final de una experiencia CAS necesita la inicial y no puede ser anterior.');
     END IF;
 
     SELECT i.id_informe INTO v_id_informe FROM academico.informes_cas i
@@ -208,9 +232,9 @@ BEGIN
     WHERE id_informe = v_id_informe;
 
     DELETE FROM academico.experiencias_cas WHERE id_informe = v_id_informe;
-    INSERT INTO academico.experiencias_cas (id_informe, orden, descripcion, fecha, creatividad, actividad, servicio,
-                                            resultados_aprendizaje, carpeta, reflexion, pruebas)
-    SELECT v_id_informe, x.n, api.fn_limpiar(x.e->>'descripcion'), (x.e->>'fecha')::DATE,
+    INSERT INTO academico.experiencias_cas (id_informe, orden, descripcion, fecha_inicio, fecha_fin, creatividad, actividad,
+                                            servicio, resultados_aprendizaje, carpeta, reflexion, pruebas)
+    SELECT v_id_informe, x.n, api.fn_limpiar(x.e->>'descripcion'), (x.e->>'fechaInicio')::DATE, (x.e->>'fechaFin')::DATE,
            COALESCE((x.e->>'creatividad')::BOOLEAN, FALSE), COALESCE((x.e->>'actividad')::BOOLEAN, FALSE),
            COALESCE((x.e->>'servicio')::BOOLEAN, FALSE),
            ARRAY(SELECT DISTINCT r::SMALLINT FROM jsonb_array_elements_text(COALESCE(x.e->'resultadosAprendizaje', '[]'::jsonb)) r ORDER BY 1),
@@ -304,7 +328,7 @@ $$;
 
 -- ------------------------------------------------------------
 -- Coordinador de CAS CU01 - Progreso CAS general (RN-84): todas las secciones del año con CAS, o una sección.
--- La nota solo aparece si el profesor ya la envió.
+-- La nota solo aparece si el profesor ya la confirmó.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_coordinador_cas_progreso(
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_semestre academico.numero_semestre)

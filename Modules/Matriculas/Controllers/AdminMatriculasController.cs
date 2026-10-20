@@ -22,9 +22,10 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return StatusCode(StatusCodes.Status201Created);
     }
 
-    /// <summary>CU22 - Subir la sección (RN-64): matricula en 11-N de Anio a todos los estudiantes sin retiro de la 10-N
-    /// del año anterior (crea la 11-N si no existe, sin guía). Omite a quien ya tiene matrícula en el año, así que se puede
-    /// repetir. 200 con { seccionCreada, matriculados, omitidos }. 404 (NF004/NF006); 400 (MA002) fecha inválida.</summary>
+    /// <summary>CU22 - Subir la sección (RN-64): matricula en 12-N de Anio a todos los estudiantes sin retiro de la 11-N
+    /// del año anterior (crea la 12-N si no existe) y copia de la 11-N el guía y las asignaciones (RN-63; el ADMIN cambia
+    /// después las asignaturas). Omite a quien ya tiene matrícula en el año, así que se puede repetir. 200 con { seccionCreada,
+    /// matriculados, omitidos, guiaCopiado, asignacionesCopiadas, asignacionesOmitidas }. 404 (NF004/NF006); 400 (MA002) fecha inválida.</summary>
     [HttpPost("subir-seccion")]
     public async Task<IActionResult> SubirSeccion(SubirSeccionRequest request) =>
         Ok(await matriculas.SubirSeccionAsync(ActorId, request));
@@ -43,7 +44,7 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return matricula is null ? this.ApiError("NF009") : Ok(matricula);
     }
 
-    /// <summary>CU23: traslado a otra sección del mismo año. 404 (NF009/NF006); 409 (MA006) fuera del nivel 10 o con
+    /// <summary>CU23: traslado a otra sección del mismo año. 404 (NF009/NF006); 409 (MA006) fuera del nivel 11 o con
     /// continuidad; 409 (MA008) la matrícula ya tiene ausencias, notas o informes CAS.</summary>
     [HttpPut(RutaMatricula + "/seccion")]
     public async Task<IActionResult> CambiarSeccion(int anio, string cedula, CambiarSeccionRequest request)

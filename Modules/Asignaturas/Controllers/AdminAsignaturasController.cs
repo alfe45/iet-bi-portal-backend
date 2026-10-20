@@ -18,7 +18,7 @@ public class AdminAsignaturasController(AsignaturasService asignaturas) : AdminC
         return StatusCode(StatusCodes.Status201Created, new { codigo });
     }
 
-    /// <summary>CU27: listado paginado; filtros opcionales ?tipo=MEP&amp;nivel=11.</summary>
+    /// <summary>CU27: listado paginado; filtros opcionales ?tipo=MEP&amp;nivel=12.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaAsignaturas consulta) =>
         Ok(await asignaturas.ListarAsync(ActorId, consulta));

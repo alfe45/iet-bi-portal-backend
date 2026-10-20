@@ -18,10 +18,10 @@ public class ActualizarAsignaturaRequest
     public string? Descripcion { get; set; }
 
     [Required]
-    public bool? ImparteNivel10 { get; set; }
+    public bool? ImparteNivel11 { get; set; }
 
     [Required]
-    public bool? ImparteNivel11 { get; set; }
+    public bool? ImparteNivel12 { get; set; }
 }
 
 /// <summary>CU26: los mismos campos + el código (2 a 10 letras o dígitos; se guarda en mayúsculas).</summary>
@@ -37,7 +37,7 @@ public class ConsultaAsignaturas : ConsultaPaginada
     [RegularExpression(TiposAsignatura.Patron, ErrorMessage = TiposAsignatura.Mensaje)]
     public string? Tipo { get; set; }
 
-    [Range(10, 11, ErrorMessage = "El nivel debe ser 10 u 11.")]
+    [Range(11, 12, ErrorMessage = "El nivel debe ser 11 u 12.")]
     public int? Nivel { get; set; }
 }
 
@@ -54,5 +54,5 @@ public record Asignatura(
     string Nombre,
     string Tipo,
     string? Descripcion,
-    bool ImparteNivel10,
-    bool ImparteNivel11);
+    bool ImparteNivel11,
+    bool ImparteNivel12);

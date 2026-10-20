@@ -13,7 +13,7 @@ CREATE TYPE academico.leccion_detalle AS (
     anio INTEGER,
     nivel SMALLINT,
     numero SMALLINT,
-    seccion TEXT,                -- "10-1"
+    seccion TEXT,                -- "11-1"
     codigo_asignatura VARCHAR(10),
     asignatura TEXT,
     fecha DATE,

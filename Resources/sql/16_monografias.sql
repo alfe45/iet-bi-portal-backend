@@ -1,7 +1,7 @@
 -- ============================================================
 -- 16_monografias.sql: monografías (Administrador CU34 a CU37, Coordinador de Monografía CU01 a CU05,
 -- Guía CU06 y CU07). Tablas en 06.
--- Una monografía por estudiante; empieza con su matrícula de nivel 10 y dura los dos años del programa (RN-78).
+-- Una monografía por estudiante; empieza con su matrícula de nivel 11 y dura los dos años del programa (RN-78).
 -- Se opera por la cédula del estudiante; los seguimientos, por id. Solo el coordinador de la monografía la
 -- opera (AD006).
 -- ============================================================
@@ -10,9 +10,9 @@ SET search_path = academico, api, auth, public;
 CREATE TYPE academico.monografia_detalle AS (
     cedula_estudiante VARCHAR(20),
     nombre_estudiante TEXT,      -- "Apellido1 Apellido2, Nombre"
-    anio_inicio INTEGER,         -- año de su nivel 10
+    anio_inicio INTEGER,         -- año de su nivel 11
     anio_actual INTEGER,         -- año de su última matrícula
-    seccion_actual TEXT,         -- "11-1"
+    seccion_actual TEXT,         -- "12-1"
     cedula_coordinador VARCHAR(20),
     nombre_coordinador TEXT,
     codigo_asignatura VARCHAR(10),
@@ -269,7 +269,7 @@ $$;
 
 -- ------------------------------------------------------------
 -- Administrador CU34 - Asignar un estudiante a un coordinador de monografía (RN-78)
--- p_anio: año de la matrícula de nivel 10 del estudiante (MO004 si no es de nivel 10 o está retirada).
+-- p_anio: año de la matrícula de nivel 11 del estudiante (MO004 si no es de nivel 11 o está retirada).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_monografia(
     p_id_usuario_actor UUID,
@@ -294,8 +294,8 @@ BEGIN
     SELECT * INTO v_matricula FROM academico.matriculas WHERE id_matricula = v_id_matricula FOR SHARE;   -- RP-57 (MO004)
 
     IF v_matricula.fecha_retiro IS NOT NULL
-       OR (SELECT nivel FROM academico.secciones WHERE id_seccion = v_matricula.id_seccion) <> 10 THEN
-        PERFORM api.fn_lanzar_excepcion('MO004', 'La monografía empieza con una matrícula de nivel 10 sin retiro.');
+       OR (SELECT nivel FROM academico.secciones WHERE id_seccion = v_matricula.id_seccion) <> 11 THEN
+        PERFORM api.fn_lanzar_excepcion('MO004', 'La monografía empieza con una matrícula de nivel 11 sin retiro.');
     END IF;
 
     IF EXISTS (SELECT 1 FROM academico.monografias WHERE id_estudiante = v_matricula.id_estudiante) THEN

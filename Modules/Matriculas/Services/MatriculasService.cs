@@ -22,13 +22,13 @@ public class MatriculasService(MatriculasRepository repo, ILogsService logs)
             IdRegistro(request.Anio!.Value, request.CedulaEstudiante), datosNuevos: request);
     }
 
-    /// <summary>CU22 - Subir la sección: matrícula masiva en 11-N. Registra log solo si creó la sección o matriculó a alguien.</summary>
+    /// <summary>CU22 - Subir la sección: matrícula masiva en 12-N y copia de profesores (RN-63). Registra log solo si cambió algo.</summary>
     public async Task<SeccionSubida> SubirSeccionAsync(Guid actorId, SubirSeccionRequest request)
     {
         var resultado = await repo.SubirSeccionAsync(actorId, request);
-        if (resultado.SeccionCreada || resultado.Matriculados.Length > 0)
-            await logs.RegistrarAsync(actorId, AccionesLog.SubirSeccion, Tabla, $"{request.Anio}/11-{request.Numero}",
-                datosNuevos: new { request.FechaMatricula, resultado.SeccionCreada, resultado.Matriculados });
+        if (resultado.SeccionCreada || resultado.Matriculados.Length > 0 || resultado.GuiaCopiado is not null || resultado.AsignacionesCopiadas.Length > 0)
+            await logs.RegistrarAsync(actorId, AccionesLog.SubirSeccion, Tabla, $"{request.Anio}/12-{request.Numero}",
+                datosNuevos: new { request.FechaMatricula, resultado.SeccionCreada, resultado.Matriculados, resultado.GuiaCopiado, resultado.AsignacionesCopiadas });
         return resultado;
     }
 

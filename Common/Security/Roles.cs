@@ -22,11 +22,17 @@ public static class AuthClaims
     public const string Role = "role";
 }
 
-/// <summary>Valida que el texto sea un rol existente (sin distinguir mayúsculas).</summary>
+/// <summary>Valida que el texto (o cada texto de una lista) sea un rol existente (sin distinguir mayúsculas).</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
 public sealed class RolValidoAttribute()
     : ValidationAttribute($"Rol inválido. Valores permitidos: {string.Join(", ", Roles.Todos)}.")
 {
     public override bool IsValid(object? value) =>
-        value is null || (value is string texto && Roles.Todos.Contains(texto, StringComparer.OrdinalIgnoreCase));
+        value switch
+        {
+            null => true,
+            string texto => Roles.Todos.Contains(texto, StringComparer.OrdinalIgnoreCase),
+            IEnumerable<string> textos => textos.All(t => t is not null && Roles.Todos.Contains(t, StringComparer.OrdinalIgnoreCase)),
+            _ => false
+        };
 }

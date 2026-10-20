@@ -16,6 +16,7 @@
   "AU017": { "status": 409, "mensaje": "No se puede quitar el rol PROFESOR_REGULAR a un profesor con asignaciones docentes en un periodo no finalizado. Reasigna o elimina primero sus asignaciones." },
   "AU018": { "status": 409, "mensaje": "No se puede quitar el rol PROFESOR_CAS a un profesor que imparte CAS en un periodo no finalizado. Reasigna primero su asignación de CAS." },
   "AU019": { "status": 409, "mensaje": "No se puede quitar el rol COORD_MONOGRAFIA a un profesor que coordina monografías sin terminar. Reasígnalas primero." },
+  "AU021": { "status": 409, "mensaje": "Ya hay un coordinador de CAS: quítale el rol antes de asignarlo a otro usuario." },
   "AU015": { "status": 403, "mensaje": "La cuenta está bloqueada temporalmente por demasiados intentos fallidos. Intenta de nuevo más tarde." },
   "AU020": { "status": 409, "mensaje": "No se puede desactivar a un usuario que es guía, tiene asignaciones (incluido CAS) en un periodo no finalizado o coordina monografías sin terminar. Reasígnalas primero." },
 
@@ -26,9 +27,12 @@
 
   "PR001": { "status": 409, "mensaje": "El usuario ya tiene un perfil de profesor." },
   "PR002": { "status": 409, "mensaje": "Ya existe un profesor con esa cédula." },
-  "PR003": { "status": 409, "mensaje": "No se puede eliminar un usuario que tiene un perfil de profesor. Elimina primero el perfil." },
+  "PR003": { "status": 409, "mensaje": "No se puede eliminar un usuario que tiene un perfil de profesor. Quita la cuenta desde el profesor." },
   "PR004": { "status": 409, "mensaje": "El profesor es guía de una sección. Quítalo como guía antes de eliminarlo." },
   "PR005": { "status": 400, "mensaje": "La fecha de nacimiento no es válida." },
+  "PR006": { "status": 400, "mensaje": "Indica un usuario existente o los datos de una cuenta nueva, no ambos." },
+  "PR007": { "status": 409, "mensaje": "El profesor ya tiene cuenta." },
+  "PR008": { "status": 409, "mensaje": "El profesor no tiene cuenta." },
   "NF002": { "status": 404, "mensaje": "El profesor no existe." },
 
   "ES001": { "status": 409, "mensaje": "Ya existe un estudiante con esa cédula." },
@@ -50,11 +54,11 @@
   "NF005": { "status": 404, "mensaje": "No hay un periodo académico en curso." },
 
   "SE001": { "status": 409, "mensaje": "Ya existe esa sección en el periodo." },
-  "SE002": { "status": 400, "mensaje": "La sección no es válida: el nivel debe ser 10 u 11 y el número entre 1 y 99." },
+  "SE002": { "status": 400, "mensaje": "La sección no es válida: el nivel debe ser 11 u 12 y el número entre 1 y 99." },
   "SE003": { "status": 409, "mensaje": "El profesor guía debe tener un usuario activo con el rol GUIA." },
   "SE004": { "status": 409, "mensaje": "El profesor ya es guía de otra sección en ese periodo." },
-  "SE005": { "status": 409, "mensaje": "Para crear la sección de nivel 11 debe existir la sección de nivel 10 con el mismo número el año anterior." },
-  "SE006": { "status": 409, "mensaje": "La sección de nivel 10 ya continúa en nivel 11 el año siguiente: elimina primero la de nivel 11." },
+  "SE005": { "status": 409, "mensaje": "Para crear la sección de nivel 12 debe existir la sección de nivel 11 con el mismo número el año anterior." },
+  "SE006": { "status": 409, "mensaje": "La sección de nivel 11 ya continúa en nivel 12 el año siguiente: elimina primero la de nivel 12." },
   "NF006": { "status": 404, "mensaje": "La sección no existe." },
 
   "AS001": { "status": 409, "mensaje": "Ya existe una asignatura con ese código." },
@@ -76,10 +80,10 @@
   "MA001": { "status": 409, "mensaje": "El estudiante ya está matriculado en ese periodo." },
   "MA002": { "status": 400, "mensaje": "La fecha de matrícula no es válida: no puede ser futura, posterior al fin del periodo ni más de un año anterior a su inicio." },
   "MA003": { "status": 400, "mensaje": "La fecha de retiro no es válida: no puede ser futura, anterior a la matrícula ni posterior al fin del periodo." },
-  "MA004": { "status": 409, "mensaje": "Para matricular en nivel 11 el estudiante debe haber cursado nivel 10 el año anterior en la sección con el mismo número (sin retiro)." },
+  "MA004": { "status": 409, "mensaje": "Para matricular en nivel 12 el estudiante debe haber cursado nivel 11 el año anterior en la sección con el mismo número (sin retiro)." },
   "MA005": { "status": 409, "mensaje": "El estudiante ya tiene una matrícula en ese nivel: no se repite nivel." },
-  "MA006": { "status": 409, "mensaje": "Solo se puede trasladar de sección dentro del nivel 10 y antes de pasar a nivel 11: en 11 la sección conserva su número." },
-  "MA007": { "status": 409, "mensaje": "La matrícula de nivel 10 ya tiene continuidad en nivel 11: modifica o elimina primero la de nivel 11." },
+  "MA006": { "status": 409, "mensaje": "Solo se puede trasladar de sección dentro del nivel 11 y antes de pasar a nivel 12: en 12 la sección conserva su número." },
+  "MA007": { "status": 409, "mensaje": "La matrícula de nivel 11 ya tiene continuidad en nivel 12: modifica o elimina primero la de nivel 12." },
   "MA008": { "status": 409, "mensaje": "La matrícula ya tiene ausencias, notas o informes CAS en su sección: no se puede trasladar." },
   "MA009": { "status": 409, "mensaje": "La fecha de retiro deja fuera ausencias, notas o informes CAS ya registrados: debe ser posterior a la última ausencia y al fin de los semestres calificados." },
   "NF009": { "status": 404, "mensaje": "La matrícula no existe." },
@@ -106,7 +110,7 @@
   "MO001": { "status": 409, "mensaje": "El estudiante ya tiene una monografía." },
   "MO002": { "status": 409, "mensaje": "La materia de la monografía debe ser una asignatura SUPERIOR o MEDIO." },
   "MO003": { "status": 409, "mensaje": "El grupo del coordinador en esa materia ya tiene 5 estudiantes." },
-  "MO004": { "status": 409, "mensaje": "La monografía empieza con la matrícula de nivel 10 del estudiante, sin retiro." },
+  "MO004": { "status": 409, "mensaje": "La monografía empieza con la matrícula de nivel 11 del estudiante, sin retiro." },
   "MO005": { "status": 409, "mensaje": "El coordinador debe tener un usuario activo con el rol COORD_MONOGRAFIA." },
   "MO006": { "status": 400, "mensaje": "La fecha del seguimiento no es válida: no puede ser futura ni anterior al inicio de la monografía." },
   "MO007": { "status": 409, "mensaje": "Una monografía terminada no cambia de estado." },
@@ -116,6 +120,7 @@
   "NF017": { "status": 404, "mensaje": "El reporte de monografía no existe." },
 
   "CA001": { "status": 400, "mensaje": "La fecha de una experiencia CAS no es válida: no puede ser futura y debe caer dentro del periodo." },
+  "CA002": { "status": 400, "mensaje": "La fecha final de una experiencia CAS necesita la inicial y no puede ser anterior." },
   "NF015": { "status": 404, "mensaje": "El informe CAS no existe." },
 
   "23502": { "status": 400, "mensaje": "Falta un valor obligatorio." },

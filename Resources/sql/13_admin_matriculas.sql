@@ -10,7 +10,7 @@ CREATE TYPE academico.matricula_detalle AS (
     anio INTEGER,
     nivel SMALLINT,
     numero SMALLINT,
-    seccion TEXT,                -- "10-1"
+    seccion TEXT,                -- "11-1"
     cedula_estudiante VARCHAR(20),
     nombre_estudiante TEXT,      -- "Apellido1 Apellido2, Nombre"
     fecha_matricula DATE,
@@ -83,8 +83,8 @@ BEGIN
 END;
 $$;
 
--- BI es un programa de dos años: nivel 10 y luego nivel 11 con el mismo número de sección (la sección
--- completa sube de nivel). TRUE si la matrícula es de nivel 10 y el estudiante ya tiene la de nivel 11
+-- BI es un programa de dos años: nivel 11 y luego nivel 12 con el mismo número de sección (la sección
+-- completa sube de nivel). TRUE si la matrícula es de nivel 11 y el estudiante ya tiene la de nivel 12
 -- del año siguiente (su continuidad).
 CREATE OR REPLACE FUNCTION academico.fn_matricula_tiene_continuidad(p_id_matricula BIGINT)
 RETURNS BOOLEAN
@@ -94,11 +94,11 @@ AS $$
     SELECT EXISTS (
         SELECT 1
         FROM academico.matriculas m
-        JOIN academico.secciones s ON s.id_seccion = m.id_seccion AND s.nivel = 10
+        JOIN academico.secciones s ON s.id_seccion = m.id_seccion AND s.nivel = 11
         JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
-        JOIN academico.matriculas m11 ON m11.id_estudiante = m.id_estudiante
-        JOIN academico.secciones s11 ON s11.id_seccion = m11.id_seccion AND s11.nivel = 11
-        JOIN academico.periodos_academicos p11 ON p11.id_periodo = m11.id_periodo AND p11.anio = p.anio + 1
+        JOIN academico.matriculas m12 ON m12.id_estudiante = m.id_estudiante
+        JOIN academico.secciones s12 ON s12.id_seccion = m12.id_seccion AND s12.nivel = 12
+        JOIN academico.periodos_academicos p12 ON p12.id_periodo = m12.id_periodo AND p12.anio = p.anio + 1
         WHERE m.id_matricula = p_id_matricula
     );
 $$;
@@ -120,7 +120,7 @@ BEGIN
 END;
 $$;
 
--- MA007 si la matrícula de nivel 10 ya tiene continuidad en nivel 11 (no se retira ni se elimina).
+-- MA007 si la matrícula de nivel 11 ya tiene continuidad en nivel 12 (no se retira ni se elimina).
 CREATE OR REPLACE FUNCTION academico.fn_validar_sin_continuidad(p_id_matricula BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -128,7 +128,7 @@ SET search_path = academico, auth, api, public
 AS $$
 BEGIN
     IF academico.fn_matricula_tiene_continuidad(p_id_matricula) THEN
-        PERFORM api.fn_lanzar_excepcion('MA007', 'La matrícula de nivel 10 ya tiene continuidad en nivel 11.');
+        PERFORM api.fn_lanzar_excepcion('MA007', 'La matrícula de nivel 11 ya tiene continuidad en nivel 12.');
     END IF;
 END;
 $$;
@@ -177,7 +177,7 @@ $$;
 -- CU 22 - Matricular estudiante en una sección. p_fecha_matricula NULL = hoy (o el inicio del periodo
 -- si ya finalizó). Reglas: una matrícula por periodo (MA001), edad 16-19 al inicio del periodo (ES003),
 -- fecha de matrícula ni futura ni posterior al fin del periodo ni más de un año antes de su inicio (MA002).
--- Para una sección completa de nivel 11, ver fn_admin_subir_seccion.
+-- Para una sección completa de nivel 12, ver fn_admin_subir_seccion.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_matricula(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -212,29 +212,29 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('MA001', 'El estudiante ya está matriculado en ese periodo.');
     END IF;
 
-    -- MA005: no se repite un nivel (BI: nivel 10 y luego 11, una sola vez cada uno).
+    -- MA005: no se repite un nivel (BI: nivel 11 y luego 12, una sola vez cada uno).
     IF EXISTS (SELECT 1 FROM academico.matriculas m JOIN academico.secciones s ON s.id_seccion = m.id_seccion
                WHERE m.id_estudiante = v_estudiante.id_estudiante AND s.nivel = p_nivel) THEN
         PERFORM api.fn_lanzar_excepcion('MA005', 'El estudiante ya tiene una matrícula en ese nivel.');
     END IF;
 
-    IF p_nivel = 10 THEN
-        -- RN-01: la edad se valida al ingresar al programa (nivel 10), a la fecha de inicio del periodo.
+    IF p_nivel = 11 THEN
+        -- RN-01: la edad se valida al ingresar al programa (nivel 11), a la fecha de inicio del periodo.
         PERFORM academico.fn_validar_edad_estudiante(v_estudiante.fecha_nacimiento, v_periodo.inicio_semestre_i);
     ELSE
-        -- MA004: nivel 11 exige nivel 10 del año anterior, mismo número de sección y sin retiro. FOR SHARE (RP-57): si a
-        -- la vez se elimina o se retira esa matrícula de nivel 10, la condición se reevalúa sobre la fila confirmada.
+        -- MA004: nivel 12 exige nivel 11 del año anterior, mismo número de sección y sin retiro. FOR SHARE (RP-57): si a
+        -- la vez se elimina o se retira esa matrícula de nivel 11, la condición se reevalúa sobre la fila confirmada.
         PERFORM 1
         FROM academico.matriculas m
         JOIN academico.secciones s ON s.id_seccion = m.id_seccion
         JOIN academico.periodos_academicos p ON p.id_periodo = m.id_periodo
         WHERE m.id_estudiante = v_estudiante.id_estudiante
-          AND s.nivel = 10 AND s.numero = p_numero AND p.anio = p_anio - 1 AND m.fecha_retiro IS NULL
+          AND s.nivel = 11 AND s.numero = p_numero AND p.anio = p_anio - 1 AND m.fecha_retiro IS NULL
         FOR SHARE OF m;
     END IF;
 
-    IF p_nivel = 11 AND NOT FOUND THEN
-        PERFORM api.fn_lanzar_excepcion('MA004', 'Para matricular en nivel 11 el estudiante debe haber cursado nivel 10 el año anterior en la sección con el mismo número.');
+    IF p_nivel = 12 AND NOT FOUND THEN
+        PERFORM api.fn_lanzar_excepcion('MA004', 'Para matricular en nivel 12 el estudiante debe haber cursado nivel 11 el año anterior en la sección con el mismo número.');
     END IF;
 
     v_fecha := academico.fn_validar_fecha_matricula(v_periodo, p_fecha_matricula);
@@ -244,29 +244,40 @@ BEGIN
 END;
 $$;
 
--- CU 22 - Subir la sección (RN-64): matricula en la 11-N de p_anio a todos los estudiantes de la 10-N de
--- p_anio - 1 sin retiro, en lugar de uno por uno (la matrícula individual sigue disponible). Si la 11-N
--- no existe se crea, sin guía (RN-63). Omite a quien ya tiene matrícula en p_anio (se puede repetir la
--- acción tras matricular a alguno individualmente). La edad no se valida (RN-01: solo al entrar a 10).
--- Errores: NF004 periodo, NF006 no existe la 10-N del año anterior, MA002 fecha.
+-- CU 22 - Subir la sección (RN-64): matricula en la 12-N de p_anio a todos los estudiantes de la 11-N de
+-- p_anio - 1 sin retiro, en lugar de uno por uno (la matrícula individual sigue disponible). Si la 12-N
+-- no existe se crea. Omite a quien ya tiene matrícula en p_anio (se puede repetir la acción tras matricular
+-- a alguno individualmente). La edad no se valida (RN-01: solo al entrar a 11).
+-- RN-63: copia de la 11-N los profesores (el ADMIN cambia después las asignaturas): el guía, si la 12-N no tiene
+-- y él puede serlo (rol GUIA activo en periodos no finalizados, SE003; no guía otra sección del año, SE004), y
+-- cada asignación que la 12-N no tenga, si la asignatura se imparte en 12 (RN-39) y el profesor tiene el rol
+-- (AD002/AD007). Lo que no se puede copiar se omite y se devuelve ("código/cédula").
+-- Errores: NF004 periodo, NF006 no existe la 11-N del año anterior, MA002 fecha.
 CREATE OR REPLACE FUNCTION academico.fn_admin_subir_seccion(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
     p_numero INTEGER,
     p_fecha_matricula DATE
 )
-RETURNS TABLE(seccion_creada BOOLEAN, matriculados TEXT[], omitidos TEXT[])
+RETURNS TABLE(seccion_creada BOOLEAN, matriculados TEXT[], omitidos TEXT[],
+              guia_copiado TEXT, asignaciones_copiadas TEXT[], asignaciones_omitidas TEXT[])
 LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_periodo academico.periodos_academicos%ROWTYPE;
-    v_id_seccion_10 BIGINT;
     v_id_seccion_11 BIGINT;
+    v_id_seccion_12 BIGINT;
     v_creada BOOLEAN := FALSE;
     v_fecha DATE;
     v_matriculados TEXT[];
     v_omitidos TEXT[];
+    v_finalizado BOOLEAN;
+    v_guia academico.profesores%ROWTYPE;
+    v_guia_copiado TEXT;
+    v_a RECORD;
+    v_copiadas TEXT[] := ARRAY[]::TEXT[];
+    v_no_copiadas TEXT[] := ARRAY[]::TEXT[];
 BEGIN
     PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
 
@@ -275,45 +286,88 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF004', 'El periodo académico no existe.');
     END IF;
 
-    v_id_seccion_10 := academico.fn_obtener_id_seccion(p_anio - 1, 10, p_numero);
+    v_id_seccion_11 := academico.fn_obtener_id_seccion(p_anio - 1, 11, p_numero);
     v_fecha := academico.fn_validar_fecha_matricula(v_periodo, p_fecha_matricula);
 
-    -- RP-57: la 10-N y sus matrículas no cambian mientras se suben (eliminar la 10-N, retiros, eliminaciones).
-    PERFORM academico.fn_bloquear_seccion_10_anterior(p_anio, p_numero);
-    PERFORM 1 FROM academico.matriculas WHERE id_seccion = v_id_seccion_10 ORDER BY id_matricula FOR SHARE;
+    -- RP-57: la 11-N y sus matrículas no cambian mientras se suben (eliminar la 11-N, retiros, eliminaciones).
+    -- Dos subidas simultáneas de la misma sección se esperan: la segunda encuentra la 12-N y no repite nada. Va antes
+    -- del bloqueo compartido: pasar de FOR SHARE a FOR UPDATE sobre la misma fila provoca interbloqueos.
+    PERFORM 1 FROM academico.secciones WHERE id_seccion = v_id_seccion_11 FOR UPDATE;
+    PERFORM academico.fn_bloquear_seccion_11_anterior(p_anio, p_numero);
+    PERFORM 1 FROM academico.matriculas WHERE id_seccion = v_id_seccion_11 ORDER BY id_matricula FOR SHARE;
 
-    SELECT s.id_seccion INTO v_id_seccion_11
+    SELECT s.id_seccion INTO v_id_seccion_12
     FROM academico.secciones s
-    WHERE s.id_periodo = v_periodo.id_periodo AND s.nivel = 11 AND s.numero = p_numero;
+    WHERE s.id_periodo = v_periodo.id_periodo AND s.nivel = 12 AND s.numero = p_numero;
 
-    IF v_id_seccion_11 IS NULL THEN
+    IF v_id_seccion_12 IS NULL THEN
         INSERT INTO academico.secciones (id_periodo, nivel, numero)
-        VALUES (v_periodo.id_periodo, 11, p_numero)
-        RETURNING id_seccion INTO v_id_seccion_11;
+        VALUES (v_periodo.id_periodo, 12, p_numero)
+        RETURNING id_seccion INTO v_id_seccion_12;
         v_creada := TRUE;
     END IF;
 
-    -- Quien ya tiene matrícula en el año se omite (solo puede ser su 11-N: MA004 y MA005).
+    -- Quien ya tiene matrícula en el año se omite (solo puede ser su 12-N: MA004 y MA005).
     SELECT array_agg(e.cedula ORDER BY e.cedula) INTO v_omitidos
-    FROM academico.matriculas m10
-    JOIN academico.estudiantes e ON e.id_estudiante = m10.id_estudiante
-    WHERE m10.id_seccion = v_id_seccion_10 AND m10.fecha_retiro IS NULL
+    FROM academico.matriculas m11
+    JOIN academico.estudiantes e ON e.id_estudiante = m11.id_estudiante
+    WHERE m11.id_seccion = v_id_seccion_11 AND m11.fecha_retiro IS NULL
       AND EXISTS (SELECT 1 FROM academico.matriculas m
-                  WHERE m.id_estudiante = m10.id_estudiante AND m.id_periodo = v_periodo.id_periodo);
+                  WHERE m.id_estudiante = m11.id_estudiante AND m.id_periodo = v_periodo.id_periodo);
 
     WITH nuevas AS (
         INSERT INTO academico.matriculas (id_estudiante, id_periodo, id_seccion, fecha_matricula)
-        SELECT m10.id_estudiante, v_periodo.id_periodo, v_id_seccion_11, v_fecha
-        FROM academico.matriculas m10
-        WHERE m10.id_seccion = v_id_seccion_10 AND m10.fecha_retiro IS NULL
+        SELECT m11.id_estudiante, v_periodo.id_periodo, v_id_seccion_12, v_fecha
+        FROM academico.matriculas m11
+        WHERE m11.id_seccion = v_id_seccion_11 AND m11.fecha_retiro IS NULL
           AND NOT EXISTS (SELECT 1 FROM academico.matriculas m
-                          WHERE m.id_estudiante = m10.id_estudiante AND m.id_periodo = v_periodo.id_periodo)
+                          WHERE m.id_estudiante = m11.id_estudiante AND m.id_periodo = v_periodo.id_periodo)
         RETURNING id_estudiante
     )
     SELECT array_agg(e.cedula ORDER BY e.cedula) INTO v_matriculados
     FROM nuevas n JOIN academico.estudiantes e ON e.id_estudiante = n.id_estudiante;
 
-    RETURN QUERY SELECT v_creada, COALESCE(v_matriculados, '{}'), COALESCE(v_omitidos, '{}');
+    -- RN-63: profesores de la 11-N. RP-57: la 12-N queda bloqueada (asignar o quitar guía espera).
+    v_finalizado := academico.fn_estado_periodo(v_periodo) = 'FINALIZADO';
+    PERFORM 1 FROM academico.secciones WHERE id_seccion = v_id_seccion_12 FOR UPDATE;
+
+    SELECT pr.* INTO v_guia
+    FROM academico.secciones s JOIN academico.profesores pr ON pr.id_profesor = s.id_profesor_guia
+    WHERE s.id_seccion = v_id_seccion_11;
+
+    IF v_guia.id_profesor IS NOT NULL
+       AND (SELECT s.id_profesor_guia IS NULL FROM academico.secciones s WHERE s.id_seccion = v_id_seccion_12)
+       AND (v_finalizado OR academico.fn_profesor_tiene_rol_activo(v_guia.id_profesor, 'GUIA'))
+       AND NOT EXISTS (SELECT 1 FROM academico.secciones s
+                       WHERE s.id_periodo = v_periodo.id_periodo AND s.id_profesor_guia = v_guia.id_profesor) THEN
+        UPDATE academico.secciones SET id_profesor_guia = v_guia.id_profesor WHERE id_seccion = v_id_seccion_12;
+        v_guia_copiado := v_guia.cedula;
+    END IF;
+
+    FOR v_a IN
+        SELECT a.id_asignatura, a.id_profesor, asg.codigo, asg.imparte_nivel_12, pr.cedula
+        FROM academico.asignaciones_docentes a
+        JOIN academico.asignaturas asg ON asg.id_asignatura = a.id_asignatura
+        JOIN academico.profesores pr ON pr.id_profesor = a.id_profesor
+        WHERE a.id_seccion = v_id_seccion_11
+          AND NOT EXISTS (SELECT 1 FROM academico.asignaciones_docentes x
+                          WHERE x.id_seccion = v_id_seccion_12 AND x.id_asignatura = a.id_asignatura AND x.id_profesor = a.id_profesor)
+        ORDER BY asg.codigo, pr.cedula
+        FOR SHARE OF asg   -- RP-57: quitar el nivel 12 a la asignatura (AS007) espera
+    LOOP
+        IF v_a.imparte_nivel_12
+           AND (v_finalizado OR (academico.fn_profesor_tiene_rol_activo(v_a.id_profesor, 'PROFESOR_REGULAR')
+                                 AND (v_a.codigo <> 'CAS' OR academico.fn_profesor_tiene_rol_activo(v_a.id_profesor, 'PROFESOR_CAS')))) THEN
+            INSERT INTO academico.asignaciones_docentes (id_seccion, id_asignatura, id_profesor)
+            VALUES (v_id_seccion_12, v_a.id_asignatura, v_a.id_profesor);
+            v_copiadas := v_copiadas || (v_a.codigo || '/' || v_a.cedula);
+        ELSE
+            v_no_copiadas := v_no_copiadas || (v_a.codigo || '/' || v_a.cedula);
+        END IF;
+    END LOOP;
+
+    RETURN QUERY SELECT v_creada, COALESCE(v_matriculados, '{}'), COALESCE(v_omitidos, '{}'),
+                        v_guia_copiado, v_copiadas, v_no_copiadas;
 END;
 $$;
 
@@ -373,7 +427,7 @@ AS $$
     FROM academico.fn_matriculas_filtradas(p_anio, NULL, NULL, p_cedula_estudiante, NULL, NULL) f;
 $$;
 
--- CU 23 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado). MA006 fuera del nivel 10;
+-- CU 23 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado). MA006 fuera del nivel 11;
 -- MA008 si ya tiene ausencias, notas o informes CAS.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_cambiar_seccion_matricula(
@@ -406,12 +460,12 @@ BEGIN
         RETURN;
     END IF;
 
-    -- MA006: solo se traslada dentro del nivel 10 y antes de pasar a 11 (en 11 la sección conserva
-    -- el número que tenía en 10).
-    IF p_nivel <> 10
-       OR (SELECT s.nivel FROM academico.secciones s WHERE s.id_seccion = v_matricula.id_seccion) <> 10
+    -- MA006: solo se traslada dentro del nivel 11 y antes de pasar a 12 (en 12 la sección conserva
+    -- el número que tenía en 11).
+    IF p_nivel <> 11
+       OR (SELECT s.nivel FROM academico.secciones s WHERE s.id_seccion = v_matricula.id_seccion) <> 11
        OR academico.fn_matricula_tiene_continuidad(v_id_matricula) THEN
-        PERFORM api.fn_lanzar_excepcion('MA006', 'Solo se puede trasladar de sección dentro del nivel 10 y antes de pasar a nivel 11.');
+        PERFORM api.fn_lanzar_excepcion('MA006', 'Solo se puede trasladar de sección dentro del nivel 11 y antes de pasar a nivel 12.');
     END IF;
 
     -- MA008: las ausencias, notas e informes CAS pertenecen a las asignaciones de la sección; con registros no se

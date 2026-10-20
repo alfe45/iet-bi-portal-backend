@@ -27,6 +27,8 @@ public static class AccionesLog
     public const string RegistrarProfesor = "REGISTRAR_PROFESOR";
     public const string ModificarProfesor = "MODIFICAR_PROFESOR";
     public const string EliminarProfesor = "ELIMINAR_PROFESOR";
+    public const string CrearCuentaProfesor = "CREAR_CUENTA_PROFESOR";
+    public const string QuitarCuentaProfesor = "QUITAR_CUENTA_PROFESOR";
 
     // Estudiantes
     public const string RegistrarEstudiante = "REGISTRAR_ESTUDIANTE";
@@ -72,7 +74,7 @@ public static class AccionesLog
     // Evaluaciones
     public const string RegistrarNotas = "REGISTRAR_NOTAS";
     public const string EliminarNota = "ELIMINAR_NOTA";
-    public const string EnviarNotas = "ENVIAR_NOTAS";
+    public const string ConfirmarNotas = "CONFIRMAR_NOTAS";
     public const string OtorgarProrroga = "OTORGAR_PRORROGA";
     public const string QuitarProrroga = "QUITAR_PRORROGA";
 

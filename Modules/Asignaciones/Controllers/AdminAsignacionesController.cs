@@ -6,7 +6,7 @@ using iet_bi_portal_backend.Modules.Asignaciones.Services;
 namespace iet_bi_portal_backend.Modules.Asignaciones.Controllers;
 
 /// <summary>Administrador CU30 a CU33 (asignar, consultar, modificar y eliminar asignaciones académicas). Una asignación se identifica por /{anio}/{nivel}/{numero}/{codigo}/{cedula}
-/// (ej. /2026/10/1/MAT/1-1111-1111). Exige rol ADMIN.</summary>
+/// (ej. /2026/11/1/MAT/1-1111-1111). Exige rol ADMIN.</summary>
 [Route("api/admin/asignaciones")]
 public class AdminAsignacionesController(AsignacionesService asignaciones) : AdminControllerBase
 {

@@ -11,7 +11,7 @@ public static class EstadosMonografia
 }
 
 /// <summary>Administrador CU34: asigna el estudiante a un coordinador en una materia (RN-78). Anio: año de la matrícula de
-/// nivel 10 del estudiante (MO004). Materia SUPERIOR o MEDIO (MO002), coordinador con COORD_MONOGRAFIA (MO005), grupo de
+/// nivel 11 del estudiante (MO004). Materia SUPERIOR o MEDIO (MO002), coordinador con COORD_MONOGRAFIA (MO005), grupo de
 /// hasta 5 (MO003) y una monografía por estudiante (MO001) los valida la DB.</summary>
 public class RegistrarMonografiaRequest
 {
@@ -38,7 +38,7 @@ public class ModificarMonografiaRequest
     public string CodigoAsignatura { get; set; } = string.Empty;
 }
 
-/// <summary>Administrador CU35: filtros opcionales (año de inicio = año de su nivel 10).</summary>
+/// <summary>Administrador CU35: filtros opcionales (año de inicio = año de su nivel 11).</summary>
 public class ConsultaMonografias : ConsultaPaginada
 {
     public int? AnioInicio { get; set; }
@@ -115,7 +115,7 @@ public class ConsultaReportesGuia : ConsultaSeccionGuia
     public string Semestre { get; set; } = string.Empty;
 }
 
-/// <summary>Monografía de un estudiante. AnioInicio: año de su nivel 10; AnioActual y SeccionActual: su última matrícula.</summary>
+/// <summary>Monografía de un estudiante. AnioInicio: año de su nivel 11; AnioActual y SeccionActual: su última matrícula.</summary>
 public record Monografia(
     string CedulaEstudiante,
     string NombreEstudiante,
