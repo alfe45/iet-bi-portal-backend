@@ -25,14 +25,12 @@
   "TA001": { "status": 409, "mensaje": "El correo ya está en uso." },
   "NF001": { "status": 404, "mensaje": "El usuario no existe." },
 
-  "PR001": { "status": 409, "mensaje": "El usuario ya tiene un perfil de profesor." },
   "PR002": { "status": 409, "mensaje": "Ya existe un profesor con esa cédula." },
-  "PR003": { "status": 409, "mensaje": "No se puede eliminar un usuario que tiene un perfil de profesor. Quita la cuenta desde el profesor." },
+  "PR003": { "status": 409, "mensaje": "No se puede eliminar un usuario que tiene un perfil de profesor. Elimina el profesor." },
   "PR004": { "status": 409, "mensaje": "El profesor es guía de una sección. Quítalo como guía antes de eliminarlo." },
   "PR005": { "status": 400, "mensaje": "La fecha de nacimiento no es válida." },
-  "PR006": { "status": 400, "mensaje": "Indica un usuario existente o los datos de una cuenta nueva, no ambos." },
   "PR007": { "status": 409, "mensaje": "El profesor ya tiene cuenta." },
-  "PR008": { "status": 409, "mensaje": "El profesor no tiene cuenta." },
+  "PR009": { "status": 409, "mensaje": "El profesor tiene asignaciones (incluido CAS) en un periodo no finalizado o coordina monografías sin terminar. Reasígnalas antes de eliminarlo." },
   "NF002": { "status": 404, "mensaje": "El profesor no existe." },
 
   "ES001": { "status": 409, "mensaje": "Ya existe un estudiante con esa cédula." },

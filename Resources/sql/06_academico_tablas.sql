@@ -20,7 +20,7 @@ CREATE TABLE academico.profesores (
     cedula VARCHAR(20) NOT NULL,
     numero_celular VARCHAR(20),
     fecha_nacimiento DATE NOT NULL,
-    id_usuario UUID NULL,   -- cuenta opcional (RN-05): sin cuenta el profesor existe pero no inicia sesión
+    id_usuario UUID NULL,   -- su cuenta (RN-05); NULL solo en profesores registrados antes de que fuera obligatoria
     CONSTRAINT pk_profesores PRIMARY KEY (id_profesor),
     CONSTRAINT fk_profesores_usuario FOREIGN KEY (id_usuario) REFERENCES api.usuarios(id_usuario) ON DELETE RESTRICT,
     CONSTRAINT uq_profesores_usuario UNIQUE (id_usuario),

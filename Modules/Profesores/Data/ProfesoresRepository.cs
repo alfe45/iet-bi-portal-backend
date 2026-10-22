@@ -12,26 +12,19 @@ public class ProfesoresRepository(NpgsqlDataSource db)
         "nombre, primer_apellido, segundo_apellido, cedula, numero_celular, fecha_nacimiento, id_usuario, email, activo, roles::text[]";
 
     /// <summary>Devuelve la cédula normalizada. <paramref name="hash"/> es la contraseña de la cuenta nueva ya hasheada.
-    /// Errores de la DB: AU009, PR002, PR005 y los de la cuenta (NF001, PR001, PR006, NU001, NU002, TA001).</summary>
+    /// Errores de la DB: AU009, PR002, PR005 y los de la cuenta (NU001, NU002, TA001, AU021).</summary>
     public Task<string> RegistrarAsync(Guid actorId, RegistrarProfesorRequest r, string? hash) =>
         db.EscalarAsync<string>(
             "SELECT academico.fn_admin_registrar_profesor($1, $2::text, $3::text, $4::text, $5::text, $6::text, $7::date, " +
-            "$8::uuid, $9::text, $10::text, $11::text[])",
+            "$8::text, $9::text, $10::text[])",
             actorId, r.Nombre, r.PrimerApellido, r.SegundoApellido, r.Cedula, r.NumeroCelular, r.FechaNacimiento,
-            r.Cuenta?.IdUsuario, r.Cuenta?.Email, hash, r.Cuenta?.Roles?.ToArray());
+            r.Cuenta?.Email, hash, r.Cuenta?.Roles?.ToArray());
 
-    /// <summary>Crea o vincula la cuenta y devuelve el id del usuario. Errores: NF002, PR007, NF001, PR001, PR006, NU001, NU002, TA001.</summary>
+    /// <summary>Crea la cuenta de un profesor que no tiene y devuelve el id del usuario. Errores: NF002, PR007, NU001, NU002, TA001, AU021.</summary>
     public Task<Guid> CrearCuentaAsync(Guid actorId, string cedula, CuentaProfesorRequest c, string? hash) =>
         db.EscalarAsync<Guid>(
-            "SELECT academico.fn_admin_crear_cuenta_profesor($1, $2::text, $3::uuid, $4::text, $5::text, $6::text[])",
-            actorId, cedula, c.IdUsuario, c.Email, hash, c.Roles?.ToArray());
-
-    /// <summary>Quita (elimina) la cuenta y devuelve id, correo y roles previos. Errores: NF002, PR008, AU012, AU013, AU020.</summary>
-    public Task<(Guid IdUsuario, string Email, string[] Roles)> QuitarCuentaAsync(Guid actorId, string cedula) =>
-        db.PrimeroAsync<(Guid, string, string[])>(
-            "SELECT out_id_usuario, out_email::text, out_roles::text[] FROM academico.fn_admin_quitar_cuenta_profesor($1, $2::text)",
-            x => (x.GetGuid(0), x.GetString(1), x.GetFieldValue<string[]>(2)),
-            actorId, cedula);
+            "SELECT academico.fn_admin_crear_cuenta_profesor($1, $2::text, $3::text, $4::text, $5::text[])",
+            actorId, cedula, c.Email, hash, c.Roles?.ToArray());
 
     public async Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(Guid actorId, ConsultaConBusqueda c)
     {
@@ -53,7 +46,8 @@ public class ProfesoresRepository(NpgsqlDataSource db)
             x => (x.GetString(0), x.IsDBNull(1) ? null : x.GetString(1)),
             actorId, cedula, r.Nombre, r.PrimerApellido, r.SegundoApellido, r.NumeroCelular, r.FechaNacimiento);
 
-    /// <summary>Elimina el perfil y devuelve el snapshot previo en JSON. Error: NF002.</summary>
+    /// <summary>Elimina el perfil y su cuenta y devuelve el snapshot previo en JSON (con correo y roles).
+    /// Errores: NF002, PR004, AU012, AU013, PR009 y 23001 (registros académicos que lo referencian).</summary>
     public Task<string> EliminarAsync(Guid actorId, string cedula) =>
         db.EscalarAsync<string>("SELECT academico.fn_admin_eliminar_profesor($1, $2::text)", actorId, cedula);
 

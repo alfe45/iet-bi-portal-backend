@@ -12,7 +12,7 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
 {
     private const string Tabla = "academico.profesores";
 
-    /// <summary>CU06: registra un profesor con cuenta opcional (RN-05). Devuelve la cédula normalizada.</summary>
+    /// <summary>CU06: registra un profesor con su cuenta (RN-05). Devuelve la cédula normalizada.</summary>
     public async Task<string> RegistrarAsync(Guid actorId, RegistrarProfesorRequest request)
     {
         var cedula = await repo.RegistrarAsync(actorId, request, Hash(request.Cuenta));
@@ -25,22 +25,14 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
         return cedula;
     }
 
-    /// <summary>CU06: crea o vincula la cuenta de un profesor que no tiene. Devuelve el id del usuario.</summary>
+    /// <summary>CU06: crea la cuenta de un profesor que no tiene (registrado antes de que fuera obligatoria). Devuelve el id del usuario.</summary>
     public async Task<Guid> CrearCuentaAsync(Guid actorId, string cedula, CuentaProfesorRequest cuenta)
     {
         var idUsuario = await repo.CrearCuentaAsync(actorId, cedula, cuenta, Hash(cuenta));
 
         await logs.RegistrarAsync(actorId, AccionesLog.CrearCuentaProfesor, Tabla, cedula,
-            datosNuevos: new { idUsuario, cuenta.Email, cuenta.Roles, vinculada = cuenta.IdUsuario is not null });
+            datosNuevos: new { idUsuario, cuenta.Email, cuenta.Roles });
         return idUsuario;
-    }
-
-    /// <summary>CU09: quita (elimina) la cuenta del profesor; el profesor se conserva (RN-07).</summary>
-    public async Task QuitarCuentaAsync(Guid actorId, string cedula)
-    {
-        var (idUsuario, email, roles) = await repo.QuitarCuentaAsync(actorId, cedula);
-        await logs.RegistrarAsync(actorId, AccionesLog.QuitarCuentaProfesor, Tabla, cedula,
-            datosAnteriores: new { idUsuario, email, roles });
     }
 
     private string? Hash(CuentaProfesorRequest? cuenta) =>
@@ -62,7 +54,7 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU09: elimina el perfil de profesor (su cuenta, si tiene, se conserva, RN-07).</summary>
+    /// <summary>CU09: elimina el perfil de profesor y su cuenta (RN-07).</summary>
     public async Task EliminarAsync(Guid actorId, string cedula)
     {
         var anteriores = await repo.EliminarAsync(actorId, cedula);
