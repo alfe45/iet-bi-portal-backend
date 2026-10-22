@@ -102,7 +102,7 @@
   "EV003": { "status": 409, "mensaje": "El plazo de notas del semestre cerró. Solicita una prórroga al administrador." },
   "EV004": { "status": 400, "mensaje": "El estudiante no se califica en esa sección y semestre: no estaba matriculado o se retiró antes del fin del semestre." },
   "EV005": { "status": 400, "mensaje": "Un estudiante aparece más de una vez." },
-  "EV006": { "status": 409, "mensaje": "No se pueden enviar las notas: hay estudiantes sin nota." },
+  "EV006": { "status": 409, "mensaje": "No se pueden confirmar las notas: hay estudiantes sin nota." },
   "EV007": { "status": 400, "mensaje": "La fecha límite de la prórroga debe ser posterior al fin del semestre y no puede estar en el pasado." },
   "NF012": { "status": 404, "mensaje": "La prórroga no existe." },
   "NF016": { "status": 404, "mensaje": "El estudiante no tiene nota en esa asignación y semestre." },
