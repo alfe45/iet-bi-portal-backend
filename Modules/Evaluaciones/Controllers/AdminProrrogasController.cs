@@ -6,7 +6,7 @@ using iet_bi_portal_backend.Modules.Evaluaciones.Services;
 namespace iet_bi_portal_backend.Modules.Evaluaciones.Controllers;
 
 /// <summary>Administrador: prórrogas de notas (RN-74). Una prórroga da a un profesor más tiempo para registrar, corregir y
-/// enviar las notas de un semestre; se identifica por /{anio}/{semestre}/{cedulaProfesor}. Exige rol ADMIN.</summary>
+/// confirmar las notas de un semestre; se identifica por /{anio}/{semestre}/{cedulaProfesor}. Exige rol ADMIN.</summary>
 [Route("api/admin/prorrogas")]
 public class AdminProrrogasController(EvaluacionesService evaluaciones) : AdminControllerBase
 {
