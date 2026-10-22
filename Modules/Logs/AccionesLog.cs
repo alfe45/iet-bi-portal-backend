@@ -28,7 +28,6 @@ public static class AccionesLog
     public const string ModificarProfesor = "MODIFICAR_PROFESOR";
     public const string EliminarProfesor = "ELIMINAR_PROFESOR";
     public const string CrearCuentaProfesor = "CREAR_CUENTA_PROFESOR";
-    public const string QuitarCuentaProfesor = "QUITAR_CUENTA_PROFESOR";
 
     // Estudiantes
     public const string RegistrarEstudiante = "REGISTRAR_ESTUDIANTE";

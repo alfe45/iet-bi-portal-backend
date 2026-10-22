@@ -400,7 +400,7 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM academico.profesores WHERE id_usuario = p_id_usuario_objetivo) THEN
         PERFORM api.fn_lanzar_excepcion('PR003',
-            'No se puede eliminar un usuario que tiene un perfil de profesor. Quita la cuenta desde el profesor.');
+            'No se puede eliminar un usuario que tiene un perfil de profesor. Elimina el profesor.');
     END IF;
 
     PERFORM api.fn_validar_no_ultimo_admin(p_id_usuario_objetivo, 'AU013',
