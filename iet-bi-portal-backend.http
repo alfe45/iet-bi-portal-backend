@@ -41,16 +41,39 @@ Content-Type: application/json
 GET {{host}}/api/perfil
 Authorization: Bearer {{token}}
 
-### CU02 - Registrar usuario (nace con PROFESOR_REGULAR)
+### CU06 - Registrar profesor con su cuenta (obligatoria, RN-05; sin roles nace con PROFESOR_REGULAR)
+POST {{host}}/api/admin/profesores
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cuenta": { "email": "{{profeEmail}}", "contrasena": "{{profePass}}" },
+  "nombre": "Ana",
+  "primerApellido": "Mora",
+  "segundoApellido": "Rojas",
+  "cedula": "{{cedulaProfe}}",
+  "numeroCelular": "88888888",
+  "fechaNacimiento": "1985-04-12"
+}
+
+### CU07 - Detalle del profesor (trae el id de su cuenta)
+# @name profesor1
+GET {{host}}/api/admin/profesores/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+
+###
+@idUsuario = {{profesor1.response.body.$.idUsuario}}
+
+### CU02 - Registrar un usuario sin perfil de profesor (solo por la API; nace con PROFESOR_REGULAR)
 # @name nuevoUsuario
 POST {{host}}/api/admin/usuarios
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "email": "{{profeEmail}}", "contrasena": "{{profePass}}" }
+{ "email": "solo.usuario@iet.test", "contrasena": "{{profePass}}" }
 
 ###
-@idUsuario = {{nuevoUsuario.response.body.$.id}}
+@idUsuarioSolo = {{nuevoUsuario.response.body.$.id}}
 
 ### CU03 - Listar usuarios (filtros opcionales: busqueda, rol)
 GET {{host}}/api/admin/usuarios?pagina=1&tamanoPagina=20&busqueda=&rol=
@@ -110,43 +133,18 @@ Content-Type: application/json
 
 { "rol": "COORD_CAS" }
 
-### CU06 - Registrar profesor vinculando un usuario existente (la cuenta es opcional, RN-05)
+### CU06 - Registrar otro profesor con su cuenta y roles
 POST {{host}}/api/admin/profesores
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "cuenta": { "idUsuario": "{{idUsuario}}" },
-  "nombre": "Ana",
-  "primerApellido": "Mora",
-  "segundoApellido": "Rojas",
-  "cedula": "{{cedulaProfe}}",
-  "numeroCelular": "88888888",
-  "fechaNacimiento": "1985-04-12"
-}
-
-### CU06 - Registrar profesor sin cuenta (existe pero no inicia sesión)
-POST {{host}}/api/admin/profesores
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
+  "cuenta": { "email": "carlos.quesada@iet.test", "contrasena": "Profe12345", "roles": ["PROFESOR_REGULAR", "PROFESOR_CAS"] },
   "nombre": "Carlos",
   "primerApellido": "Quesada",
   "cedula": "{{cedulaProfe2}}",
   "fechaNacimiento": "1979-08-30"
 }
-
-### CU06 - Crear la cuenta del profesor después (correo + contraseña + roles; sin roles nace con PROFESOR_REGULAR)
-POST {{host}}/api/admin/profesores/{{cedulaProfe2}}/cuenta
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{ "email": "carlos.quesada@iet.test", "contrasena": "Profe12345", "roles": ["PROFESOR_REGULAR", "PROFESOR_CAS"] }
-
-### CU09 - Quitar la cuenta del profesor (elimina el usuario; el profesor se conserva)
-DELETE {{host}}/api/admin/profesores/{{cedulaProfe2}}/cuenta
-Authorization: Bearer {{token}}
 
 ### CU07 - Listar profesores (búsqueda opcional, sin mayúsculas ni acentos)
 GET {{host}}/api/admin/profesores?pagina=1&tamanoPagina=20&busqueda=
@@ -734,16 +732,20 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/admin/estudiantes/{{cedulaEst}}
 Authorization: Bearer {{token}}
 
-### CU09 - Eliminar profesor
-DELETE {{host}}/api/admin/profesores/{{cedulaProfe}}
-Authorization: Bearer {{token}}
-
 ### CU04 - Revocar rol
 DELETE {{host}}/api/admin/usuarios/{{idUsuario}}/roles/GUIA
 Authorization: Bearer {{token}}
 
-### CU05 - Eliminar usuario (elimina antes el perfil de profesor si lo tiene)
-DELETE {{host}}/api/admin/usuarios/{{idUsuario}}
+### CU09 - Eliminar profesor (elimina también su cuenta, RN-07)
+DELETE {{host}}/api/admin/profesores/{{cedulaProfe}}
+Authorization: Bearer {{token}}
+
+### CU09 - Eliminar el segundo profesor
+DELETE {{host}}/api/admin/profesores/{{cedulaProfe2}}
+Authorization: Bearer {{token}}
+
+### CU05 - Eliminar usuario sin perfil de profesor (con perfil: PR003, se elimina el profesor)
+DELETE {{host}}/api/admin/usuarios/{{idUsuarioSolo}}
 Authorization: Bearer {{token}}
 
 ### Cerrar sesión (logout de esta sesión; responde 204 aunque el token no exista)

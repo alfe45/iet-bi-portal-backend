@@ -1,7 +1,7 @@
 -- ============================================================
 -- 07_admin_profesores.sql: CU 06 a 09. Se opera SIEMPRE por cédula (nunca por id_profesor).
 -- La cédula es inmutable: identifica al profesor y no se modifica en CU08.
--- La cuenta de usuario es opcional (RN-05): se crea, vincula o quita desde el mismo profesor.
+-- Todo profesor nuevo nace con su cuenta de usuario (RN-05) y eliminarlo elimina también la cuenta (RN-07).
 -- ============================================================
 SET search_path = academico, api, auth, public;
 
@@ -12,19 +12,18 @@ CREATE TYPE academico.profesor_admin AS (
     cedula VARCHAR(20),
     numero_celular VARCHAR(20),
     fecha_nacimiento DATE,
-    id_usuario UUID,        -- NULL si no tiene cuenta (RN-05)
+    id_usuario UUID,        -- NULL solo en profesores registrados antes de que la cuenta fuera obligatoria (RN-05)
     email CITEXT,
     activo BOOLEAN,
     roles api.roles[]       -- vacío si no tiene cuenta
 );
 
--- Interna: crea la cuenta del profesor (p_email + p_password_hash + p_roles) o le vincula un usuario existente
--- (p_id_usuario), nunca las dos cosas (PR006). Sin roles, la cuenta nace con PROFESOR_REGULAR (RN-05).
+-- Interna: crea la cuenta del profesor (correo + hash de la contraseña + roles). Sin roles, la cuenta nace con
+-- PROFESOR_REGULAR (RN-05). Correo o contraseña vacíos: NU001/NU002; correo en uso: TA001 (auth.fn_insertar_usuario).
 -- El llamador ya bloqueó al profesor y comprobó que no tiene cuenta. Devuelve el id del usuario.
 CREATE OR REPLACE FUNCTION academico.fn_asignar_cuenta_profesor(
     p_id_usuario_actor UUID,
     p_id_profesor BIGINT,
-    p_id_usuario UUID,
     p_email TEXT,
     p_password_hash TEXT,
     p_roles TEXT[]
@@ -34,44 +33,28 @@ LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
-    v_id UUID := p_id_usuario;
+    v_id UUID;
     v_roles api.roles[];
 BEGIN
-    IF (p_id_usuario IS NULL) = (api.fn_limpiar(p_email) IS NULL) THEN
-        PERFORM api.fn_lanzar_excepcion('PR006', 'Indica un usuario existente o los datos de una cuenta nueva, no ambos.');
-    END IF;
+    -- Roles sin repetir y sin distinguir mayúsculas; un texto que no es rol lo rechaza el cast (22P02 -> 400).
+    SELECT COALESCE(array_agg(DISTINCT upper(trim(r))::api.roles ORDER BY upper(trim(r))::api.roles), ARRAY['PROFESOR_REGULAR']::api.roles[])
+    INTO v_roles
+    FROM unnest(COALESCE(p_roles, ARRAY[]::TEXT[])) r;
 
-    IF v_id IS NOT NULL THEN
-        IF p_password_hash IS NOT NULL OR cardinality(p_roles) > 0 THEN
-            PERFORM api.fn_lanzar_excepcion('PR006', 'Indica un usuario existente o los datos de una cuenta nueva, no ambos.');
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM api.usuarios WHERE id_usuario = v_id) THEN
-            PERFORM api.fn_lanzar_excepcion('NF001', 'El usuario no existe.');
-        END IF;
-        IF EXISTS (SELECT 1 FROM academico.profesores WHERE id_usuario = v_id) THEN
-            PERFORM api.fn_lanzar_excepcion('PR001', 'El usuario ya tiene un perfil de profesor.');
-        END IF;
-    ELSE
-        -- Roles sin repetir y sin distinguir mayúsculas; un texto que no es rol lo rechaza el cast (22P02 -> 400).
-        SELECT COALESCE(array_agg(DISTINCT upper(trim(r))::api.roles ORDER BY upper(trim(r))::api.roles), ARRAY['PROFESOR_REGULAR']::api.roles[])
-        INTO v_roles
-        FROM unnest(COALESCE(p_roles, ARRAY[]::TEXT[])) r;
+    PERFORM auth.fn_validar_rol_unico(NULL, r) FROM unnest(v_roles) r;
 
-        PERFORM auth.fn_validar_rol_unico(NULL, r) FROM unnest(v_roles) r;
+    v_id := auth.fn_insertar_usuario(p_email::CITEXT, p_password_hash, v_roles[1], p_id_usuario_actor);
 
-        v_id := auth.fn_insertar_usuario(p_email::CITEXT, p_password_hash, v_roles[1], p_id_usuario_actor);
-
-        INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
-        SELECT v_id, r, p_id_usuario_actor FROM unnest(v_roles[2:]) r;
-    END IF;
+    INSERT INTO api.usuario_roles (id_usuario, rol, asignado_por)
+    SELECT v_id, r, p_id_usuario_actor FROM unnest(v_roles[2:]) r;
 
     UPDATE academico.profesores SET id_usuario = v_id WHERE id_profesor = p_id_profesor;
     RETURN v_id;
 END;
 $$;
 
--- CU 06 - Registrar profesor, con cuenta opcional en la misma operación (RN-05): sin datos de cuenta el profesor
--- queda sin usuario; con p_id_usuario se vincula uno existente; con correo + contraseña se crea. Devuelve la cédula.
+-- CU 06 - Registrar profesor con su cuenta en la misma operación (RN-05): el correo y la contraseña son
+-- obligatorios (NU001/NU002); si la cuenta falla, el profesor tampoco queda registrado. Devuelve la cédula.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_profesor(
     p_id_usuario_actor UUID,
     p_nombre TEXT,
@@ -80,7 +63,6 @@ CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_profesor(
     p_cedula TEXT,
     p_numero_celular TEXT,
     p_fecha_nacimiento DATE,
-    p_id_usuario UUID,
     p_email TEXT,
     p_password_hash TEXT,
     p_roles TEXT[]
@@ -108,16 +90,13 @@ BEGIN
         v_cedula, api.fn_limpiar(p_numero_celular), p_fecha_nacimiento)
     RETURNING id_profesor INTO v_id;
 
-    IF p_id_usuario IS NOT NULL OR api.fn_limpiar(p_email) IS NOT NULL
-       OR p_password_hash IS NOT NULL OR cardinality(p_roles) > 0 THEN
-        PERFORM academico.fn_asignar_cuenta_profesor(p_id_usuario_actor, v_id, p_id_usuario, p_email, p_password_hash, p_roles);
-    END IF;
+    PERFORM academico.fn_asignar_cuenta_profesor(p_id_usuario_actor, v_id, p_email, p_password_hash, p_roles);
 
     RETURN v_cedula;
 END;
 $$;
 
--- CU 07 - Consultar profesores (con o sin cuenta).
+-- CU 07 - Consultar profesores (con su cuenta, si tienen).
 -- Búsqueda opcional por nombre, apellidos, cédula o correo (sin mayúsculas ni acentos).
 CREATE OR REPLACE FUNCTION academico.fn_a_profesor_admin(p academico.profesores)
 RETURNS academico.profesor_admin
@@ -171,11 +150,10 @@ AS $$
     WHERE p.cedula = api.fn_limpiar_cedula(p_cedula);
 $$;
 
--- CU 06 - Crear o vincular la cuenta de un profesor que no tiene (RN-05). Devuelve el id del usuario.
+-- CU 06 - Crear la cuenta de un profesor registrado antes de que fuera obligatoria (RN-05). Devuelve el id del usuario.
 CREATE OR REPLACE FUNCTION academico.fn_admin_crear_cuenta_profesor(
     p_id_usuario_actor UUID,
     p_cedula TEXT,
-    p_id_usuario UUID,
     p_email TEXT,
     p_password_hash TEXT,
     p_roles TEXT[]
@@ -202,68 +180,12 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('PR007', 'El profesor ya tiene cuenta.');
     END IF;
 
-    RETURN academico.fn_asignar_cuenta_profesor(p_id_usuario_actor, v_prof.id_profesor, p_id_usuario, p_email, p_password_hash, p_roles);
-END;
-$$;
-
--- CU 09 - Quitar la cuenta de un profesor: lo desvincula y elimina el usuario (el profesor y su historial se
--- conservan, RN-07). Mismas protecciones que eliminar usuario (AU012, AU013) y desactivar (AU020: con
--- responsabilidades vigentes primero se reasignan). Devuelve el id, el correo y los roles previos (auditoría).
-CREATE OR REPLACE FUNCTION academico.fn_admin_quitar_cuenta_profesor(
-    p_id_usuario_actor UUID,
-    p_cedula TEXT
-)
-RETURNS TABLE(out_id_usuario UUID, out_email CITEXT, out_roles api.roles[])
-LANGUAGE plpgsql
-SET search_path = academico, auth, api, public
-AS $$
-DECLARE
-    v_prof academico.profesores%ROWTYPE;
-    v_email CITEXT;
-    v_roles api.roles[];
-BEGIN
-    PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
-
-    SELECT * INTO v_prof
-    FROM academico.profesores p
-    WHERE p.cedula = api.fn_limpiar_cedula(p_cedula)
-    FOR UPDATE;
-
-    IF NOT FOUND THEN
-        PERFORM api.fn_lanzar_excepcion('NF002', 'El profesor no existe.');
-    END IF;
-
-    IF v_prof.id_usuario IS NULL THEN
-        PERFORM api.fn_lanzar_excepcion('PR008', 'El profesor no tiene cuenta.');
-    END IF;
-
-    IF p_id_usuario_actor = v_prof.id_usuario THEN
-        PERFORM api.fn_lanzar_excepcion('AU012', 'Un administrador no puede eliminarse a sí mismo.');
-    END IF;
-
-    -- RP-57: serializa con quien le asigna algo que exige un rol (fn_profesor_tiene_rol_activo toma FOR SHARE).
-    PERFORM api.fn_bloquear_usuario(v_prof.id_usuario, TRUE);
-
-    PERFORM api.fn_validar_no_ultimo_admin(v_prof.id_usuario, 'AU013',
-        'No se puede eliminar al último administrador activo del sistema.');
-
-    IF auth.fn_rol_en_uso(v_prof.id_usuario, 'GUIA') OR auth.fn_rol_en_uso(v_prof.id_usuario, 'PROFESOR_REGULAR')
-       OR auth.fn_rol_en_uso(v_prof.id_usuario, 'PROFESOR_CAS') OR auth.fn_rol_en_uso(v_prof.id_usuario, 'COORD_MONOGRAFIA') THEN
-        PERFORM api.fn_lanzar_excepcion('AU020', 'El usuario tiene secciones, asignaciones o monografías vigentes.');
-    END IF;
-
-    SELECT u.email INTO v_email FROM api.usuarios u WHERE u.id_usuario = v_prof.id_usuario;
-    v_roles := api.fn_roles_de(v_prof.id_usuario);
-
-    UPDATE academico.profesores SET id_usuario = NULL WHERE id_profesor = v_prof.id_profesor;
-    DELETE FROM api.usuarios WHERE id_usuario = v_prof.id_usuario;
-
-    RETURN QUERY SELECT v_prof.id_usuario, v_email, v_roles;
+    RETURN academico.fn_asignar_cuenta_profesor(p_id_usuario_actor, v_prof.id_profesor, p_email, p_password_hash, p_roles);
 END;
 $$;
 
 -- CU 08 - Modificar profesor. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo (auditoría).
--- Cédula y cuenta no cambian aquí (la cuenta: fn_admin_crear_cuenta_profesor / fn_admin_quitar_cuenta_profesor).
+-- Cédula y cuenta no cambian aquí (la cuenta se modifica en auth.fn_admin_*: correo, contraseña, estado y roles).
 CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_profesor(
     p_id_usuario_actor UUID,
     p_cedula TEXT,
@@ -320,8 +242,10 @@ BEGIN
 END;
 $$;
 
--- CU 09 - Eliminar profesor (solo el perfil; el usuario se conserva). Devuelve el snapshot previo.
--- Si otras entidades lo referencian con FK RESTRICT, Postgres lanza 23503.
+-- CU 09 - Eliminar profesor: elimina el perfil y su cuenta de usuario en la misma operación (RN-07).
+-- No se elimina si es guía (PR004), si la cuenta es la del propio actor (AU012), si es el último administrador activo
+-- (AU013) o si tiene asignaciones o monografías vigentes (PR009). Si sus registros académicos lo referencian con
+-- FK RESTRICT, Postgres lanza 23001 y no se borra nada. Devuelve el snapshot previo (perfil + correo y roles).
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_profesor(
     p_id_usuario_actor UUID,
     p_cedula TEXT
@@ -331,12 +255,12 @@ LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
-    v_id BIGINT;
+    v_prof academico.profesores%ROWTYPE;
     v_prev JSONB;
 BEGIN
     PERFORM api.fn_validar_admin_activo(p_id_usuario_actor);
 
-    SELECT p.id_profesor, to_jsonb(p) INTO v_id, v_prev
+    SELECT * INTO v_prof
     FROM academico.profesores p
     WHERE p.cedula = api.fn_limpiar_cedula(p_cedula)
     FOR UPDATE;
@@ -345,11 +269,38 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF002', 'El profesor no existe.');
     END IF;
 
-    IF EXISTS (SELECT 1 FROM academico.secciones WHERE id_profesor_guia = v_id) THEN
+    IF EXISTS (SELECT 1 FROM academico.secciones WHERE id_profesor_guia = v_prof.id_profesor) THEN
         PERFORM api.fn_lanzar_excepcion('PR004', 'El profesor es guía de una sección.');
     END IF;
 
-    DELETE FROM academico.profesores WHERE id_profesor = v_id;
+    v_prev := to_jsonb(v_prof);
+
+    IF v_prof.id_usuario IS NOT NULL THEN
+        IF p_id_usuario_actor = v_prof.id_usuario THEN
+            PERFORM api.fn_lanzar_excepcion('AU012', 'Un administrador no puede eliminarse a sí mismo.');
+        END IF;
+
+        -- RP-57: serializa con quien le asigna algo que exige un rol (fn_profesor_tiene_rol_activo toma FOR SHARE).
+        PERFORM api.fn_bloquear_usuario(v_prof.id_usuario, TRUE);
+
+        PERFORM api.fn_validar_no_ultimo_admin(v_prof.id_usuario, 'AU013',
+            'No se puede eliminar al último administrador activo del sistema.');
+
+        IF auth.fn_rol_en_uso(v_prof.id_usuario, 'PROFESOR_REGULAR') OR auth.fn_rol_en_uso(v_prof.id_usuario, 'PROFESOR_CAS')
+           OR auth.fn_rol_en_uso(v_prof.id_usuario, 'COORD_MONOGRAFIA') THEN
+            PERFORM api.fn_lanzar_excepcion('PR009', 'El profesor tiene asignaciones o monografías vigentes.');
+        END IF;
+
+        v_prev := v_prev || jsonb_build_object(
+            'email', (SELECT u.email FROM api.usuarios u WHERE u.id_usuario = v_prof.id_usuario),
+            'roles', api.fn_roles_de(v_prof.id_usuario));
+    END IF;
+
+    DELETE FROM academico.profesores WHERE id_profesor = v_prof.id_profesor;
+
+    IF v_prof.id_usuario IS NOT NULL THEN
+        DELETE FROM api.usuarios WHERE id_usuario = v_prof.id_usuario;
+    END IF;
 
     RETURN v_prev;
 END;
