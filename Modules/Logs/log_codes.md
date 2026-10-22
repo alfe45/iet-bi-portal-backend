@@ -23,11 +23,11 @@ REVOCAR_ROL             // Se le quitó un rol a un usuario (rol en datos_anteri
 ELIMINAR_USUARIO        // Un administrador eliminó a un usuario (email + roles en datos_anteriores).
 
 # Profesores
-REGISTRAR_PROFESOR      // Alta de perfil de profesor (datos y cuenta opcional en datos_nuevos, nunca la contraseña).
+REGISTRAR_PROFESOR      // Alta de perfil de profesor con su cuenta (datos y cuenta en datos_nuevos, nunca la contraseña).
 MODIFICAR_PROFESOR      // Modificación de un profesor (datos_anteriores = snapshot previo, datos_nuevos = datos nuevos).
-ELIMINAR_PROFESOR       // Eliminación del perfil de profesor (datos_anteriores = snapshot previo).
-CREAR_CUENTA_PROFESOR   // Se creó o vinculó la cuenta de un profesor (datos_nuevos = idUsuario, email, roles, vinculada).
-QUITAR_CUENTA_PROFESOR  // Se quitó la cuenta de un profesor y se eliminó el usuario (datos_anteriores = idUsuario, email, roles).
+ELIMINAR_PROFESOR       // Eliminación del perfil de profesor y su cuenta (datos_anteriores = snapshot previo con email y roles).
+CREAR_CUENTA_PROFESOR   // Se creó la cuenta de un profesor que no tenía (datos_nuevos = idUsuario, email, roles).
+QUITAR_CUENTA_PROFESOR  // En desuso desde el 22/10/2026 (ya no se quita la cuenta: se elimina el profesor). Puede aparecer en logs anteriores.
 
 # Estudiantes
 REGISTRAR_ESTUDIANTE    // Alta de estudiante.
