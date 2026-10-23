@@ -102,6 +102,7 @@
   "EV005": { "status": 400, "mensaje": "Un estudiante aparece más de una vez." },
   "EV006": { "status": 409, "mensaje": "No se pueden confirmar las notas: hay estudiantes sin nota." },
   "EV007": { "status": 400, "mensaje": "La fecha límite de la prórroga debe ser posterior al fin del semestre y no puede estar en el pasado." },
+  "EV008": { "status": 409, "mensaje": "Las notas ya fueron confirmadas para este semestre y no se pueden modificar. Contacte al Profesor Guía para reactivar la edición de las bandas." },
   "NF012": { "status": 404, "mensaje": "La prórroga no existe." },
   "NF016": { "status": 404, "mensaje": "El estudiante no tiene nota en esa asignación y semestre." },
 
@@ -112,6 +113,8 @@
   "MO005": { "status": 409, "mensaje": "El coordinador debe tener un usuario activo con el rol COORD_MONOGRAFIA." },
   "MO006": { "status": 400, "mensaje": "La fecha del seguimiento no es válida: no puede ser futura ni anterior al inicio de la monografía." },
   "MO007": { "status": 409, "mensaje": "Una monografía terminada no cambia de estado." },
+  "MO008": { "status": 409, "mensaje": "El reporte de monografía ya fue confirmado para este semestre y no se puede modificar. Contacte al Profesor Guía si necesita reactivar la edición." },
+  "MO009": { "status": 409, "mensaje": "No se puede confirmar el reporte de monografía: la información está incompleta." },
   "AD006": { "status": 403, "mensaje": "No coordinas esa monografía." },
   "NF013": { "status": 404, "mensaje": "El estudiante no tiene monografía." },
   "NF014": { "status": 404, "mensaje": "El seguimiento no existe." },
