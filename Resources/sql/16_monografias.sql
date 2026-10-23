@@ -637,7 +637,7 @@ END;
 $$;
 
 -- Coordinador CU05 - Guardar el reporte sin confirmarlo todavía (borrador, enviado_en NULL). El guía lo ve en la
--- verificación como pendiente de confirmación; el reporte de bandas solo imprime reportes confirmados (RN-81).
+-- verificación como pendiente de confirmación; el reporte de bandas lo imprime igual (RN-81).
 -- MO008 si ya está confirmado; MO009 si las observaciones no tienen entre 3 y 1000 caracteres.
 CREATE OR REPLACE FUNCTION academico.fn_coordinador_guardar_borrador_reporte_monografia(
     p_id_usuario UUID,
