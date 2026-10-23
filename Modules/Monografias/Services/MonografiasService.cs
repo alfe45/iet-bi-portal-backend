@@ -106,12 +106,13 @@ public class MonografiasService(MonografiasRepository repo, ILogsService logs)
             $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosAnteriores: anteriores.ComoJson());
     }
 
-    /// <summary>Guía: permite corregir un reporte semestral previamente confirmado.</summary>
+    /// <summary>Guía: reactiva la edición de un reporte semestral confirmado (RN-81). Registra log solo si estaba confirmado.</summary>
     public async Task PermitirCambiosReporteAsync(Guid actorId, int anio, int nivel, int numero, string cedula, string semestre)
     {
         var anteriores = await repo.PermitirCambiosReporteAsync(actorId, anio, nivel, numero, cedula, semestre);
-        await logs.RegistrarAsync(actorId, AccionesLog.PermitirCambiosReporteMonografia, TablaReportes,
-            $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosAnteriores: anteriores.ComoJson());
+        if (anteriores is not null)
+            await logs.RegistrarAsync(actorId, AccionesLog.PermitirCambiosReporteMonografia, TablaReportes,
+                $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosAnteriores: anteriores.ComoJson());
     }
 
     /// <summary>Guía CU07.</summary>

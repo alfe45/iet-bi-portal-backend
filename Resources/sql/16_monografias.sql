@@ -636,8 +636,9 @@ BEGIN
 END;
 $$;
 
--- Coordinador CU05 - Guardar el reporte sin confirmarlo todavía al Profesor Guía.
--- El guía puede ver que el reporte existe, pero lo identifica como pendiente de confirmación.
+-- Coordinador CU05 - Guardar el reporte sin confirmarlo todavía (borrador, enviado_en NULL). El guía lo ve en la
+-- verificación como pendiente de confirmación; el reporte de bandas solo imprime reportes confirmados (RN-81).
+-- MO008 si ya está confirmado; MO009 si las observaciones no tienen entre 3 y 1000 caracteres.
 CREATE OR REPLACE FUNCTION academico.fn_coordinador_guardar_borrador_reporte_monografia(
     p_id_usuario UUID,
     p_cedula_estudiante TEXT,
@@ -653,6 +654,7 @@ DECLARE
     v_mono academico.monografias := academico.fn_obtener_mi_monografia(p_id_usuario, p_cedula_estudiante);
     v_id_matricula BIGINT := academico.fn_obtener_id_matricula(p_anio, p_cedula_estudiante);
     v_periodo academico.periodos_academicos%ROWTYPE;
+    v_prev academico.reportes_monografia%ROWTYPE;
     v_observaciones TEXT := api.fn_limpiar(p_observaciones);
 BEGIN
     SELECT p.* INTO v_periodo
@@ -662,7 +664,7 @@ BEGIN
     PERFORM academico.fn_validar_plazo_notas(v_mono.id_coordinador, v_periodo, p_semestre);
 
     IF v_observaciones IS NULL OR length(trim(v_observaciones)) < 3 OR length(v_observaciones) > 1000 THEN
-        PERFORM api.fn_lanzar_excepcion('MO009', 'No se puede guardar el reporte de monografía: la información está incompleta.');
+        PERFORM api.fn_lanzar_excepcion('MO009', 'Las observaciones del reporte deben tener entre 3 y 1000 caracteres.');
     END IF;
 
     SELECT * INTO v_prev FROM academico.reportes_monografia
@@ -709,8 +711,7 @@ BEGIN
     END IF;
 
     DELETE FROM academico.reportes_monografia
-    WHERE id_monografia = v_mono.id_monografia AND id_periodo = v_periodo.id_periodo AND semestre = p_semestre
-    ;
+    WHERE id_monografia = v_mono.id_monografia AND id_periodo = v_periodo.id_periodo AND semestre = p_semestre;
 
     RETURN jsonb_build_object('anio', p_anio, 'semestre', p_semestre, 'observaciones', v_prev.observaciones);
 END;
@@ -736,8 +737,10 @@ BEGIN
 END;
 $$;
 
--- Guía CU06 - Permitir cambios en un reporte confirmado del semestre.
--- Conserva las observaciones y retira únicamente la confirmación para que el coordinador pueda corregirlo.
+-- Guía CU06 - Reactivar la edición de un reporte confirmado del semestre (RN-81): conserva las observaciones y
+-- retira la confirmación para que el coordinador lo corrija y lo confirme de nuevo. Solo mientras el plazo de notas
+-- del coordinador siga abierto (EV002/EV003). AD005 si no es el guía de la sección; NF013 / NF017 si no hay
+-- monografía o reporte. Devuelve el reporte previo, o NULL si no estaba confirmado (no hay nada que reactivar).
 CREATE OR REPLACE FUNCTION academico.fn_guia_permitir_cambios_reporte_monografia(
     p_id_usuario UUID,
     p_anio INTEGER,
@@ -751,18 +754,14 @@ SET search_path = academico, auth, api, public
 AS $$
 DECLARE
     v_id_seccion BIGINT := academico.fn_validar_guia_seccion(p_id_usuario, p_anio, p_nivel, p_numero);
-    v_id_periodo BIGINT;
+    v_periodo academico.periodos_academicos%ROWTYPE;
     v_id_monografia BIGINT;
+    v_id_coordinador BIGINT;
     v_prev academico.reportes_monografia%ROWTYPE;
 BEGIN
-    SELECT id_periodo INTO v_id_periodo
-    FROM academico.periodos_academicos
-    WHERE anio = p_anio;
-    IF NOT FOUND THEN
-        PERFORM api.fn_lanzar_excepcion('NF004', 'El periodo académico no existe.');
-    END IF;
+    SELECT p.* INTO v_periodo FROM academico.periodos_academicos p WHERE p.anio = p_anio;
 
-    SELECT mo.id_monografia INTO v_id_monografia
+    SELECT mo.id_monografia, mo.id_coordinador INTO v_id_monografia, v_id_coordinador
     FROM academico.monografias mo
     JOIN academico.matriculas m ON m.id_estudiante = mo.id_estudiante
     WHERE m.id_seccion = v_id_seccion
@@ -771,20 +770,25 @@ BEGIN
         PERFORM api.fn_lanzar_excepcion('NF013', 'El estudiante no tiene monografía.');
     END IF;
 
+    PERFORM academico.fn_validar_plazo_notas(v_id_coordinador, v_periodo, p_semestre);
+
     SELECT * INTO v_prev
     FROM academico.reportes_monografia
-    WHERE id_monografia = v_id_monografia AND id_periodo = v_id_periodo AND semestre = p_semestre
+    WHERE id_monografia = v_id_monografia AND id_periodo = v_periodo.id_periodo AND semestre = p_semestre
     FOR UPDATE;
     IF NOT FOUND THEN
         PERFORM api.fn_lanzar_excepcion('NF017', 'El reporte de monografía no existe.');
     END IF;
+    IF v_prev.enviado_en IS NULL THEN
+        RETURN NULL;
+    END IF;
 
     UPDATE academico.reportes_monografia
     SET enviado_en = NULL
-    WHERE id_monografia = v_id_monografia AND id_periodo = v_id_periodo AND semestre = p_semestre;
+    WHERE id_monografia = v_id_monografia AND id_periodo = v_periodo.id_periodo AND semestre = p_semestre;
 
     RETURN jsonb_build_object('anio', p_anio, 'semestre', p_semestre, 'observaciones', v_prev.observaciones,
-                              'enviadoEn', v_prev.enviado_en, 'confirmacionAnulada', v_prev.enviado_en IS NOT NULL);
+                              'enviadoEn', v_prev.enviado_en);
 END;
 $$;
 

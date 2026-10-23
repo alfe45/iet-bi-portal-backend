@@ -95,7 +95,7 @@ public class MonografiasRepository(NpgsqlDataSource db)
             "FROM academico.fn_coordinador_enviar_reporte_monografia($1, $2::text, $3, $4::academico.numero_semestre, $5::text)",
             LeerEstado, idUsuario, cedula, anio, Semestres.Normalizar(semestre), observaciones);
 
-    /// <summary>Guarda observaciones visibles para el guía, pero pendientes de confirmación. MO008 si ya fue confirmado.</summary>
+    /// <summary>Guarda el reporte sin confirmar (borrador). Errores: NF003, NF013, AD006, NF004, NF009, EV002, EV003, MO008, MO009.</summary>
     public Task GuardarBorradorReporteAsync(Guid idUsuario, string cedula, int anio, string semestre, string observaciones) =>
         db.EjecutarAsync(
             "SELECT academico.fn_coordinador_guardar_borrador_reporte_monografia($1, $2::text, $3, $4::academico.numero_semestre, $5::text)",
@@ -107,11 +107,12 @@ public class MonografiasRepository(NpgsqlDataSource db)
             "SELECT academico.fn_coordinador_eliminar_reporte_monografia($1, $2::text, $3, $4::academico.numero_semestre)::text",
             idUsuario, cedula, anio, Semestres.Normalizar(semestre));
 
-    /// <summary>Guía: retira la confirmación del reporte para permitir correcciones. Errores: NF004, NF013, NF017, AD005.</summary>
-    public Task<string> PermitirCambiosReporteAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula, string semestre) =>
-        db.EscalarAsync<string>(
+    /// <summary>Guía: retira la confirmación del reporte para permitir correcciones. Devuelve el reporte previo, o null si no
+    /// estaba confirmado. Errores: NF006, AD005, NF013, NF017, EV002, EV003.</summary>
+    public Task<string?> PermitirCambiosReporteAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula, string semestre) =>
+        db.PrimeroAsync(
             "SELECT academico.fn_guia_permitir_cambios_reporte_monografia($1, $2, $3, $4, $5::text, $6::academico.numero_semestre)::text",
-            idUsuario, anio, nivel, numero, cedula, Semestres.Normalizar(semestre));
+            r => r.IsDBNull(0) ? null : r.GetString(0), idUsuario, anio, nivel, numero, cedula, Semestres.Normalizar(semestre));
 
     /// <summary>Guía CU07. Errores: NF006, AD005.</summary>
     public async Task<List<MonografiaConSeguimiento>> ListarSeccionGuiaAsync(Guid idUsuario, ConsultaSeccionGuia c)

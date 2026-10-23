@@ -558,7 +558,15 @@ Content-Type: application/json
 
 { "fecha": "2026-09-29", "observacion": "Definió la pregunta de investigación y el índice." }
 
-### Coordinador de Monografía CU05 - Enviar el reporte del semestre al guía (sale en el reporte de bandas)
+### Coordinador de Monografía CU05 - Guardar el reporte como borrador (el guía lo ve pendiente; se corrige o se retira)
+PUT {{host}}/api/profesor/monografias/{{cedulaEst}}/reportes/{{anio}}/II_SEMESTRE/borrador
+Authorization: Bearer {{tokenProfe}}
+Content-Type: application/json
+
+{ "observaciones": "Borrador: buen avance." }
+
+### Coordinador de Monografía CU05 - Confirmar el reporte del semestre al guía (sale en el reporte de bandas; queda
+### bloqueado: MO008 al corregirlo o retirarlo hasta que el guía reactive su edición)
 PUT {{host}}/api/profesor/monografias/{{cedulaEst}}/reportes/{{anio}}/II_SEMESTRE
 Authorization: Bearer {{tokenProfe}}
 Content-Type: application/json
@@ -632,6 +640,19 @@ Authorization: Bearer {{tokenProfe}}
 GET {{host}}/api/profesor/guia/reporte-bandas/{{cedulaEst}}?anio={{anio}}&nivel=11&numero=1&semestre=II_SEMESTRE
 Authorization: Bearer {{tokenProfe}}
 
+# ------------------------------------------------------------
+# Reactivar la edición (Profesor Guía, RN-75 / RN-81): las notas y los reportes confirmados no se corrigen (EV008 /
+# MO008) ni cambia el ausentismo confirmado (EV009) hasta que el guía de la sección reactive su edición.
+# ------------------------------------------------------------
+
+### Guía - Reactivar la edición de las notas de la sección (cada profesor corrige y vuelve a confirmar)
+PUT {{host}}/api/profesor/guia/reporte-bandas/{{anio}}/11/1/reactivar/II_SEMESTRE
+Authorization: Bearer {{tokenProfe}}
+
+### Guía - Reactivar la edición del reporte de monografía de un estudiante
+PUT {{host}}/api/profesor/guia/monografias/reportes/{{anio}}/11/1/{{cedulaEst}}/permitir-cambios/II_SEMESTRE
+Authorization: Bearer {{tokenProfe}}
+
 # ============================================================
 # Borrados (en este orden por las dependencias)
 # ============================================================
@@ -644,15 +665,15 @@ Authorization: Bearer {{tokenProfe}}
 DELETE {{host}}/api/profesor/cas/informes/{{anio}}/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
-### Profesor Regular CU07 - Eliminar la nota CAS (corrección; quita la confirmación si la había)
+### Profesor Regular CU07 - Eliminar la nota CAS (corrección; solo sin confirmar: EV008)
 DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/CAS/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
-### Profesor Regular CU07 - Eliminar la nota de MAT (quita la confirmación: hay que volver a confirmar)
+### Profesor Regular CU07 - Eliminar la nota de MAT (solo sin confirmar: EV008)
 DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/MAT/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
-### Coordinador de Monografía CU05 - Retirar el reporte del semestre
+### Coordinador de Monografía CU05 - Retirar el reporte del semestre (solo sin confirmar: MO008)
 DELETE {{host}}/api/profesor/monografias/{{cedulaEst}}/reportes/{{anio}}/II_SEMESTRE
 Authorization: Bearer {{tokenProfe}}
 

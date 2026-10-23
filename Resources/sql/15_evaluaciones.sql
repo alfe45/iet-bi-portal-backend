@@ -165,6 +165,21 @@ BEGIN
 END;
 $$;
 
+-- RN-75 / RP-57: bloquea la asignación (confirmar, corregir y reactivar se serializan) y da EV008 si sus notas del
+-- semestre ya están confirmadas: desde la confirmación no se corrigen ni eliminan hasta que el guía reactive la edición.
+CREATE OR REPLACE FUNCTION academico.fn_validar_notas_sin_confirmar(p_id_asignacion BIGINT, p_semestre academico.numero_semestre)
+RETURNS VOID
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+BEGIN
+    PERFORM 1 FROM academico.asignaciones_docentes WHERE id_asignacion = p_id_asignacion FOR UPDATE;
+    IF EXISTS (SELECT 1 FROM academico.confirmaciones_notas WHERE id_asignacion = p_id_asignacion AND semestre = p_semestre) THEN
+        PERFORM api.fn_lanzar_excepcion('EV008', 'Las notas de la asignación ya están confirmadas.');
+    END IF;
+END;
+$$;
+
 -- Estudiantes que se califican en una sección y semestre: matriculados a más tardar el fin del semestre y sin
 -- retiro en o antes de esa fecha (RN-75). Lo usan evaluaciones, CAS e informes.
 CREATE OR REPLACE FUNCTION academico.fn_matriculas_del_semestre(p_id_seccion BIGINT, p_semestre academico.numero_semestre)
@@ -252,7 +267,7 @@ $$;
 -- p_notas: [{ "cedulaEstudiante": "...", "nota": "6", "observaciones": "..." }]. Registra o reemplaza la nota y
 -- las observaciones de cada estudiante indicado; los demás no cambian. EV004 si un estudiante no se califica en
 -- la sección y semestre; EV005 si se repite; EV008 si la asignación ya fue confirmada en el semestre.
--- Devuelve 'OK' o 'SIN_CAMBIOS' y los valores previos de lo que cambió (más confirmacionAnulada).
+-- Devuelve 'OK' o 'SIN_CAMBIOS' y los valores previos de lo que cambió.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_registrar_notas(
     p_id_usuario UUID,
@@ -284,9 +299,7 @@ BEGIN
     PERFORM academico.fn_bloquear_asignatura((SELECT a.id_asignatura FROM academico.asignaciones_docentes a WHERE a.id_asignacion = v_id_asignacion));
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
-    IF EXISTS (SELECT 1 FROM academico.confirmaciones_notas WHERE id_asignacion = v_id_asignacion AND semestre = p_semestre) THEN
-            PERFORM api.fn_lanzar_excepcion('EV008', 'Las notas de esta asignatura ya fueron confirmadas al Profesor Guía y están bloqueadas. Solo el Profesor Guía puede reactivar su edición para que usted pueda corregirlas y confirmarlas nuevamente.');
-    END IF;
+    PERFORM academico.fn_validar_notas_sin_confirmar(v_id_asignacion, p_semestre);
     PERFORM academico.fn_bloquear_matriculas((v.periodo).id_periodo,
         ARRAY(SELECT api.fn_limpiar_cedula(x->>'cedulaEstudiante') FROM jsonb_array_elements(COALESCE(p_notas, '[]'::jsonb)) x));
 
@@ -354,9 +367,7 @@ DECLARE
 BEGIN
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
-    IF EXISTS (SELECT 1 FROM academico.confirmaciones_notas WHERE id_asignacion = v_id_asignacion AND semestre = p_semestre) THEN
-        PERFORM api.fn_lanzar_excepcion('EV008', 'Las notas de esta asignatura ya fueron confirmadas al Profesor Guía y están bloqueadas. Solo el Profesor Guía puede reactivar su edición para que usted pueda corregirlas y confirmarlas nuevamente.');
-    END IF;
+    PERFORM academico.fn_validar_notas_sin_confirmar(v_id_asignacion, p_semestre);
 
     DELETE FROM academico.evaluaciones
     WHERE id_asignacion = v_id_asignacion AND id_matricula = v_id_matricula AND semestre = p_semestre
@@ -367,7 +378,7 @@ BEGIN
     END IF;
 
     RETURN jsonb_build_object('cedulaEstudiante', api.fn_limpiar_cedula(p_cedula_estudiante), 'nota', v_prev.nota,
-                              'observaciones', v_prev.observaciones, 'confirmacionAnulada', false);
+                              'observaciones', v_prev.observaciones);
 END;
 $$;
 
@@ -419,6 +430,7 @@ DECLARE
 BEGIN
     SELECT * INTO v FROM academico.fn_datos_asignacion(v_id_asignacion);
     PERFORM academico.fn_validar_plazo_notas(v.id_profesor, v.periodo, p_semestre);
+    PERFORM 1 FROM academico.asignaciones_docentes WHERE id_asignacion = v_id_asignacion FOR UPDATE;   -- RP-57
 
     IF EXISTS (SELECT 1 FROM academico.fn_notas_asignacion(v_id_asignacion, p_semestre) n WHERE n.nota IS NULL) THEN
         PERFORM api.fn_lanzar_excepcion('EV006', 'Hay estudiantes sin nota.');

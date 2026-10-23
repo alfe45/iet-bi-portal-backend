@@ -74,6 +74,7 @@ public static class AccionesLog
     public const string RegistrarNotas = "REGISTRAR_NOTAS";
     public const string EliminarNota = "ELIMINAR_NOTA";
     public const string ConfirmarNotas = "CONFIRMAR_NOTAS";
+    public const string ReactivarBandasSeccion = "REACTIVAR_BANDAS_SECCION";
     public const string OtorgarProrroga = "OTORGAR_PRORROGA";
     public const string QuitarProrroga = "QUITAR_PRORROGA";
 
