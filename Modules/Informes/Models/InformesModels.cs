@@ -37,7 +37,7 @@ public record BandaAsignatura(
     bool Confirmada);
 
 /// <summary>Sección de monografía: área (materia), coordinador y observaciones del reporte del semestre (null = sin informe).</summary>
-public record MonografiaReporte(string CodigoAsignatura, string Area, string NombreCoordinador, string Estado, string? Observaciones);
+public record MonografiaReporte(string CodigoAsignatura, string Area, string NombreCoordinador, string Estado, string? Observaciones, DateTime? EnviadoEn);
 
 /// <summary>Reporte de bandas de un estudiante en un semestre (RN-85). El front agrupa las asignaturas por tipo (BI:
 /// SUPERIOR y MEDIO; TRONCAL; MEP) y arma el PDF con las líneas de firma (guía, encargado y fecha). NombreGuia null si la

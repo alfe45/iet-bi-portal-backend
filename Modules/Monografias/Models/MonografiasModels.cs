@@ -133,8 +133,8 @@ public record Monografia(
 /// <summary>Observación fechada del coordinador (se identifica por id).</summary>
 public record Seguimiento(long IdSeguimiento, string CedulaEstudiante, DateOnly Fecha, string Observacion);
 
-/// <summary>Reporte semestral enviado al guía.</summary>
-public record ReporteMonografia(string CedulaEstudiante, int Anio, string Semestre, string Observaciones, DateTime EnviadoEn);
+/// <summary>Reporte semestral del coordinador. EnviadoEn null = borrador pendiente de confirmación.</summary>
+public record ReporteMonografia(string CedulaEstudiante, int Anio, string Semestre, string Observaciones, DateTime? EnviadoEn);
 
 /// <summary>Coordinador CU01: monografía con su seguimiento y reportes.</summary>
 public record DetalleMonografia(Monografia Monografia, List<Seguimiento> Seguimientos, List<ReporteMonografia> Reportes);
@@ -142,7 +142,8 @@ public record DetalleMonografia(Monografia Monografia, List<Seguimiento> Seguimi
 /// <summary>Guía CU07: monografía de un estudiante de la sección con su seguimiento.</summary>
 public record MonografiaConSeguimiento(Monografia Monografia, List<Seguimiento> Seguimientos);
 
-/// <summary>Guía CU06: reporte del semestre de un estudiante de la sección; Observaciones null = sin reporte.</summary>
+/// <summary>Guía CU06: reporte del semestre de un estudiante de la sección; Observaciones null = sin reporte.
+/// EnviadoEn null = guardado pero pendiente de confirmación.</summary>
 public record ReporteMonografiaSeccion(
     string CedulaEstudiante,
     string NombreEstudiante,
