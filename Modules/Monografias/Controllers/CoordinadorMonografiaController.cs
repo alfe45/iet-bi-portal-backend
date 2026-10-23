@@ -63,8 +63,8 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
         return NoContent();
     }
 
-    /// <summary>CU05: guarda el reporte sin confirmarlo (borrador); el guía lo ve como pendiente de confirmación y no sale en
-    /// el reporte de bandas. 404 (NF003/NF013/NF004/NF009); 403 (AD006); 400 (MO009); 409 (EV002/EV003/MO008).</summary>
+    /// <summary>CU05: guarda el reporte sin confirmarlo (borrador); el guía lo ve como pendiente de confirmación y el reporte
+    /// de bandas lo imprime igual (RN-81). 404 (NF003/NF013/NF004/NF009); 403 (AD006); 400 (MO009); 409 (EV002/EV003/MO008).</summary>
     [HttpPut("{cedula}/reportes/{anio:int}/{semestre}/borrador")]
     public async Task<IActionResult> GuardarBorrador(string cedula, int anio, string semestre, ReporteMonografiaRequest request)
     {
