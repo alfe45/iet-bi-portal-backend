@@ -79,3 +79,64 @@ BEGIN
     ORDER BY d.apellidos_nombre, asg.tipo, asg.nombre, (ad.fila).nombre_profesor;
 END;
 $$;
+
+-- Guía - Reactivar la edición de las notas de su sección en un semestre (RN-75): borra las confirmaciones de las
+-- asignaciones cuyo plazo de notas sigue abierto (la del profesor, con su prórroga); las notas no cambian y cada
+-- profesor las corrige y vuelve a confirmar. AD005 si no es el guía de la sección; EV003 si había notas confirmadas
+-- pero el plazo de todas ya cerró. Devuelve las asignaturas reactivadas, o NULL si no había nada confirmado.
+CREATE OR REPLACE FUNCTION academico.fn_guia_reactivar_bandas_seccion(
+    p_id_usuario UUID,
+    p_anio INTEGER,
+    p_nivel INTEGER,
+    p_numero INTEGER,
+    p_semestre academico.numero_semestre)
+RETURNS JSONB
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_id_seccion BIGINT := academico.fn_validar_guia_seccion(p_id_usuario, p_anio, p_nivel, p_numero);
+    v_periodo academico.periodos_academicos%ROWTYPE;
+    v_confirmadas INTEGER;
+    v_reactivadas JSONB;
+BEGIN
+    IF p_semestre IS NULL THEN
+        PERFORM api.fn_lanzar_excepcion('22P02', 'Falta el semestre.');
+    END IF;
+    SELECT p.* INTO v_periodo FROM academico.periodos_academicos p WHERE p.anio = p_anio;
+
+    -- RP-57: las asignaciones de la sección se bloquean (confirmar y corregir esperan).
+    PERFORM 1 FROM academico.asignaciones_docentes WHERE id_seccion = v_id_seccion ORDER BY id_asignacion FOR UPDATE;
+
+    SELECT count(*) INTO v_confirmadas
+    FROM academico.confirmaciones_notas cn
+    JOIN academico.asignaciones_docentes a ON a.id_asignacion = cn.id_asignacion
+    WHERE a.id_seccion = v_id_seccion AND cn.semestre = p_semestre;
+    IF v_confirmadas = 0 THEN
+        RETURN NULL;
+    END IF;
+
+    WITH borradas AS (
+        DELETE FROM academico.confirmaciones_notas cn
+        USING academico.asignaciones_docentes a
+        WHERE cn.id_asignacion = a.id_asignacion
+          AND a.id_seccion = v_id_seccion
+          AND cn.semestre = p_semestre
+          AND api.fn_hoy() BETWEEN academico.fn_inicio_semestre(v_periodo, p_semestre)
+                               AND academico.fn_cierre_notas(a.id_profesor, v_periodo, p_semestre)
+        RETURNING a.id_asignatura, a.id_profesor
+    )
+    SELECT jsonb_agg(jsonb_build_object('asignatura', asg.codigo, 'cedulaProfesor', pr.cedula) ORDER BY asg.codigo)
+    INTO v_reactivadas
+    FROM borradas b
+    JOIN academico.asignaturas asg ON asg.id_asignatura = b.id_asignatura
+    JOIN academico.profesores pr ON pr.id_profesor = b.id_profesor;
+
+    IF v_reactivadas IS NULL THEN
+        PERFORM api.fn_lanzar_excepcion('EV003', 'El plazo de notas del semestre cerró para todas las asignaturas confirmadas.');
+    END IF;
+
+    RETURN jsonb_build_object('seccion', format('%s-%s', p_nivel, p_numero), 'semestre', p_semestre,
+                              'reactivadas', v_reactivadas);
+END;
+$$;

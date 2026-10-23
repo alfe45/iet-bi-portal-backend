@@ -61,7 +61,7 @@ public class MonografiasRepository(NpgsqlDataSource db)
             $"SELECT {ColumnasSeguimiento} FROM academico.fn_coordinador_listar_seguimientos($1, $2::text)", LeerSeguimiento, idUsuario, cedula);
         var reportes = await db.ListarAsync(
             "SELECT cedula_estudiante, anio, semestre::text, observaciones, enviado_en FROM academico.fn_coordinador_listar_reportes($1, $2::text)",
-            r => new ReporteMonografia(r.GetString(0), r.GetInt32(1), r.GetString(2), r.GetString(3), r.GetDateTime(4)),
+            r => new ReporteMonografia(r.GetString(0), r.GetInt32(1), r.GetString(2), r.GetString(3), r.IsDBNull(4) ? null : r.GetDateTime(4)),
             idUsuario, cedula);
         return new DetalleMonografia(monografia, seguimientos, reportes);
     }
@@ -88,18 +88,31 @@ public class MonografiasRepository(NpgsqlDataSource db)
     public Task<string> EliminarSeguimientoAsync(Guid idUsuario, long idSeguimiento) =>
         db.EscalarAsync<string>("SELECT academico.fn_coordinador_eliminar_seguimiento($1, $2)::text", idUsuario, idSeguimiento);
 
-    /// <summary>Errores: NF003, NF013, AD006, NF004, NF009, EV002, EV003.</summary>
+    /// <summary>Errores: NF003, NF013, AD006, NF004, NF009, EV002, EV003, MO008, MO009.</summary>
     public Task<(string Estado, string? Anteriores)> EnviarReporteAsync(Guid idUsuario, string cedula, int anio, string semestre, string observaciones) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             "SELECT out_status, out_datos_anteriores::text " +
             "FROM academico.fn_coordinador_enviar_reporte_monografia($1, $2::text, $3, $4::academico.numero_semestre, $5::text)",
             LeerEstado, idUsuario, cedula, anio, Semestres.Normalizar(semestre), observaciones);
 
-    /// <summary>Devuelve el reporte previo. Errores: NF003, NF013, AD006, NF004, NF017, EV002, EV003.</summary>
+    /// <summary>Guarda el reporte sin confirmar (borrador). Errores: NF003, NF013, AD006, NF004, NF009, EV002, EV003, MO008, MO009.</summary>
+    public Task GuardarBorradorReporteAsync(Guid idUsuario, string cedula, int anio, string semestre, string observaciones) =>
+        db.EjecutarAsync(
+            "SELECT academico.fn_coordinador_guardar_borrador_reporte_monografia($1, $2::text, $3, $4::academico.numero_semestre, $5::text)",
+            idUsuario, cedula, anio, Semestres.Normalizar(semestre), observaciones);
+
+    /// <summary>Devuelve el reporte previo. Errores: NF003, NF013, AD006, NF004, NF017, EV002, EV003, MO008.</summary>
     public Task<string> EliminarReporteAsync(Guid idUsuario, string cedula, int anio, string semestre) =>
         db.EscalarAsync<string>(
             "SELECT academico.fn_coordinador_eliminar_reporte_monografia($1, $2::text, $3, $4::academico.numero_semestre)::text",
             idUsuario, cedula, anio, Semestres.Normalizar(semestre));
+
+    /// <summary>Guía: retira la confirmación del reporte para permitir correcciones. Devuelve el reporte previo, o null si no
+    /// estaba confirmado. Errores: NF006, AD005, NF013, NF017, EV002, EV003.</summary>
+    public Task<string?> PermitirCambiosReporteAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula, string semestre) =>
+        db.PrimeroAsync(
+            "SELECT academico.fn_guia_permitir_cambios_reporte_monografia($1, $2, $3, $4, $5::text, $6::academico.numero_semestre)::text",
+            r => r.IsDBNull(0) ? null : r.GetString(0), idUsuario, anio, nivel, numero, cedula, Semestres.Normalizar(semestre));
 
     /// <summary>Guía CU07. Errores: NF006, AD005.</summary>
     public async Task<List<MonografiaConSeguimiento>> ListarSeccionGuiaAsync(Guid idUsuario, ConsultaSeccionGuia c)

@@ -22,4 +22,14 @@ public class GuiaMonografiasController(MonografiasService monografias) : ApiCont
     [HttpGet("reportes")]
     public async Task<IActionResult> Reportes([FromQuery] ConsultaReportesGuia consulta) =>
         Ok(await monografias.ReportesSeccionGuiaAsync(ActorId, consulta));
+
+    /// <summary>Reactiva la edición de un reporte de monografía confirmado (RN-81): el coordinador lo corrige y lo vuelve a
+    /// confirmar. 204 también si no estaba confirmado. 404 (NF006/NF013/NF017); 403 (AD005); 409 (EV002/EV003) fuera del
+    /// plazo de notas del coordinador.</summary>
+    [HttpPut("reportes/{anio:int}/{nivel:int}/{numero:int}/{cedula}/permitir-cambios/{semestre}")]
+    public async Task<IActionResult> PermitirCambios(int anio, int nivel, int numero, string cedula, string semestre)
+    {
+        await monografias.PermitirCambiosReporteAsync(ActorId, anio, nivel, numero, cedula, semestre);
+        return NoContent();
+    }
 }

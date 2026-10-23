@@ -272,7 +272,8 @@ CREATE TABLE academico.reportes_monografia (
     id_periodo BIGINT NOT NULL,
     semestre academico.numero_semestre NOT NULL,
     observaciones VARCHAR(1000) NOT NULL,
-    enviado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- NULL mientras el coordinador solo ha guardado el reporte; con fecha significa confirmado al Profesor Guía.
+    enviado_en TIMESTAMPTZ NULL DEFAULT NULL,
     CONSTRAINT pk_reportes_monografia PRIMARY KEY (id_monografia, id_periodo, semestre),
     CONSTRAINT fk_reportes_monografia FOREIGN KEY (id_monografia) REFERENCES academico.monografias(id_monografia) ON DELETE RESTRICT,
     CONSTRAINT fk_reportes_monografia_periodo FOREIGN KEY (id_periodo) REFERENCES academico.periodos_academicos(id_periodo) ON DELETE RESTRICT,
