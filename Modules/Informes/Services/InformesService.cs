@@ -14,6 +14,10 @@ public class InformesService(InformesRepository repo)
     public async Task<ReporteBandas> ReporteEstudianteAsync(Guid idUsuario, ConsultaReporteBandas consulta, string cedula) =>
         (await ArmarAsync(idUsuario, consulta, cedula)).Single();
 
+    /// <summary>Guía: reactiva la edición de las bandas de toda la sección en el semestre.</summary>
+    public Task<string> ReactivarBandasSeccionAsync(Guid idUsuario, ConsultaReporteBandas consulta) =>
+        repo.ReactivarBandasSeccionAsync(idUsuario, consulta);
+
     private async Task<List<ReporteBandas>> ArmarAsync(Guid idUsuario, ConsultaReporteBandas c, string? cedula)
     {
         var filas = await repo.FilasAsync(idUsuario, c, cedula);

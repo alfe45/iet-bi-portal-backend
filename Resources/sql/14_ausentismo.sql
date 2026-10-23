@@ -586,3 +586,47 @@ BEGIN
     RETURN QUERY SELECT * FROM academico.fn_resumen_ausentismo(v_id_seccion, NULL, p_semestre);
 END;
 $$;
+
+-- Una confirmación de notas también bloquea cambios de ausentismo de la asignación en ese semestre.
+CREATE OR REPLACE FUNCTION academico.fn_bloquear_cambios_confirmados()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = academico, auth, api, public
+AS $$
+DECLARE
+    v_id_asignacion BIGINT;
+    v_fecha DATE;
+    v_periodo academico.periodos_academicos;
+    v_semestre academico.numero_semestre;
+BEGIN
+    IF TG_TABLE_NAME = 'lecciones' THEN
+        v_id_asignacion := CASE WHEN TG_OP = 'DELETE' THEN OLD.id_asignacion ELSE NEW.id_asignacion END;
+        v_fecha := CASE WHEN TG_OP = 'DELETE' THEN OLD.fecha ELSE NEW.fecha END;
+    ELSE
+        SELECT l.id_asignacion, l.fecha INTO v_id_asignacion, v_fecha
+        FROM academico.lecciones l
+        WHERE l.id_leccion = CASE WHEN TG_OP = 'DELETE' THEN OLD.id_leccion ELSE NEW.id_leccion END;
+    END IF;
+
+    IF v_id_asignacion IS NULL OR v_fecha IS NULL THEN
+        RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    END IF;
+
+    v_periodo := academico.fn_periodo_de_asignacion(v_id_asignacion);
+    v_semestre := academico.fn_semestre_en_fecha(v_periodo, v_fecha);
+    IF EXISTS (SELECT 1 FROM academico.confirmaciones_notas WHERE id_asignacion = v_id_asignacion AND semestre = v_semestre) THEN
+        PERFORM api.fn_lanzar_excepcion('EV008', 'Las notas de esta asignatura ya fueron confirmadas al Profesor Guía y están bloqueadas. Solo el Profesor Guía puede reactivar su edición para que usted pueda corregirlas y confirmarlas nuevamente.');
+    END IF;
+    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_bloquear_cambios_confirmados_lecciones ON academico.lecciones;
+CREATE TRIGGER trg_bloquear_cambios_confirmados_lecciones
+BEFORE INSERT OR UPDATE OR DELETE ON academico.lecciones
+FOR EACH ROW EXECUTE FUNCTION academico.fn_bloquear_cambios_confirmados();
+
+DROP TRIGGER IF EXISTS trg_bloquear_cambios_confirmados_ausencias ON academico.ausencias;
+CREATE TRIGGER trg_bloquear_cambios_confirmados_ausencias
+BEFORE INSERT OR UPDATE OR DELETE ON academico.ausencias
+FOR EACH ROW EXECUTE FUNCTION academico.fn_bloquear_cambios_confirmados();

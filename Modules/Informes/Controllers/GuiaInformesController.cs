@@ -23,4 +23,12 @@ public class GuiaInformesController(InformesService informes) : ApiControllerBas
     [HttpGet("{cedula}")]
     public async Task<IActionResult> Estudiante(string cedula, [FromQuery] ConsultaReporteBandas consulta) =>
         Ok(await informes.ReporteEstudianteAsync(ActorId, consulta, cedula));
+
+    /// <summary>Reactiva la edición de las bandas de toda la sección. 403 (AD005).</summary>
+    [HttpPut("{anio:int}/{nivel:int}/{numero:int}/reactivar/{semestre}")]
+    public async Task<IActionResult> ReactivarSeccion(int anio, int nivel, int numero, string semestre)
+    {
+        await informes.ReactivarBandasSeccionAsync(ActorId, new ConsultaReporteBandas { Anio = anio, Nivel = nivel, Numero = numero, Semestre = semestre });
+        return NoContent();
+    }
 }

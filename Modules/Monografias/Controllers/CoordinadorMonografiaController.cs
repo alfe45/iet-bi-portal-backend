@@ -54,8 +54,8 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
         return NoContent();
     }
 
-    /// <summary>CU05: envía (o corrige) el reporte del semestre al guía (RN-81). 404 (NF003/NF013/NF004/NF009); 403 (AD006);
-    /// 409 (EV002/EV003) fuera del plazo del semestre.</summary>
+    /// <summary>CU05: confirma una sola vez por semestre el reporte al guía (RN-81), después de validar que la información esté completa.
+    /// 404 (NF003/NF013/NF004/NF009); 403 (AD006); 409 (EV002/EV003/MO008/MO009).</summary>
     [HttpPut("{cedula}/reportes/{anio:int}/{semestre}")]
     public async Task<IActionResult> EnviarReporte(string cedula, int anio, string semestre, ReporteMonografiaRequest request)
     {
@@ -63,7 +63,15 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
         return NoContent();
     }
 
-    /// <summary>CU05: retira el reporte del semestre (corrección). 404 (NF003/NF013/NF004/NF017); 403 (AD006); 409 (EV002/EV003).</summary>
+    /// <summary>CU05: guarda un reporte visible para el guía, pendiente de confirmación. No permite editar uno ya confirmado.</summary>
+    [HttpPut("{cedula}/reportes/{anio:int}/{semestre}/borrador")]
+    public async Task<IActionResult> GuardarBorrador(string cedula, int anio, string semestre, ReporteMonografiaRequest request)
+    {
+        await monografias.GuardarBorradorReporteAsync(ActorId, cedula, anio, semestre, request);
+        return NoContent();
+    }
+
+    /// <summary>CU05: retira el reporte del semestre antes de confirmarlo. 404 (NF003/NF013/NF004/NF017); 403 (AD006); 409 (EV002/EV003/MO008).</summary>
     [HttpDelete("{cedula}/reportes/{anio:int}/{semestre}")]
     public async Task<IActionResult> EliminarReporte(string cedula, int anio, string semestre)
     {

@@ -13,7 +13,7 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
     private const string TablaConfirmaciones = "academico.confirmaciones_notas";
     private const string TablaProrrogas = "academico.prorrogas";
 
-    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones (un cambio quita la confirmación, RN-75).
+    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones hasta la confirmación del semestre.
     /// Registra log solo si hubo cambios.</summary>
     public async Task RegistrarNotasAsync(Guid actorId, RegistrarNotasRequest request)
     {
@@ -23,7 +23,7 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request.Notas);
     }
 
-    /// <summary>CU07: elimina la nota de un estudiante y quita la confirmación de la asignación (RN-75).</summary>
+    /// <summary>CU07: elimina la nota de un estudiante mientras la asignación no esté confirmada.</summary>
     public async Task EliminarNotaAsync(Guid actorId, ConsultaNotasAsignacion asignacion, string cedula)
     {
         var anteriores = await repo.EliminarNotaAsync(actorId, asignacion, cedula);

@@ -94,6 +94,7 @@ MODIFICAR_SEGUIMIENTO_MONOGRAFIA  // Corrección de fecha u observación (datos_
 ELIMINAR_SEGUIMIENTO_MONOGRAFIA   // Eliminación (datos_anteriores = seguimiento previo).
 ENVIAR_REPORTE_MONOGRAFIA         // Reporte semestral al guía, o su corrección (datos_anteriores = observaciones previas).
 ELIMINAR_REPORTE_MONOGRAFIA       // El coordinador retiró el reporte del semestre (datos_anteriores = reporte previo).
+PERMITIR_CAMBIOS_REPORTE_MONOGRAFIA // El guía reactivó la edición de un reporte confirmado (datos_anteriores = reporte previo).
 
 # CAS (id_registro_afectado = "año/semestre/cédula del estudiante")
 REGISTRAR_INFORME_CAS   // Primer informe CAS del estudiante en el semestre (datos_nuevos = request).

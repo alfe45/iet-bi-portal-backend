@@ -21,12 +21,18 @@ public class InformesRepository(NpgsqlDataSource db)
                 r.GetBoolean(13)), Texto(r, 14)),
             idUsuario, c.Anio, c.Nivel, c.Numero, Semestres.Normalizar(c.Semestre), cedula);
 
+    /// <summary>Guía: reactiva la edición de las bandas de toda la sección. Errores: AD005.</summary>
+    public Task<string> ReactivarBandasSeccionAsync(Guid idUsuario, ConsultaReporteBandas c) =>
+        db.EscalarAsync<string>(
+            "SELECT academico.fn_guia_reactivar_bandas_seccion($1, $2::integer, $3::integer, $4::integer, $5::academico.numero_semestre)::text",
+            idUsuario, c.Anio, c.Nivel, c.Numero, Semestres.Normalizar(c.Semestre));
+
     /// <summary>Monografía de cada estudiante con monografía, con el reporte del semestre. Errores: NF006, AD005.</summary>
     public Task<List<(string Cedula, MonografiaReporte Monografia)>> MonografiasAsync(Guid idUsuario, ConsultaReporteBandas c, string? cedula) =>
         db.ListarAsync(
-            "SELECT cedula_estudiante, codigo_asignatura, asignatura, nombre_coordinador, estado::text, observaciones " +
+            "SELECT cedula_estudiante, codigo_asignatura, asignatura, nombre_coordinador, estado::text, observaciones, enviado_en " +
             "FROM academico.fn_guia_reportes_monografia($1, $2::integer, $3::integer, $4::integer, $5::academico.numero_semestre, $6::text)",
-            r => (r.GetString(0), new MonografiaReporte(r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), Texto(r, 5))),
+            r => (r.GetString(0), new MonografiaReporte(r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), Texto(r, 5), r.IsDBNull(6) ? null : r.GetDateTime(6))),
             idUsuario, c.Anio, c.Nivel, c.Numero, Semestres.Normalizar(c.Semestre), cedula);
 
     private static string? Texto(NpgsqlDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
