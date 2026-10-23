@@ -75,11 +75,14 @@ ANULAR_JUSTIFICACION_AUSENCIA   // La ausencia vuelve a quedar injustificada (da
 # Evaluaciones (id_registro_afectado = "año/nivel-número/código/semestre", ej. "2026/11-1/MAT/II_SEMESTRE";
 # prórrogas = "año/semestre/cédula del profesor")
 REGISTRAR_NOTAS     // Registro o corrección de notas y observaciones (datos_anteriores = { notas: [{cedulaEstudiante, nota,
-                    // observaciones}] previos de lo que cambió, nota null si era nueva; confirmacionAnulada: si quitó la
-                    // confirmación }; datos_nuevos = notas recibidas). No se registra si no hubo cambios.
-ELIMINAR_NOTA       // Corrección: se eliminó la nota de un estudiante (id = ".../cédula"; datos_anteriores = nota previa y
-                    // confirmacionAnulada: si quitó la confirmación de la asignación).
+                    // observaciones}] previos de lo que cambió, nota null si era nueva }; datos_nuevos = notas recibidas).
+                    // No se registra si no hubo cambios. Desde el 23/10/2026 no se corrige una nota confirmada (EV008);
+                    // los logs anteriores pueden traer confirmacionAnulada.
+ELIMINAR_NOTA       // Corrección: se eliminó la nota de un estudiante (id = ".../cédula"; datos_anteriores = nota previa).
 CONFIRMAR_NOTAS     // El profesor confirmó las notas del semestre (no se registra si ya estaban confirmadas).
+REACTIVAR_BANDAS_SECCION // El guía reactivó la edición de las notas de su sección (id = "año/nivel-número/semestre";
+                         // datos_anteriores = asignaturas reactivadas con la cédula del profesor). No se registra si no
+                         // había notas confirmadas.
 OTORGAR_PRORROGA    // El ADMIN otorgó o cambió una prórroga (datos_anteriores = prórroga previa, datos_nuevos = fechaLimite).
 QUITAR_PRORROGA     // El ADMIN quitó la prórroga (datos_anteriores = prórroga previa).
 
@@ -92,8 +95,12 @@ CAMBIAR_ESTADO_MONOGRAFIA         // El coordinador cambió el estado (datos_ant
 REGISTRAR_SEGUIMIENTO_MONOGRAFIA  // Observación de seguimiento (datos_nuevos = request).
 MODIFICAR_SEGUIMIENTO_MONOGRAFIA  // Corrección de fecha u observación (datos_anteriores = seguimiento previo).
 ELIMINAR_SEGUIMIENTO_MONOGRAFIA   // Eliminación (datos_anteriores = seguimiento previo).
-ENVIAR_REPORTE_MONOGRAFIA         // Reporte semestral al guía, o su corrección (datos_anteriores = observaciones previas).
-ELIMINAR_REPORTE_MONOGRAFIA       // El coordinador retiró el reporte del semestre (datos_anteriores = reporte previo).
+ENVIAR_REPORTE_MONOGRAFIA         // El coordinador confirmó el reporte semestral al guía (datos_anteriores = borrador previo,
+                                  // si había). Desde el 23/10/2026 un reporte confirmado no se corrige (MO008).
+GUARDAR_BORRADOR_REPORTE_MONOGRAFIA // Reporte guardado sin confirmar (datos_nuevos = request).
+ELIMINAR_REPORTE_MONOGRAFIA       // El coordinador retiró el borrador del semestre (datos_anteriores = reporte previo).
+PERMITIR_CAMBIOS_REPORTE_MONOGRAFIA // El guía reactivó la edición de un reporte confirmado (datos_anteriores = reporte previo).
+                                  // No se registra si el reporte no estaba confirmado.
 
 # CAS (id_registro_afectado = "año/semestre/cédula del estudiante")
 REGISTRAR_INFORME_CAS   // Primer informe CAS del estudiante en el semestre (datos_nuevos = request).

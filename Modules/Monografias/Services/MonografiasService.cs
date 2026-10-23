@@ -90,12 +90,29 @@ public class MonografiasService(MonografiasRepository repo, ILogsService logs)
                 $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
+    /// <summary>Coordinador CU05: guarda observaciones visibles para el guía, sin confirmarlas.</summary>
+    public async Task GuardarBorradorReporteAsync(Guid actorId, string cedula, int anio, string semestre, ReporteMonografiaRequest request)
+    {
+        await repo.GuardarBorradorReporteAsync(actorId, cedula, anio, semestre, request.Observaciones);
+        await logs.RegistrarAsync(actorId, AccionesLog.GuardarBorradorReporteMonografia, TablaReportes,
+            $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosNuevos: request);
+    }
+
     /// <summary>Coordinador CU05: retira el reporte del semestre (corrección).</summary>
     public async Task EliminarReporteAsync(Guid actorId, string cedula, int anio, string semestre)
     {
         var anteriores = await repo.EliminarReporteAsync(actorId, cedula, anio, semestre);
         await logs.RegistrarAsync(actorId, AccionesLog.EliminarReporteMonografia, TablaReportes,
             $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosAnteriores: anteriores.ComoJson());
+    }
+
+    /// <summary>Guía: reactiva la edición de un reporte semestral confirmado (RN-81). Registra log solo si estaba confirmado.</summary>
+    public async Task PermitirCambiosReporteAsync(Guid actorId, int anio, int nivel, int numero, string cedula, string semestre)
+    {
+        var anteriores = await repo.PermitirCambiosReporteAsync(actorId, anio, nivel, numero, cedula, semestre);
+        if (anteriores is not null)
+            await logs.RegistrarAsync(actorId, AccionesLog.PermitirCambiosReporteMonografia, TablaReportes,
+                $"{cedula.Trim()}/{anio}/{Semestres.Normalizar(semestre)}", datosAnteriores: anteriores.ComoJson());
     }
 
     /// <summary>Guía CU07.</summary>
