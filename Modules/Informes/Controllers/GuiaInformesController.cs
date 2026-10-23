@@ -24,7 +24,9 @@ public class GuiaInformesController(InformesService informes) : ApiControllerBas
     public async Task<IActionResult> Estudiante(string cedula, [FromQuery] ConsultaReporteBandas consulta) =>
         Ok(await informes.ReporteEstudianteAsync(ActorId, consulta, cedula));
 
-    /// <summary>Reactiva la edición de las bandas de toda la sección. 403 (AD005).</summary>
+    /// <summary>Reactiva la edición de las notas confirmadas de la sección en el semestre (RN-75): cada profesor las corrige
+    /// y vuelve a confirmar. 204 también si no había nada confirmado. 404 (NF006); 403 (AD005); 409 (EV003) si el plazo
+    /// de notas ya cerró para todas las asignaturas confirmadas.</summary>
     [HttpPut("{anio:int}/{nivel:int}/{numero:int}/reactivar/{semestre}")]
     public async Task<IActionResult> ReactivarSeccion(int anio, int nivel, int numero, string semestre)
     {

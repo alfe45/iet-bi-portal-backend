@@ -587,37 +587,42 @@ BEGIN
 END;
 $$;
 
--- Una confirmación de notas también bloquea cambios de ausentismo de la asignación en ese semestre.
+-- RN-75: la confirmación de notas fija también el ausentismo de la asignación hasta la fecha en que se confirmó:
+-- no se registran, modifican, justifican ni eliminan lecciones o ausencias de esa asignación con fecha igual o
+-- anterior a la confirmación (EV009). Las lecciones posteriores sí se registran. Si el Profesor Guía reactiva la
+-- edición (se borra la confirmación), el bloqueo desaparece.
 CREATE OR REPLACE FUNCTION academico.fn_bloquear_cambios_confirmados()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = academico, auth, api, public
 AS $$
 DECLARE
+    v_fila RECORD;
     v_id_asignacion BIGINT;
     v_fecha DATE;
-    v_periodo academico.periodos_academicos;
     v_semestre academico.numero_semestre;
+    v_confirmado DATE;
 BEGIN
+    IF TG_OP = 'DELETE' THEN v_fila := OLD; ELSE v_fila := NEW; END IF;
     IF TG_TABLE_NAME = 'lecciones' THEN
-        v_id_asignacion := CASE WHEN TG_OP = 'DELETE' THEN OLD.id_asignacion ELSE NEW.id_asignacion END;
-        v_fecha := CASE WHEN TG_OP = 'DELETE' THEN OLD.fecha ELSE NEW.fecha END;
+        v_id_asignacion := v_fila.id_asignacion;
+        v_fecha := v_fila.fecha;
     ELSE
         SELECT l.id_asignacion, l.fecha INTO v_id_asignacion, v_fecha
-        FROM academico.lecciones l
-        WHERE l.id_leccion = CASE WHEN TG_OP = 'DELETE' THEN OLD.id_leccion ELSE NEW.id_leccion END;
+        FROM academico.lecciones l WHERE l.id_leccion = v_fila.id_leccion;
+    END IF;
+    IF v_id_asignacion IS NULL THEN
+        RETURN v_fila;
     END IF;
 
-    IF v_id_asignacion IS NULL OR v_fecha IS NULL THEN
-        RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    v_semestre := academico.fn_semestre_en_fecha(academico.fn_periodo_de_asignacion(v_id_asignacion), v_fecha);
+    SELECT (cn.confirmado_en AT TIME ZONE 'America/Costa_Rica')::DATE INTO v_confirmado
+    FROM academico.confirmaciones_notas cn
+    WHERE cn.id_asignacion = v_id_asignacion AND cn.semestre = v_semestre;
+    IF v_confirmado IS NOT NULL AND v_fecha <= v_confirmado THEN
+        PERFORM api.fn_lanzar_excepcion('EV009', 'El ausentismo de esa fecha ya quedó confirmado con las notas del semestre.');
     END IF;
-
-    v_periodo := academico.fn_periodo_de_asignacion(v_id_asignacion);
-    v_semestre := academico.fn_semestre_en_fecha(v_periodo, v_fecha);
-    IF EXISTS (SELECT 1 FROM academico.confirmaciones_notas WHERE id_asignacion = v_id_asignacion AND semestre = v_semestre) THEN
-        PERFORM api.fn_lanzar_excepcion('EV008', 'Las notas de esta asignatura ya fueron confirmadas al Profesor Guía y están bloqueadas. Solo el Profesor Guía puede reactivar su edición para que usted pueda corregirlas y confirmarlas nuevamente.');
-    END IF;
-    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    RETURN v_fila;
 END;
 $$;
 

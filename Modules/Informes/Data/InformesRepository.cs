@@ -21,11 +21,12 @@ public class InformesRepository(NpgsqlDataSource db)
                 r.GetBoolean(13)), Texto(r, 14)),
             idUsuario, c.Anio, c.Nivel, c.Numero, Semestres.Normalizar(c.Semestre), cedula);
 
-    /// <summary>Guía: reactiva la edición de las bandas de toda la sección. Errores: AD005.</summary>
-    public Task<string> ReactivarBandasSeccionAsync(Guid idUsuario, ConsultaReporteBandas c) =>
-        db.EscalarAsync<string>(
+    /// <summary>Guía: reactiva la edición de las notas de la sección. Devuelve las asignaturas reactivadas, o null si no
+    /// había notas confirmadas. Errores: NF006, AD005, EV003.</summary>
+    public Task<string?> ReactivarBandasSeccionAsync(Guid idUsuario, ConsultaReporteBandas c) =>
+        db.PrimeroAsync(
             "SELECT academico.fn_guia_reactivar_bandas_seccion($1, $2::integer, $3::integer, $4::integer, $5::academico.numero_semestre)::text",
-            idUsuario, c.Anio, c.Nivel, c.Numero, Semestres.Normalizar(c.Semestre));
+            r => Texto(r, 0), idUsuario, c.Anio, c.Nivel, c.Numero, Semestres.Normalizar(c.Semestre));
 
     /// <summary>Monografía de cada estudiante con monografía, con el reporte del semestre. Errores: NF006, AD005.</summary>
     public Task<List<(string Cedula, MonografiaReporte Monografia)>> MonografiasAsync(Guid idUsuario, ConsultaReporteBandas c, string? cedula) =>
