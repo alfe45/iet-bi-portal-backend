@@ -86,7 +86,9 @@ public static class AccionesLog
     public const string ModificarSeguimientoMonografia = "MODIFICAR_SEGUIMIENTO_MONOGRAFIA";
     public const string EliminarSeguimientoMonografia = "ELIMINAR_SEGUIMIENTO_MONOGRAFIA";
     public const string EnviarReporteMonografia = "ENVIAR_REPORTE_MONOGRAFIA";
+    public const string GuardarBorradorReporteMonografia = "GUARDAR_BORRADOR_REPORTE_MONOGRAFIA";
     public const string EliminarReporteMonografia = "ELIMINAR_REPORTE_MONOGRAFIA";
+    public const string PermitirCambiosReporteMonografia = "PERMITIR_CAMBIOS_REPORTE_MONOGRAFIA";
 
     // CAS
     public const string RegistrarInformeCas = "REGISTRAR_INFORME_CAS";

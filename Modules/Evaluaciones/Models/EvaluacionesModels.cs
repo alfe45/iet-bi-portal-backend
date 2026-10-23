@@ -87,7 +87,7 @@ public record NotaEstudiante(
     bool? Aprobada,
     string? Observaciones);
 
-/// <summary>Estado de las notas de una asignación en un semestre. FechaCierre incluye la prórroga; ConfirmadoEn null = sin confirmar.</summary>
+/// <summary>Estado de las notas de una asignación en un semestre. FechaCierre incluye la prórroga; ConfirmadoEn null = sin confirmar. Una confirmación bloquea cambios posteriores.</summary>
 public record EstadoNotas(
     int Anio,
     string Seccion,

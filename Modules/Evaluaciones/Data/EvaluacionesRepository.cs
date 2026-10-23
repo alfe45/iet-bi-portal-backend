@@ -14,7 +14,7 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
 
     private const string Asignacion = "$1, $2::integer, $3::integer, $4::integer, $5::text, $6::academico.numero_semestre";
 
-    /// <summary>Devuelve OK/SIN_CAMBIOS y los valores previos de lo que cambió. Errores: NF006, NF007, AD004, EV001 a EV005.</summary>
+    /// <summary>Devuelve OK/SIN_CAMBIOS y los valores previos de lo que cambió. Errores: NF006, NF007, AD004, EV001 a EV005, EV008.</summary>
     public Task<(string Estado, string? Anteriores)> RegistrarNotasAsync(Guid idUsuario, RegistrarNotasRequest r) =>
         db.PrimeroAsync<(string Estado, string? Anteriores)>(
             $"SELECT out_status, out_datos_anteriores::text FROM academico.fn_profesor_registrar_notas({Asignacion}, $7::jsonb)",
@@ -22,7 +22,7 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
             idUsuario, r.Anio, r.Nivel, r.Numero, r.CodigoAsignatura, Semestres.Normalizar(r.Semestre),
             JsonSerializer.Serialize(r.Notas, Json));
 
-    /// <summary>Devuelve la nota previa y si se anuló el envío. Errores: NF006, NF007, AD004, NF004, NF003, NF009, NF016, EV002, EV003.</summary>
+    /// <summary>Devuelve la nota previa. Errores: NF006, NF007, AD004, NF004, NF003, NF009, NF016, EV002, EV003, EV008.</summary>
     public Task<string> EliminarNotaAsync(Guid idUsuario, ConsultaNotasAsignacion c, string cedula) =>
         db.EscalarAsync<string>(
             $"SELECT academico.fn_profesor_eliminar_nota({Asignacion}, $7::text)::text",
@@ -47,7 +47,7 @@ public class EvaluacionesRepository(NpgsqlDataSource db)
         return new NotasAsignacion(estado, notas);
     }
 
-    /// <summary>Devuelve OK, o SIN_CAMBIOS si ya estaban confirmadas. Errores: NF006, NF007, AD004, EV002, EV003, EV006.</summary>
+    /// <summary>Devuelve OK, o SIN_CAMBIOS si ya estaba confirmado. La confirmación es única por semestre. Errores: NF006, NF007, AD004, EV002, EV003, EV006.</summary>
     public Task<string> ConfirmarNotasAsync(Guid idUsuario, ConsultaNotasAsignacion c) =>
         db.EscalarAsync<string>(
             $"SELECT academico.fn_profesor_confirmar_notas({Asignacion})",
