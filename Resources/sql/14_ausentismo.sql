@@ -1,5 +1,5 @@
 -- ============================================================
--- 14_ausentismo.sql: ausentismo por lección (Profesor Regular CU10 a CU12, Guía CU05). Tablas en 06.
+-- 14_ausentismo.sql: ausentismo por lección (Profesor Regular CU09 a CU11, Guía CU05). Tablas en 06.
 -- Una lección es una clase que el profesor de una asignación registra cuando la imparte (fecha, hora y
 -- tema); no depende de un horario (RN-66). Solo se guardan los ausentes y las llegadas tardías (RN-68, RN-86).
 -- Solo el profesor de la asignación opera sus lecciones (AD004). La fecha cae en un semestre del periodo
@@ -345,7 +345,7 @@ AS $$
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU10 - Registrar ausentismo: registra la lección con sus ausentes y tardíos. Devuelve el id.
+-- Profesor Regular CU09 - Registrar ausentismo: registra la lección con sus ausentes y tardíos. Devuelve el id.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_registrar_leccion(
     p_id_usuario UUID,
@@ -380,7 +380,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU11 - Modificar ausentismo: corrige fecha, hora y tema y reemplaza las listas de ausentes y tardíos.
+-- Profesor Regular CU10 - Modificar ausentismo: corrige fecha, hora y tema y reemplaza las listas de ausentes y tardíos.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_modificar_leccion(
@@ -419,7 +419,7 @@ BEGIN
 END;
 $$;
 
--- Profesor Regular CU11 - Eliminar una lección (y sus ausencias). Devuelve el snapshot previo.
+-- Profesor Regular CU10 - Eliminar una lección (y sus ausencias). Devuelve el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_profesor_eliminar_leccion(p_id_usuario UUID, p_id_leccion BIGINT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -437,7 +437,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU11 - Justificar una ausencia (RN-69). Devuelve 'OK' o 'SIN_CAMBIOS' y la ausencia previa.
+-- Profesor Regular CU10 - Justificar una ausencia (RN-69). Devuelve 'OK' o 'SIN_CAMBIOS' y la ausencia previa.
 -- NF003 si el estudiante no existe; NF011 si no tiene ausencia en la lección (una llegada tardía no se justifica).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_justificar_ausencia(
@@ -487,7 +487,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU12 - Consultar ausentismo
+-- Profesor Regular CU11 - Consultar ausentismo
 -- ------------------------------------------------------------
 -- Lecciones de mi asignación, de la más reciente a la más antigua. p_semestre NULL = todo el año.
 CREATE OR REPLACE FUNCTION academico.fn_profesor_lecciones_filtradas(

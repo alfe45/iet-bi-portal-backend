@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Monografias.Models;
 
 namespace iet_bi_portal_backend.Modules.Monografias.Data;
 
-/// <summary>Acceso a las funciones de monografías (Administrador CU34 a CU37, Coordinador de Monografía CU01 a CU05, Guía
+/// <summary>Acceso a las funciones de monografías (Administrador CU29 a CU32, Coordinador de Monografía CU01 a CU05, Guía
 /// CU06 y CU07). Las monografías se operan por la cédula del estudiante; los seguimientos, por id.</summary>
 public class MonografiasRepository(NpgsqlDataSource db)
 {

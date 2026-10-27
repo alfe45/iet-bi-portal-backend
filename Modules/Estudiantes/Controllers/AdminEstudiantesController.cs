@@ -7,11 +7,11 @@ using iet_bi_portal_backend.Modules.Estudiantes.Services;
 
 namespace iet_bi_portal_backend.Modules.Estudiantes.Controllers;
 
-/// <summary>Administrador CU10 a CU13 (registrar, consultar, modificar y eliminar estudiantes). Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
+/// <summary>Administrador CU05 a CU08 (registrar, consultar, modificar y eliminar estudiantes). Se opera siempre por cédula (RP-07). Exige rol ADMIN.</summary>
 [Route("api/admin/estudiantes")]
 public class AdminEstudiantesController(EstudiantesService estudiantes) : AdminControllerBase
 {
-    /// <summary>CU10: 201 con la cédula; 409 (ES001) cédula en uso; 409 (ES002) correo en uso; 400 (ES004) fecha de nacimiento inválida.</summary>
+    /// <summary>CU05: 201 con la cédula; 409 (ES001) cédula en uso; 409 (ES002) correo en uso; 400 (ES004) fecha de nacimiento inválida.</summary>
     [HttpPost]
     public async Task<IActionResult> Registrar(RegistrarEstudianteRequest request)
     {
@@ -19,12 +19,12 @@ public class AdminEstudiantesController(EstudiantesService estudiantes) : AdminC
         return StatusCode(StatusCodes.Status201Created, new { cedula });
     }
 
-    /// <summary>CU11: listado paginado; ?busqueda= por nombre, apellidos, cédula o correo.</summary>
+    /// <summary>CU06: listado paginado; ?busqueda= por nombre, apellidos, cédula o correo.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaConBusqueda consulta) =>
         Ok(await estudiantes.ListarAsync(ActorId, consulta));
 
-    /// <summary>CU11: detalle por cédula. 404 (NF003) si no existe.</summary>
+    /// <summary>CU06: detalle por cédula. 404 (NF003) si no existe.</summary>
     [HttpGet("{cedula}")]
     public async Task<IActionResult> Obtener(string cedula)
     {
@@ -32,7 +32,7 @@ public class AdminEstudiantesController(EstudiantesService estudiantes) : AdminC
         return estudiante is null ? this.ApiError("NF003") : Ok(estudiante);
     }
 
-    /// <summary>CU12: modifica un estudiante (reemplazo completo). 404 (NF003); 409 (ES002); 400 (ES004) fecha de nacimiento inválida.</summary>
+    /// <summary>CU07: modifica un estudiante (reemplazo completo). 404 (NF003); 409 (ES002); 400 (ES004) fecha de nacimiento inválida.</summary>
     [HttpPut("{cedula}")]
     public async Task<IActionResult> Actualizar(string cedula, ActualizarEstudianteRequest request)
     {
@@ -40,7 +40,7 @@ public class AdminEstudiantesController(EstudiantesService estudiantes) : AdminC
         return NoContent();
     }
 
-    /// <summary>CU13: elimina un estudiante. 404 (NF003) si no existe.</summary>
+    /// <summary>CU08: elimina un estudiante. 404 (NF003) si no existe.</summary>
     [HttpDelete("{cedula}")]
     public async Task<IActionResult> Eliminar(string cedula)
     {

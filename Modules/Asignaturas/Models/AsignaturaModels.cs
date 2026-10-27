@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Asignaturas.Models;
 
-/// <summary>CU28: datos editables de una asignatura. El código no se puede cambiar.
+/// <summary>CU23: datos editables de una asignatura. El código no se puede cambiar.
 /// Unicidad del nombre (AS002) y "al menos un nivel" (AS003) los valida la DB.</summary>
 public class ActualizarAsignaturaRequest
 {
@@ -24,14 +24,14 @@ public class ActualizarAsignaturaRequest
     public bool? ImparteNivel12 { get; set; }
 }
 
-/// <summary>CU26: los mismos campos + el código (2 a 10 letras o dígitos; se guarda en mayúsculas).</summary>
+/// <summary>CU21: los mismos campos + el código (2 a 10 letras o dígitos; se guarda en mayúsculas).</summary>
 public class RegistrarAsignaturaRequest : ActualizarAsignaturaRequest
 {
     [Required, MaxLength(10)]
     public string Codigo { get; set; } = string.Empty;
 }
 
-/// <summary>CU27: listado paginado con filtros opcionales por tipo y nivel.</summary>
+/// <summary>CU22: listado paginado con filtros opcionales por tipo y nivel.</summary>
 public class ConsultaAsignaturas : ConsultaPaginada
 {
     [RegularExpression(TiposAsignatura.Patron, ErrorMessage = TiposAsignatura.Mensaje)]

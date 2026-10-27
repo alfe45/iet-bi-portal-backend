@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Estudiantes.Models;
 
 namespace iet_bi_portal_backend.Modules.Estudiantes.Data;
 
-/// <summary>Acceso a las funciones de administración de estudiantes (CU10 a CU13). Todo por cédula.</summary>
+/// <summary>Acceso a las funciones de administración de estudiantes (CU05 a CU08). Todo por cédula.</summary>
 public class EstudiantesRepository(NpgsqlDataSource db)
 {
     private const string Columnas =

@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Ausentismo.Models;
 
-/// <summary>Datos editables de una lección (Profesor Regular CU11). Ausentes y Tardias: cédulas de los estudiantes
+/// <summary>Datos editables de una lección (Profesor Regular CU10). Ausentes y Tardias: cédulas de los estudiantes
 /// que faltaron y de los que llegaron tarde (listas vacías = asistieron todos a tiempo); reemplazan las anteriores.
 /// Fecha (LE001, PA004), fecha y hora repetidas (LE002), estudiantes no matriculados (LE003) y un estudiante en las
 /// dos listas (LE004) los valida la DB.</summary>
@@ -25,7 +25,7 @@ public class ModificarLeccionRequest
     public List<string> Tardias { get; set; } = [];
 }
 
-/// <summary>Profesor Regular CU10: registra una lección de su asignación (año, nivel, número, código) con sus ausentes.</summary>
+/// <summary>Profesor Regular CU09: registra una lección de su asignación (año, nivel, número, código) con sus ausentes.</summary>
 public class RegistrarLeccionRequest : ModificarLeccionRequest
 {
     [Required]
@@ -41,7 +41,7 @@ public class RegistrarLeccionRequest : ModificarLeccionRequest
     public string CodigoAsignatura { get; set; } = string.Empty;
 }
 
-/// <summary>Profesor Regular CU11: justificar una ausencia (RN-69).</summary>
+/// <summary>Profesor Regular CU10: justificar una ausencia (RN-69).</summary>
 public class JustificarAusenciaRequest
 {
     [Required, StringLength(255, MinimumLength = 3, ErrorMessage = "La justificación debe tener entre 3 y 255 caracteres.")]
@@ -67,7 +67,7 @@ public class ConsultaAusentismo
     public string? Semestre { get; set; }
 }
 
-/// <summary>Profesor Regular CU12: lecciones de una asignación, paginadas (de la más reciente a la más antigua).</summary>
+/// <summary>Profesor Regular CU11: lecciones de una asignación, paginadas (de la más reciente a la más antigua).</summary>
 public class ConsultaLecciones : ConsultaAusentismo
 {
     [Range(1, int.MaxValue, ErrorMessage = "La página debe ser mayor o igual a 1.")]

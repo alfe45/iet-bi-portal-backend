@@ -1,5 +1,5 @@
 -- ============================================================
--- 05_admin_usuarios.sql: ADMINISTRACIÓN DE USUARIOS (CU 02 a 05) + detalle (CU 01)
+-- 05_admin_usuarios.sql: ADMINISTRACIÓN DE USUARIOS (cuentas; las de los profesores se manejan en CU 02 y CU 03) + detalle (mi perfil)
 -- Toda función fn_admin_* / sp_admin_* empieza validando api.fn_validar_admin_activo.
 -- ============================================================
 SET search_path = academico, api, auth, public;
@@ -43,7 +43,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 02 - Registrar usuario (siempre nace con PROFESOR_REGULAR)
+-- Registrar usuario sin perfil (siempre nace con PROFESOR_REGULAR)
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_registrar_usuario(
     p_id_usuario_actor UUID,
@@ -61,7 +61,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 01 / CU 03 - Consultar usuarios (detalle sirve también para "mi perfil")
+-- Mi perfil / CU 02 - Consultar usuarios (detalle sirve también para "mi perfil")
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_obtener_usuario_detalle(p_id_usuario UUID)
 RETURNS SETOF api.usuario_admin
@@ -74,7 +74,7 @@ AS $$
     WHERE u.id_usuario = p_id_usuario;
 $$;
 
--- CU 03 (administrador): el mismo detalle, validando que el actor sea ADMIN (RP-12).
+-- CU 02 (administrador): el mismo detalle, validando que el actor sea ADMIN (RP-12).
 CREATE OR REPLACE FUNCTION auth.fn_admin_obtener_usuario(p_id_usuario_actor UUID, p_id_usuario UUID)
 RETURNS SETOF api.usuario_admin
 LANGUAGE sql STABLE
@@ -125,7 +125,7 @@ AS $$
 $$;
 
 -- ============================================================
--- CU 04 - Modificar email y resetear contraseña
+-- CU 03 - Modificar email y resetear contraseña
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_actualizar_email(
     p_id_usuario_actor UUID,
@@ -229,7 +229,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 04 - Activar / desactivar. AU020: no se desactiva a quien tiene responsabilidades vigentes (decisión del
+-- CU 03 - Activar / desactivar. AU020: no se desactiva a quien tiene responsabilidades vigentes (decisión del
 -- 01/10/2026, misma regla que AU016-AU019): primero se reasignan.
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_cambiar_estado_usuario(
@@ -282,7 +282,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 04 - Asignar / revocar roles
+-- CU 03 - Asignar / revocar roles
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_asignar_rol(
     p_id_usuario_actor UUID,
@@ -372,7 +372,7 @@ END;
 $$;
 
 -- ============================================================
--- CU 05 - Eliminar usuario (devuelve email y roles previos para auditoría)
+-- Eliminar usuario sin perfil (devuelve email y roles previos para auditoría)
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_admin_eliminar_usuario(
     p_id_usuario_actor UUID,

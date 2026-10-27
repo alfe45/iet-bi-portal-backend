@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Asignaturas.Models;
 
 namespace iet_bi_portal_backend.Modules.Asignaturas.Data;
 
-/// <summary>Acceso a las funciones de asignaturas (CU26 a CU29). Todo por código.</summary>
+/// <summary>Acceso a las funciones de asignaturas (CU21 a CU24). Todo por código.</summary>
 public class AsignaturasRepository(NpgsqlDataSource db)
 {
     private const string Columnas = "codigo, nombre::text, tipo::text, descripcion, imparte_nivel_11, imparte_nivel_12";

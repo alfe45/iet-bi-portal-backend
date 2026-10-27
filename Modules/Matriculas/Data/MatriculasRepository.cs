@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Matriculas.Models;
 
 namespace iet_bi_portal_backend.Modules.Matriculas.Data;
 
-/// <summary>Acceso a las funciones de matrículas (CU22 a CU25, estudiantes de una sección y ficha del estudiante).
+/// <summary>Acceso a las funciones de matrículas (CU17 a CU20, estudiantes de una sección y ficha del estudiante).
 /// Una matrícula se identifica por (año, cédula del estudiante).</summary>
 public class MatriculasRepository(NpgsqlDataSource db)
 {
@@ -73,7 +73,7 @@ public class MatriculasRepository(NpgsqlDataSource db)
             $"SELECT {Columnas} FROM academico.fn_profesor_listar_estudiantes_seccion($1, $2, $3, $4)",
             Leer, idUsuario, anio, nivel, numero);
 
-    /// <summary>Ficha de un estudiante de la sección (Profesor Regular CU05). Errores: NF006, AD003, NF009.</summary>
+    /// <summary>Ficha de un estudiante de la sección (Profesor Regular CU04). Errores: NF006, AD003, NF009.</summary>
     public Task<FichaEstudiante> ObtenerEstudianteSeccionAsync(Guid idUsuario, int anio, int nivel, int numero, string cedula) =>
         db.PrimeroAsync(
             "SELECT cedula, nombre, primer_apellido, segundo_apellido, numero_celular, email::text, fecha_nacimiento, " +

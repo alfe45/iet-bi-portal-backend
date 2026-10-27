@@ -6,7 +6,7 @@ using iet_bi_portal_backend.Modules.Asignaciones.Services;
 
 namespace iet_bi_portal_backend.Modules.Asignaciones.Controllers;
 
-/// <summary>Profesor Regular CU03: secciones y asignaturas que imparte el profesor autenticado.</summary>
+/// <summary>Profesor Regular CU02: secciones y asignaturas que imparte el profesor autenticado.</summary>
 [Route("api/profesor/asignaciones")]
 [Authorize(Roles = Roles.ProfesorRegular)]
 public class ProfesorAsignacionesController(AsignacionesService asignaciones) : ApiControllerBase

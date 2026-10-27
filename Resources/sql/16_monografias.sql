@@ -1,5 +1,5 @@
 -- ============================================================
--- 16_monografias.sql: monografías (Administrador CU34 a CU37, Coordinador de Monografía CU01 a CU05,
+-- 16_monografias.sql: monografías (Administrador CU29 a CU32, Coordinador de Monografía CU01 a CU05,
 -- Guía CU06 y CU07). Tablas en 06.
 -- Una monografía por estudiante; empieza con su matrícula de nivel 11 y dura los dos años del programa (RN-78).
 -- Se opera por la cédula del estudiante; los seguimientos, por id. Solo el coordinador de la monografía la
@@ -268,7 +268,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Administrador CU34 - Asignar un estudiante a un coordinador de monografía (RN-78)
+-- Administrador CU29 - Asignar un estudiante a un coordinador de monografía (RN-78)
 -- p_anio: año de la matrícula de nivel 11 del estudiante (MO004 si no es de nivel 11 o está retirada).
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_monografia(
@@ -312,7 +312,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Administrador CU35 - Consultar monografías. Filtros opcionales: año de inicio, coordinador, materia y estado.
+-- Administrador CU30 - Consultar monografías. Filtros opcionales: año de inicio, coordinador, materia y estado.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_monografias_filtradas(
     p_anio_inicio INTEGER, p_cedula_coordinador TEXT, p_codigo_asignatura TEXT, p_estado academico.estado_monografia)
@@ -366,7 +366,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Administrador CU36 - Modificar la asignación: cambiar coordinador y/o materia (RN-78). Conserva el estado, el
+-- Administrador CU31 - Modificar la asignación: cambiar coordinador y/o materia (RN-78). Conserva el estado, el
 -- seguimiento y los reportes. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_admin_modificar_monografia(
@@ -407,7 +407,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Administrador CU37 - Eliminar la monografía. 23001 si ya tiene seguimiento o reportes. Devuelve el snapshot.
+-- Administrador CU32 - Eliminar la monografía. 23001 si ya tiene seguimiento o reportes. Devuelve el snapshot.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_monografia(p_id_usuario_actor UUID, p_cedula_estudiante TEXT)
 RETURNS JSONB

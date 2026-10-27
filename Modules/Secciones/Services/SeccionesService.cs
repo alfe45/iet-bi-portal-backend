@@ -14,7 +14,7 @@ public class SeccionesService(SeccionesRepository repo, ILogsService logs)
     /// <summary>Identificador de auditoría: "2026/11-1".</summary>
     private static string IdRegistro(int anio, int nivel, int numero) => $"{anio}/{nivel}-{numero}";
 
-    /// <summary>CU18: registra una sección. Devuelve su nombre ("11-1").</summary>
+    /// <summary>CU13: registra una sección. Devuelve su nombre ("11-1").</summary>
     public async Task<string> RegistrarAsync(Guid actorId, RegistrarSeccionRequest request)
     {
         var nombre = await repo.RegistrarAsync(actorId, request);
@@ -24,13 +24,13 @@ public class SeccionesService(SeccionesRepository repo, ILogsService logs)
         return nombre;
     }
 
-    /// <summary>CU19: listado paginado con filtros opcionales.</summary>
+    /// <summary>CU14: listado paginado con filtros opcionales.</summary>
     public Task<ResultadoPaginado<Seccion>> ListarAsync(Guid actorId, ConsultaSecciones consulta) => repo.ListarAsync(actorId, consulta);
 
-    /// <summary>CU19: detalle, o null si no existe.</summary>
+    /// <summary>CU14: detalle, o null si no existe.</summary>
     public Task<Seccion?> ObtenerAsync(Guid actorId, int anio, int nivel, int numero) => repo.ObtenerAsync(actorId, anio, nivel, numero);
 
-    /// <summary>CU20: elimina una sección.</summary>
+    /// <summary>CU15: elimina una sección.</summary>
     public async Task EliminarAsync(Guid actorId, int anio, int nivel, int numero)
     {
         var anteriores = await repo.EliminarAsync(actorId, anio, nivel, numero);
@@ -38,7 +38,7 @@ public class SeccionesService(SeccionesRepository repo, ILogsService logs)
             datosAnteriores: anteriores.ComoJson());
     }
 
-    /// <summary>CU21: asocia (o reemplaza) el profesor guía. Registra log solo si hubo cambios.</summary>
+    /// <summary>CU16: asocia (o reemplaza) el profesor guía. Registra log solo si hubo cambios.</summary>
     public async Task AsignarGuiaAsync(Guid actorId, int anio, int nivel, int numero, AsignarGuiaRequest request)
     {
         var (estado, anteriores) = await repo.AsignarGuiaAsync(actorId, anio, nivel, numero, request.CedulaProfesor);
@@ -48,7 +48,7 @@ public class SeccionesService(SeccionesRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU21: quita el profesor guía. Registra log solo si tenía uno.</summary>
+    /// <summary>CU16: quita el profesor guía. Registra log solo si tenía uno.</summary>
     public async Task QuitarGuiaAsync(Guid actorId, int anio, int nivel, int numero)
     {
         var (estado, anteriores) = await repo.QuitarGuiaAsync(actorId, anio, nivel, numero);

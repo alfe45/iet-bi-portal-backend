@@ -1,5 +1,5 @@
 -- ============================================================
--- 13_admin_matriculas.sql: CU 22 a 25 (admin) + estudiantes de una sección y ficha del estudiante (profesor/guía).
+-- 13_admin_matriculas.sql: CU 17 a 20 (admin) + estudiantes de una sección y ficha del estudiante (profesor/guía).
 -- Una matrícula por estudiante y periodo; se identifica por (año, cédula del estudiante).
 -- El estado se deriva: RETIRADA si tiene retiro; si no PROGRAMADA / ACTIVA / FINALIZADA según el periodo.
 -- El ADMIN puede matricular en periodos pasados (digitalización).
@@ -174,7 +174,7 @@ BEGIN
 END;
 $$;
 
--- CU 22 - Matricular estudiante en una sección. p_fecha_matricula NULL = hoy (o el inicio del periodo
+-- CU 17 - Matricular estudiante en una sección. p_fecha_matricula NULL = hoy (o el inicio del periodo
 -- si ya finalizó). Reglas: una matrícula por periodo (MA001), edad 16-19 al inicio del periodo (ES003),
 -- fecha de matrícula ni futura ni posterior al fin del periodo ni más de un año antes de su inicio (MA002).
 -- Para una sección completa de nivel 12, ver fn_admin_subir_seccion.
@@ -244,7 +244,7 @@ BEGIN
 END;
 $$;
 
--- CU 22 - Subir la sección (RN-64): matricula en la 12-N de p_anio a todos los estudiantes de la 11-N de
+-- CU 17 - Subir la sección (RN-64): matricula en la 12-N de p_anio a todos los estudiantes de la 11-N de
 -- p_anio - 1 sin retiro, en lugar de uno por uno (la matrícula individual sigue disponible). Si la 12-N
 -- no existe se crea. Omite a quien ya tiene matrícula en p_anio (se puede repetir la acción tras matricular
 -- a alguno individualmente). La edad no se valida (RN-01: solo al entrar a 11).
@@ -371,7 +371,7 @@ BEGIN
 END;
 $$;
 
--- CU 24 - Consultar matrículas / historial. Filtros opcionales (NULL = todos): año, nivel, número de
+-- CU 19 - Consultar matrículas / historial. Filtros opcionales (NULL = todos): año, nivel, número de
 -- sección, cédula del estudiante (historial), estado y búsqueda por nombre o cédula.
 CREATE OR REPLACE FUNCTION academico.fn_matriculas_filtradas(
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_cedula_estudiante TEXT,
@@ -427,7 +427,7 @@ AS $$
     FROM academico.fn_matriculas_filtradas(p_anio, NULL, NULL, p_cedula_estudiante, NULL, NULL) f;
 $$;
 
--- CU 23 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado). MA006 fuera del nivel 11;
+-- CU 18 - Modificar matrícula: cambiar de sección dentro del mismo periodo (traslado). MA006 fuera del nivel 11;
 -- MA008 si ya tiene ausencias, notas o informes CAS.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_cambiar_seccion_matricula(
@@ -482,7 +482,7 @@ BEGIN
 END;
 $$;
 
--- CU 23 - Modificar matrícula: registrar o corregir el retiro del estudiante. La fecha no puede ser
+-- CU 18 - Modificar matrícula: registrar o corregir el retiro del estudiante. La fecha no puede ser
 -- futura, anterior a la matrícula ni posterior al fin del periodo (MA003), ni dejar fuera registros ya hechos (MA009).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_retiro_matricula(
     p_id_usuario_actor UUID,
@@ -539,7 +539,7 @@ BEGIN
 END;
 $$;
 
--- CU 23 - Modificar matrícula: anular el retiro (reingreso o corrección). 'SIN_CAMBIOS' si no tenía.
+-- CU 18 - Modificar matrícula: anular el retiro (reingreso o corrección). 'SIN_CAMBIOS' si no tenía.
 CREATE OR REPLACE FUNCTION academico.fn_admin_anular_retiro_matricula(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -572,7 +572,7 @@ BEGIN
 END;
 $$;
 
--- CU 25 - Eliminar matrícula (corrección de errores). Devuelve el snapshot previo. Si otras entidades
+-- CU 20 - Eliminar matrícula (corrección de errores). Devuelve el snapshot previo. Si otras entidades
 -- la referencian (evaluaciones, asistencia) con FK RESTRICT, Postgres lanza 23001.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_matricula(
     p_id_usuario_actor UUID,
@@ -600,7 +600,7 @@ BEGIN
 END;
 $$;
 
--- Profesor Regular CU04 / Guía CU02 - Estudiantes de una sección. Solo si el usuario imparte alguna
+-- Profesor Regular CU03 / Guía CU02 - Estudiantes de una sección. Solo si el usuario imparte alguna
 -- asignatura en la sección o es su guía (AD003); protege los datos de los estudiantes (Ley 8968).
 CREATE OR REPLACE FUNCTION academico.fn_profesor_listar_estudiantes_seccion(
     p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER)
@@ -621,8 +621,8 @@ BEGIN
 END;
 $$;
 
--- Profesor Regular CU05 - Ficha de un estudiante de una sección (RN-65): datos personales y su matrícula
--- en esa sección, incluido el motivo de retiro. Mismo acceso que CU04 (AD003); NF009 si el estudiante no está
+-- Profesor Regular CU04 - Ficha de un estudiante de una sección (RN-65): datos personales y su matrícula
+-- en esa sección, incluido el motivo de retiro. Mismo acceso que Profesor Regular CU03 (AD003); NF009 si el estudiante no está
 -- matriculado en la sección, exista o no (no se revela si una cédula existe fuera de las secciones del profesor).
 CREATE TYPE academico.ficha_estudiante AS (
     cedula VARCHAR(20),

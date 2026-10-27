@@ -49,7 +49,7 @@ BEGIN
 END;
 $$;
 
--- CU 06 - Registrar profesor con su cuenta en la misma operación (RN-05): el correo y la contraseña son
+-- CU 01 - Registrar profesor con su cuenta en la misma operación (RN-05): el correo y la contraseña son
 -- obligatorios (NU001/NU002); si la cuenta falla, el profesor tampoco queda registrado. Devuelve la cédula.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_profesor(
     p_id_usuario_actor UUID,
@@ -92,7 +92,7 @@ BEGIN
 END;
 $$;
 
--- CU 06 - Crear la cuenta de un profesor registrado antes de que fuera obligatoria (RN-05). Devuelve el id del usuario.
+-- CU 01 - Crear la cuenta de un profesor registrado antes de que fuera obligatoria (RN-05). Devuelve el id del usuario.
 CREATE OR REPLACE FUNCTION academico.fn_admin_crear_cuenta_profesor(
     p_id_usuario_actor UUID,
     p_cedula TEXT,
@@ -126,7 +126,7 @@ BEGIN
 END;
 $$;
 
--- CU 09 - Eliminar profesor: elimina el perfil y su cuenta de usuario en la misma operación (RN-07).
+-- CU 04 - Eliminar profesor: elimina el perfil y su cuenta de usuario en la misma operación (RN-07).
 -- No se elimina si es guía (PR004), si la cuenta es la del propio actor (AU012), si es el último administrador activo
 -- (AU013) o si tiene asignaciones o monografías vigentes (PR009). Si sus registros académicos lo referencian con
 -- FK RESTRICT, Postgres lanza 23001 y no se borra nada. Devuelve el snapshot previo (perfil + correo y roles).

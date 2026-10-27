@@ -14,28 +14,28 @@ public class RegistrarUsuarioRequest
     public string Contrasena { get; set; } = string.Empty;
 }
 
-/// <summary>CU08 (cuenta del profesor): nuevo correo del usuario.</summary>
+/// <summary>CU03 (cuenta del profesor): nuevo correo del usuario.</summary>
 public class ActualizarEmailRequest
 {
     [Required, EmailAddress, MaxLength(254)]
     public string Email { get; set; } = string.Empty;
 }
 
-/// <summary>CU08 (cuenta del profesor): nueva contraseña (reseteo por un administrador).</summary>
+/// <summary>CU03 (cuenta del profesor): nueva contraseña (reseteo por un administrador).</summary>
 public class ResetearContrasenaRequest
 {
     [Required, MinLength(8), MaxLength(128)]
     public string ContrasenaNueva { get; set; } = string.Empty;
 }
 
-/// <summary>CU08 (cuenta del profesor): rol a asignar.</summary>
+/// <summary>CU03 (cuenta del profesor): rol a asignar.</summary>
 public class RolRequest
 {
     [Required, RolValido]
     public string Rol { get; set; } = string.Empty;
 }
 
-/// <summary>CU07 (cuenta del profesor): listado con búsqueda (correo, cédula o nombre del profesor) y filtro opcional por rol.</summary>
+/// <summary>CU02 (cuenta del profesor): listado con búsqueda (correo, cédula o nombre del profesor) y filtro opcional por rol.</summary>
 public class ConsultaUsuarios : ConsultaConBusqueda
 {
     [RolValido]

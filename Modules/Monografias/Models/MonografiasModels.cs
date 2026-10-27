@@ -10,7 +10,7 @@ public static class EstadosMonografia
     public const string Mensaje = "El estado debe ser CAPACITACION, INVESTIGACION o TERMINADA.";
 }
 
-/// <summary>Administrador CU34: asigna el estudiante a un coordinador en una materia (RN-78). Anio: año de la matrícula de
+/// <summary>Administrador CU29: asigna el estudiante a un coordinador en una materia (RN-78). Anio: año de la matrícula de
 /// nivel 11 del estudiante (MO004). Materia SUPERIOR o MEDIO (MO002), coordinador con COORD_MONOGRAFIA (MO005), grupo de
 /// hasta 5 (MO003) y una monografía por estudiante (MO001) los valida la DB.</summary>
 public class RegistrarMonografiaRequest
@@ -28,7 +28,7 @@ public class RegistrarMonografiaRequest
     public string CodigoAsignatura { get; set; } = string.Empty;
 }
 
-/// <summary>Administrador CU36: cambia coordinador y/o materia; conserva estado, seguimiento y reportes.</summary>
+/// <summary>Administrador CU31: cambia coordinador y/o materia; conserva estado, seguimiento y reportes.</summary>
 public class ModificarMonografiaRequest
 {
     [Required, RegularExpression(PatronesValidacion.Cedula, ErrorMessage = PatronesValidacion.MensajeCedula)]
@@ -38,7 +38,7 @@ public class ModificarMonografiaRequest
     public string CodigoAsignatura { get; set; } = string.Empty;
 }
 
-/// <summary>Administrador CU35: filtros opcionales (año de inicio = año de su nivel 11).</summary>
+/// <summary>Administrador CU30: filtros opcionales (año de inicio = año de su nivel 11).</summary>
 public class ConsultaMonografias : ConsultaPaginada
 {
     public int? AnioInicio { get; set; }

@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Matriculas.Models;
 
-/// <summary>CU22: matricular un estudiante en una sección (año, nivel, número). FechaMatricula es opcional
+/// <summary>CU17: matricular un estudiante en una sección (año, nivel, número). FechaMatricula es opcional
 /// (por defecto hoy, o el inicio del periodo si ya finalizó). Edad (ES003), duplicado (MA001) y fecha (MA002)
 /// los valida la DB.</summary>
 public class RegistrarMatriculaRequest
@@ -23,7 +23,7 @@ public class RegistrarMatriculaRequest
     public DateOnly? FechaMatricula { get; set; }
 }
 
-/// <summary>CU22 - Subir la sección (RN-64): matricula en la 12-{Numero} de {Anio} a todos los estudiantes sin retiro de la
+/// <summary>CU17 - Subir la sección (RN-64): matricula en la 12-{Numero} de {Anio} a todos los estudiantes sin retiro de la
 /// 11-{Numero} del año anterior; crea la 12-N si no existe y le copia el guía y las asignaciones (RN-63). FechaMatricula
 /// opcional (como en la matrícula individual).</summary>
 public class SubirSeccionRequest
@@ -43,7 +43,7 @@ public class SubirSeccionRequest
 public record SeccionSubida(bool SeccionCreada, string[] Matriculados, string[] Omitidos,
     string? GuiaCopiado, string[] AsignacionesCopiadas, string[] AsignacionesOmitidas);
 
-/// <summary>CU23: trasladar la matrícula a otra sección del mismo año.</summary>
+/// <summary>CU18: trasladar la matrícula a otra sección del mismo año.</summary>
 public class CambiarSeccionRequest
 {
     [Required]
@@ -53,7 +53,7 @@ public class CambiarSeccionRequest
     public int? Numero { get; set; }
 }
 
-/// <summary>CU23: registrar o corregir el retiro del estudiante (MA003 fecha inválida).</summary>
+/// <summary>CU18: registrar o corregir el retiro del estudiante (MA003 fecha inválida).</summary>
 public class RegistrarRetiroRequest
 {
     [Required]
@@ -63,7 +63,7 @@ public class RegistrarRetiroRequest
     public string? Motivo { get; set; }
 }
 
-/// <summary>CU24: listado/historial paginado; todos los filtros son opcionales. Busqueda: nombre o cédula.</summary>
+/// <summary>CU19: listado/historial paginado; todos los filtros son opcionales. Busqueda: nombre o cédula.</summary>
 public class ConsultaMatriculas : ConsultaConBusqueda
 {
     public int? Anio { get; set; }
@@ -101,7 +101,7 @@ public record Matricula(
     DateOnly? FechaRetiro,
     string? MotivoRetiro);
 
-/// <summary>Profesor Regular CU05 (RN-65): ficha de un estudiante de la sección con su matrícula en ella.
+/// <summary>Profesor Regular CU04 (RN-65): ficha de un estudiante de la sección con su matrícula en ella.
 /// Tal como la devuelve academico.fn_profesor_obtener_estudiante_seccion; no expone el id interno (RP-07).</summary>
 public record FichaEstudiante(
     string Cedula,

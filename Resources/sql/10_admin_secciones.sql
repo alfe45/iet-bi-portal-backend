@@ -1,5 +1,5 @@
 -- ============================================================
--- 10_admin_secciones.sql: CU 18 a 21 (admin) + Guía CU01 (mis secciones guía). Se opera SIEMPRE por (año, nivel, número), nunca por id_seccion.
+-- 10_admin_secciones.sql: CU 13 a 16 (admin) + Guía CU01 (mis secciones guía). Se opera SIEMPRE por (año, nivel, número), nunca por id_seccion.
 -- El ADMIN puede trabajar sobre periodos pasados (digitalización); las reglas operativas del guía
 -- (usuario activo con rol GUIA) solo se exigen en periodos no finalizados.
 -- ============================================================
@@ -85,7 +85,7 @@ BEGIN
 END;
 $$;
 
--- CU 18 - Registrar sección. Devuelve el nombre ("11-1"). Una sección de nivel 12 solo se crea si
+-- CU 13 - Registrar sección. Devuelve el nombre ("11-1"). Una sección de nivel 12 solo se crea si
 -- existió la 11-N del año anterior (SE005, RN-62). Registrada a mano nace sin guía ni asignaciones; subir la
 -- sección (fn_admin_subir_seccion) sí copia los profesores de la 11-N (RN-63).
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_seccion(
@@ -130,7 +130,7 @@ BEGIN
 END;
 $$;
 
--- CU 19 - Consultar secciones. Filtros opcionales por año y nivel (NULL = todos).
+-- CU 14 - Consultar secciones. Filtros opcionales por año y nivel (NULL = todos).
 CREATE OR REPLACE FUNCTION academico.fn_admin_listar_secciones(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.seccion_admin
@@ -175,7 +175,7 @@ AS $$
     WHERE p.anio = p_anio AND s.nivel = p_nivel AND s.numero = p_numero;
 $$;
 
--- CU 20 - Eliminar sección. Devuelve el snapshot previo. Una 11-N que ya continúa como 12-N el año
+-- CU 15 - Eliminar sección. Devuelve el snapshot previo. Una 11-N que ya continúa como 12-N el año
 -- siguiente no se elimina (SE006, RN-62). Si otras entidades la referencian (matrículas,
 -- asignaciones...) con FK RESTRICT, Postgres lanza 23503.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_seccion(
@@ -213,7 +213,7 @@ BEGIN
 END;
 $$;
 
--- CU 21 - Asociar (o reemplazar) el profesor guía de una sección. Devuelve 'OK' o 'SIN_CAMBIOS'
+-- CU 16 - Asociar (o reemplazar) el profesor guía de una sección. Devuelve 'OK' o 'SIN_CAMBIOS'
 -- y el snapshot previo. En periodos no finalizados el profesor debe tener usuario activo con rol
 -- GUIA (SE003). Un profesor es guía de una sola sección por periodo (SE004).
 CREATE OR REPLACE FUNCTION academico.fn_admin_asignar_guia_seccion(
@@ -273,7 +273,7 @@ BEGIN
 END;
 $$;
 
--- CU 21 - Quitar el profesor guía de una sección. Devuelve 'OK' o 'SIN_CAMBIOS' (no tenía guía)
+-- CU 16 - Quitar el profesor guía de una sección. Devuelve 'OK' o 'SIN_CAMBIOS' (no tenía guía)
 -- y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_quitar_guia_seccion(
     p_id_usuario_actor UUID,

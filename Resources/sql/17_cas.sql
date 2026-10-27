@@ -1,7 +1,7 @@
 -- ============================================================
 -- 17_cas.sql: informes CAS (Profesor CAS CU01 a CU04, Coordinador de CAS CU01 y CU02). Tablas en 06.
 -- CAS es la asignatura TRONCAL con código 'CAS'. El profesor CAS la imparte con una asignación académica
--- (Administrador CU38 = CU30, RN-82) y cada semestre llena un informe por estudiante con el formato del
+-- (Administrador CU33 = CU25, RN-82) y cada semestre llena un informe por estudiante con el formato del
 -- Instituto (RN-83). El informe comparte la clave de la nota CAS (asignación, matrícula, semestre); la nota
 -- se registra y se confirma con evaluaciones. Se opera por (año, semestre, cédula del estudiante).
 -- ============================================================

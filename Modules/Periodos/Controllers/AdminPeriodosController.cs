@@ -7,11 +7,11 @@ using iet_bi_portal_backend.Modules.Periodos.Services;
 
 namespace iet_bi_portal_backend.Modules.Periodos.Controllers;
 
-/// <summary>Administrador CU14 a CU17 (registrar, consultar, modificar y eliminar periodos académicos). Se opera siempre por año. Exige rol ADMIN.</summary>
+/// <summary>Administrador CU09 a CU12 (registrar, consultar, modificar y eliminar periodos académicos). Se opera siempre por año. Exige rol ADMIN.</summary>
 [Route("api/admin/periodos")]
 public class AdminPeriodosController(PeriodosService periodos) : AdminControllerBase
 {
-    /// <summary>CU14: 201 con el año; 409 (PA001) año repetido; 400 (PA002) fechas inválidas.
+    /// <summary>CU09: 201 con el año; 409 (PA001) año repetido; 400 (PA002) fechas inválidas.
     /// Se permiten periodos pasados (digitalización).</summary>
     [HttpPost]
     public async Task<IActionResult> Registrar(RegistrarPeriodoRequest request)
@@ -20,12 +20,12 @@ public class AdminPeriodosController(PeriodosService periodos) : AdminController
         return StatusCode(StatusCodes.Status201Created, new { anio });
     }
 
-    /// <summary>CU15: listado paginado.</summary>
+    /// <summary>CU10: listado paginado.</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaPaginada consulta) =>
         Ok(await periodos.ListarAsync(ActorId, consulta.Pagina, consulta.TamanoPagina));
 
-    /// <summary>CU15: detalle por año. 404 (NF004) si no existe.</summary>
+    /// <summary>CU10: detalle por año. 404 (NF004) si no existe.</summary>
     [HttpGet("{anio:int}")]
     public async Task<IActionResult> Obtener(int anio)
     {
@@ -33,7 +33,7 @@ public class AdminPeriodosController(PeriodosService periodos) : AdminController
         return periodo is null ? this.ApiError("NF004") : Ok(periodo);
     }
 
-    /// <summary>CU16: reemplaza las fechas. 404 (NF004); 400 (PA002/PA005); 409 (PA004) semestre cerrado;
+    /// <summary>CU11: reemplaza las fechas. 404 (NF004); 400 (PA002/PA005); 409 (PA004) semestre cerrado;
     /// 409 (PA007) reabrir un periodo finalizado; 409 (PA008) las fechas dejan fuera lecciones, matrículas u otros registros;
     /// 409 (PA009) el inicio de un semestre que ya comenzó pasa a una fecha futura.</summary>
     [HttpPut("{anio:int}")]
@@ -43,7 +43,7 @@ public class AdminPeriodosController(PeriodosService periodos) : AdminController
         return NoContent();
     }
 
-    /// <summary>CU17: elimina un periodo sin secciones. 404 (NF004); 409 (PA006).</summary>
+    /// <summary>CU12: elimina un periodo sin secciones. 404 (NF004); 409 (PA006).</summary>
     [HttpDelete("{anio:int}")]
     public async Task<IActionResult> Eliminar(int anio)
     {

@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Usuarios.Services;
 
 namespace iet_bi_portal_backend.Modules.Usuarios.Controllers;
 
-/// <summary>CU01: consultar mi perfil (cualquier usuario autenticado).</summary>
+/// <summary>Mi perfil: consultar mi perfil (cualquier usuario autenticado).</summary>
 [Route("api/perfil")]
 public class PerfilController(UsuariosService usuarios) : ApiControllerBase
 {

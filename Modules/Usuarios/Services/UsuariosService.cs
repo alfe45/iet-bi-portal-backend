@@ -26,16 +26,16 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
         return (id, email);
     }
 
-    /// <summary>CU07 (cuenta del profesor): listado paginado con búsqueda y filtro por rol (en el servidor: filtrar en el
+    /// <summary>CU02 (cuenta del profesor): listado paginado con búsqueda y filtro por rol (en el servidor: filtrar en el
     /// frontend solo vería la página actual).</summary>
     public Task<ResultadoPaginado<UsuarioAdmin>> ListarAsync(Guid actorId, ConsultaUsuarios consulta) => repo.ListarAsync(actorId, consulta);
 
-    /// <summary>CU01 / CU07: detalle de un usuario, o null si no existe.</summary>
+    /// <summary>Mi perfil / CU02: detalle de un usuario, o null si no existe.</summary>
     public Task<UsuarioAdmin?> ObtenerAsync(Guid id) => repo.ObtenerAsync(id);
 
     public Task<UsuarioAdmin?> ObtenerAdminAsync(Guid actorId, Guid id) => repo.ObtenerAdminAsync(actorId, id);
 
-    /// <summary>CU08 (cuenta del profesor): modifica el email. Registra auditoría solo si hubo cambios.</summary>
+    /// <summary>CU03 (cuenta del profesor): modifica el email. Registra auditoría solo si hubo cambios.</summary>
     public async Task ActualizarEmailAsync(Guid actorId, Guid idObjetivo, string emailNuevo)
     {
         emailNuevo = emailNuevo.NormalizarEmail();
@@ -47,14 +47,14 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
                 datosNuevos: new { email = emailNuevo });
     }
 
-    /// <summary>CU08 (cuenta del profesor): resetea la contraseña de otro usuario (no requiere la actual: la autoridad es ser ADMIN).</summary>
+    /// <summary>CU03 (cuenta del profesor): resetea la contraseña de otro usuario (no requiere la actual: la autoridad es ser ADMIN).</summary>
     public async Task ResetearContrasenaAsync(Guid actorId, Guid idObjetivo, string contrasenaNueva)
     {
         await repo.ResetearContrasenaAsync(actorId, idObjetivo, contrasenas.Hashear(contrasenaNueva));
         await logs.RegistrarAsync(actorId, AccionesLog.ResetearContrasena, TablaUsuarios, idObjetivo.ToString());   // nunca el hash
     }
 
-    /// <summary>CU08 (cuenta del profesor): activa o desactiva. La DB impide auto-desactivación y dejar el sistema sin admins (AU010/AU011).</summary>
+    /// <summary>CU03 (cuenta del profesor): activa o desactiva. La DB impide auto-desactivación y dejar el sistema sin admins (AU010/AU011).</summary>
     public async Task CambiarEstadoAsync(Guid actorId, Guid idObjetivo, bool activo)
     {
         var estado = await repo.CambiarEstadoAsync(actorId, idObjetivo, activo);
@@ -64,7 +64,7 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
                 TablaUsuarios, idObjetivo.ToString());
     }
 
-    /// <summary>CU08 (cuenta del profesor): otorga un rol. true si se asignó; false si ya lo tenía.</summary>
+    /// <summary>CU03 (cuenta del profesor): otorga un rol. true si se asignó; false si ya lo tenía.</summary>
     public async Task<bool> AsignarRolAsync(Guid actorId, Guid idObjetivo, string rol)
     {
         rol = rol.ToUpperInvariant();
@@ -77,7 +77,7 @@ public class UsuariosService(UsuariosRepository repo, ILogsService logs, IContra
         return true;
     }
 
-    /// <summary>CU08 (cuenta del profesor): quita un rol (AU003/AU004/AU005/AU016 los valida la DB).</summary>
+    /// <summary>CU03 (cuenta del profesor): quita un rol (AU003/AU004/AU005/AU016 los valida la DB).</summary>
     public async Task RevocarRolAsync(Guid actorId, Guid idObjetivo, string rol)
     {
         rol = rol.ToUpperInvariant();

@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Ausentismo.Models;
 
 namespace iet_bi_portal_backend.Modules.Ausentismo.Data;
 
-/// <summary>Acceso a las funciones de ausentismo (Profesor Regular CU10 a CU12, Guía CU05). Las lecciones se
+/// <summary>Acceso a las funciones de ausentismo (Profesor Regular CU09 a CU11, Guía CU05). Las lecciones se
 /// identifican por id (RP-53); el actor siempre es el profesor autenticado (AD004 si la lección o la asignación
 /// no son suyas).</summary>
 public class AusentismoRepository(NpgsqlDataSource db)

@@ -12,7 +12,7 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
 {
     private const string Tabla = "academico.profesores";
 
-    /// <summary>CU06: registra un profesor con su cuenta (RN-05). Devuelve la cédula normalizada.</summary>
+    /// <summary>CU01: registra un profesor con su cuenta (RN-05). Devuelve la cédula normalizada.</summary>
     public async Task<string> RegistrarAsync(Guid actorId, RegistrarProfesorRequest request)
     {
         var cedula = await repo.RegistrarAsync(actorId, request, Hash(request.Cuenta));
@@ -25,7 +25,7 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
         return cedula;
     }
 
-    /// <summary>CU06: crea la cuenta de un profesor que no tiene (registrado antes de que fuera obligatoria). Devuelve el id del usuario.</summary>
+    /// <summary>CU01: crea la cuenta de un profesor que no tiene (registrado antes de que fuera obligatoria). Devuelve el id del usuario.</summary>
     public async Task<Guid> CrearCuentaAsync(Guid actorId, string cedula, CuentaProfesorRequest cuenta)
     {
         var idUsuario = await repo.CrearCuentaAsync(actorId, cedula, cuenta, Hash(cuenta));
@@ -38,13 +38,13 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
     private string? Hash(CuentaProfesorRequest? cuenta) =>
         string.IsNullOrEmpty(cuenta?.Contrasena) ? null : contrasenas.Hashear(cuenta.Contrasena);
 
-    /// <summary>CU07: listado paginado con búsqueda opcional (nombre, apellidos, cédula o correo).</summary>
+    /// <summary>CU02: listado paginado con búsqueda opcional (nombre, apellidos, cédula o correo).</summary>
     public Task<ResultadoPaginado<ProfesorAdmin>> ListarAsync(Guid actorId, ConsultaConBusqueda consulta) => repo.ListarAsync(actorId, consulta);
 
-    /// <summary>CU07: detalle por cédula, o null si no existe.</summary>
+    /// <summary>CU02: detalle por cédula, o null si no existe.</summary>
     public Task<ProfesorAdmin?> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
-    /// <summary>CU08: modifica un profesor. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
+    /// <summary>CU03: modifica un profesor. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
     public async Task ActualizarAsync(Guid actorId, string cedula, ActualizarProfesorRequest request)
     {
         var (estado, anteriores) = await repo.ActualizarAsync(actorId, cedula, request);
@@ -54,7 +54,7 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU09: elimina el perfil de profesor y su cuenta (RN-07).</summary>
+    /// <summary>CU04: elimina el perfil de profesor y su cuenta (RN-07).</summary>
     public async Task EliminarAsync(Guid actorId, string cedula)
     {
         var anteriores = await repo.EliminarAsync(actorId, cedula);

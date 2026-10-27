@@ -6,14 +6,14 @@ using iet_bi_portal_backend.Modules.Matriculas.Services;
 
 namespace iet_bi_portal_backend.Modules.Matriculas.Controllers;
 
-/// <summary>Administrador CU22 a CU25 (matricular, modificar, consultar el historial y eliminar matrículas). Una matrícula se identifica por /{anio}/{cedulaEstudiante} (una por estudiante y año).
+/// <summary>Administrador CU17 a CU20 (matricular, modificar, consultar el historial y eliminar matrículas). Una matrícula se identifica por /{anio}/{cedulaEstudiante} (una por estudiante y año).
 /// Exige rol ADMIN.</summary>
 [Route("api/admin/matriculas")]
 public class AdminMatriculasController(MatriculasService matriculas) : AdminControllerBase
 {
     private const string RutaMatricula = "{anio:int}/{cedula}";
 
-    /// <summary>CU22: 201. 404 (NF003/NF006); 409 (MA001) ya matriculado en el periodo; 409 (MA004/MA005)
+    /// <summary>CU17: 201. 404 (NF003/NF006); 409 (MA001) ya matriculado en el periodo; 409 (MA004/MA005)
     /// continuidad BI; 400 (ES003) edad fuera de 16-19 al inicio del periodo; 400 (MA002) fecha inválida.</summary>
     [HttpPost]
     public async Task<IActionResult> Registrar(RegistrarMatriculaRequest request)
@@ -22,7 +22,7 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return StatusCode(StatusCodes.Status201Created);
     }
 
-    /// <summary>CU22 - Subir la sección (RN-64): matricula en 12-N de Anio a todos los estudiantes sin retiro de la 11-N
+    /// <summary>CU17 - Subir la sección (RN-64): matricula en 12-N de Anio a todos los estudiantes sin retiro de la 11-N
     /// del año anterior (crea la 12-N si no existe) y copia de la 11-N el guía y las asignaciones (RN-63; el ADMIN cambia
     /// después las asignaturas). Omite a quien ya tiene matrícula en el año, así que se puede repetir. 200 con { seccionCreada,
     /// matriculados, omitidos, guiaCopiado, asignacionesCopiadas, asignacionesOmitidas }. 404 (NF004/NF006); 400 (MA002) fecha inválida.</summary>
@@ -30,13 +30,13 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
     public async Task<IActionResult> SubirSeccion(SubirSeccionRequest request) =>
         Ok(await matriculas.SubirSeccionAsync(ActorId, request));
 
-    /// <summary>CU24: listado / historial paginado; filtros opcionales ?anio=&amp;nivel=&amp;numero=&amp;cedulaEstudiante=
+    /// <summary>CU19: listado / historial paginado; filtros opcionales ?anio=&amp;nivel=&amp;numero=&amp;cedulaEstudiante=
     /// &amp;estado=&amp;busqueda= (historial de un estudiante: ?cedulaEstudiante=).</summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] ConsultaMatriculas consulta) =>
         Ok(await matriculas.ListarAsync(ActorId, consulta));
 
-    /// <summary>CU24: detalle. 404 (NF009) si no existe.</summary>
+    /// <summary>CU19: detalle. 404 (NF009) si no existe.</summary>
     [HttpGet(RutaMatricula)]
     public async Task<IActionResult> Obtener(int anio, string cedula)
     {
@@ -44,7 +44,7 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return matricula is null ? this.ApiError("NF009") : Ok(matricula);
     }
 
-    /// <summary>CU23: traslado a otra sección del mismo año. 404 (NF009/NF006); 409 (MA006) fuera del nivel 11 o con
+    /// <summary>CU18: traslado a otra sección del mismo año. 404 (NF009/NF006); 409 (MA006) fuera del nivel 11 o con
     /// continuidad; 409 (MA008) la matrícula ya tiene ausencias, notas o informes CAS.</summary>
     [HttpPut(RutaMatricula + "/seccion")]
     public async Task<IActionResult> CambiarSeccion(int anio, string cedula, CambiarSeccionRequest request)
@@ -53,7 +53,7 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return NoContent();
     }
 
-    /// <summary>CU23: registra o corrige el retiro. 404 (NF009); 400 (MA003) fecha inválida; 409 (MA007) con continuidad;
+    /// <summary>CU18: registra o corrige el retiro. 404 (NF009); 400 (MA003) fecha inválida; 409 (MA007) con continuidad;
     /// 409 (MA009) la fecha deja fuera ausencias, notas o informes CAS ya registrados.</summary>
     [HttpPut(RutaMatricula + "/retiro")]
     public async Task<IActionResult> RegistrarRetiro(int anio, string cedula, RegistrarRetiroRequest request)
@@ -62,7 +62,7 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return NoContent();
     }
 
-    /// <summary>CU23: anula el retiro (reingreso o corrección). 204 aunque no tuviera; 404 (NF009).</summary>
+    /// <summary>CU18: anula el retiro (reingreso o corrección). 204 aunque no tuviera; 404 (NF009).</summary>
     [HttpDelete(RutaMatricula + "/retiro")]
     public async Task<IActionResult> AnularRetiro(int anio, string cedula)
     {
@@ -70,7 +70,7 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return NoContent();
     }
 
-    /// <summary>CU25: elimina la matrícula. 404 (NF009); 409 (23001) si tiene registros asociados.</summary>
+    /// <summary>CU20: elimina la matrícula. 404 (NF009); 409 (23001) si tiene registros asociados.</summary>
     [HttpDelete(RutaMatricula)]
     public async Task<IActionResult> Eliminar(int anio, string cedula)
     {

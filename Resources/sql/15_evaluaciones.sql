@@ -1,5 +1,5 @@
 -- ============================================================
--- 15_evaluaciones.sql: notas semestrales (Profesor Regular CU01, CU06 a CU09 y CU14; Guía CU03/CU04) y
+-- 15_evaluaciones.sql: notas semestrales (Profesor Regular CU01, CU05 a CU08 y CU13; Guía CU03/CU04) y
 -- prórrogas del ADMIN. Tablas en 06.
 -- La nota es por semestre, estudiante y asignación, en la escala fija del tipo de asignatura (RN-73).
 -- El profesor registra y corrige sus notas desde el inicio del semestre hasta el cierre: la fecha de fin del
@@ -263,7 +263,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU06 / CU07 / CU09 - Registrar y modificar notas y observaciones
+-- Profesor Regular CU05 / CU06 / CU08 - Registrar y modificar notas y observaciones
 -- p_notas: [{ "cedulaEstudiante": "...", "nota": "6", "observaciones": "..." }]. Registra o reemplaza la nota y
 -- las observaciones de cada estudiante indicado; los demás no cambian. EV004 si un estudiante no se califica en
 -- la sección y semestre; EV005 si se repite; EV008 si la asignación ya fue confirmada en el semestre.
@@ -348,7 +348,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU07 - Eliminar la nota de un estudiante (corrección). EV008 si la asignación ya fue confirmada en
+-- Profesor Regular CU06 - Eliminar la nota de un estudiante (corrección). EV008 si la asignación ya fue confirmada en
 -- el semestre. NF009 si no tiene matrícula ese año; NF016 si no tiene nota.
 -- Devuelve la nota previa.
 -- ------------------------------------------------------------
@@ -383,7 +383,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU08 - Consultar evaluaciones de mi asignación en un semestre
+-- Profesor Regular CU07 - Consultar evaluaciones de mi asignación en un semestre
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_listar_notas(
     p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT,
@@ -414,7 +414,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------
--- Profesor Regular CU14 - Confirmar el registro de bandas al final del semestre (RN-75). EV006 si falta la nota de
+-- Profesor Regular CU13 - Confirmar el registro de bandas al final del semestre (RN-75). EV006 si falta la nota de
 -- algún estudiante. La confirmación solo puede realizarse una vez por semestre y bloquea cambios posteriores.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_profesor_confirmar_notas(

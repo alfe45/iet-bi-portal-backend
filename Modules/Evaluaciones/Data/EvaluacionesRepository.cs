@@ -6,7 +6,7 @@ using iet_bi_portal_backend.Modules.Evaluaciones.Models;
 
 namespace iet_bi_portal_backend.Modules.Evaluaciones.Data;
 
-/// <summary>Acceso a las funciones de evaluaciones (Profesor Regular CU01, CU06 a CU09 y CU14; Guía CU03/CU04;
+/// <summary>Acceso a las funciones de evaluaciones (Profesor Regular CU01, CU05 a CU08 y CU13; Guía CU03/CU04;
 /// prórrogas del ADMIN). El actor de las funciones de profesor es el profesor de la asignación (AD004).</summary>
 public class EvaluacionesRepository(NpgsqlDataSource db)
 {
