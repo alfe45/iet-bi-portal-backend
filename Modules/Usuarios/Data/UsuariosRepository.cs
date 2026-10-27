@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Usuarios.Models;
 
 namespace iet_bi_portal_backend.Modules.Usuarios.Data;
 
-/// <summary>Acceso a las funciones de administración de usuarios (CU01 a CU05). Las reglas las valida la DB.</summary>
+/// <summary>Acceso a las funciones de administración de usuarios (CU01; cuentas de profesor de CU07 y CU08). Las reglas las valida la DB.</summary>
 public class UsuariosRepository(NpgsqlDataSource db)
 {
     private const string Columnas =
