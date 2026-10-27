@@ -12,7 +12,7 @@ public class AusentismoService(AusentismoRepository repo, ILogsService logs)
     private const string TablaLecciones = "academico.lecciones";
     private const string TablaAusencias = "academico.ausencias";
 
-    /// <summary>CU10: registra la lección con sus ausentes. Devuelve el id de la lección.</summary>
+    /// <summary>CU09: registra la lección con sus ausentes. Devuelve el id de la lección.</summary>
     public async Task<long> RegistrarLeccionAsync(Guid actorId, RegistrarLeccionRequest request)
     {
         var idLeccion = await repo.RegistrarLeccionAsync(actorId, request);
@@ -20,7 +20,7 @@ public class AusentismoService(AusentismoRepository repo, ILogsService logs)
         return idLeccion;
     }
 
-    /// <summary>CU11: corrige la lección y reemplaza los ausentes. Registra log solo si hubo cambios.</summary>
+    /// <summary>CU10: corrige la lección y reemplaza los ausentes. Registra log solo si hubo cambios.</summary>
     public async Task ModificarLeccionAsync(Guid actorId, long idLeccion, ModificarLeccionRequest request)
     {
         var (estado, anteriores) = await repo.ModificarLeccionAsync(actorId, idLeccion, request);
@@ -29,7 +29,7 @@ public class AusentismoService(AusentismoRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU11: elimina la lección y sus ausencias.</summary>
+    /// <summary>CU10: elimina la lección y sus ausencias.</summary>
     public async Task EliminarLeccionAsync(Guid actorId, long idLeccion)
     {
         var anteriores = await repo.EliminarLeccionAsync(actorId, idLeccion);
@@ -37,7 +37,7 @@ public class AusentismoService(AusentismoRepository repo, ILogsService logs)
             datosAnteriores: anteriores.ComoJson());
     }
 
-    /// <summary>CU11: justifica una ausencia (RN-69). Registra log solo si hubo cambios.</summary>
+    /// <summary>CU10: justifica una ausencia (RN-69). Registra log solo si hubo cambios.</summary>
     public async Task JustificarAusenciaAsync(Guid actorId, long idLeccion, string cedula, JustificarAusenciaRequest request)
     {
         var (estado, anteriores) = await repo.JustificarAusenciaAsync(actorId, idLeccion, cedula, request.Justificacion);
@@ -46,7 +46,7 @@ public class AusentismoService(AusentismoRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU11: anula la justificación (la ausencia vuelve a ser injustificada). Registra log solo si tenía una.</summary>
+    /// <summary>CU10: anula la justificación (la ausencia vuelve a ser injustificada). Registra log solo si tenía una.</summary>
     public async Task AnularJustificacionAsync(Guid actorId, long idLeccion, string cedula)
     {
         var (estado, anteriores) = await repo.JustificarAusenciaAsync(actorId, idLeccion, cedula, null);
@@ -55,14 +55,14 @@ public class AusentismoService(AusentismoRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson());
     }
 
-    /// <summary>CU12: lecciones de una asignación del profesor.</summary>
+    /// <summary>CU11: lecciones de una asignación del profesor.</summary>
     public Task<ResultadoPaginado<Leccion>> ListarLeccionesAsync(Guid idUsuario, ConsultaLecciones consulta) =>
         repo.ListarLeccionesAsync(idUsuario, consulta);
 
-    /// <summary>CU12: detalle de una lección con sus ausentes.</summary>
+    /// <summary>CU11: detalle de una lección con sus ausentes.</summary>
     public Task<LeccionConAusentes> ObtenerLeccionAsync(Guid idUsuario, long idLeccion) => repo.ObtenerLeccionAsync(idUsuario, idLeccion);
 
-    /// <summary>CU12: resumen de ausentismo por estudiante de una asignación del profesor (RN-70).</summary>
+    /// <summary>CU11: resumen de ausentismo por estudiante de una asignación del profesor (RN-70).</summary>
     public Task<List<ResumenAusentismo>> ResumenProfesorAsync(Guid idUsuario, ConsultaAusentismo consulta) =>
         repo.ResumenProfesorAsync(idUsuario, consulta);
 

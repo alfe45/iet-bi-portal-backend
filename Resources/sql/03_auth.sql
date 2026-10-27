@@ -88,7 +88,7 @@ CREATE TABLE api.bootstrap_admin (
 CREATE INDEX ix_bootstrap_admin_usuario ON api.bootstrap_admin (id_usuario);
 
 -- ============================================================
--- INSERCIÓN DE USUARIOS (interna; la usan bootstrap y CU02)
+-- INSERCIÓN DE USUARIOS (interna; la usan bootstrap y el registro de usuarios)
 -- Valida correo/contraseña, crea el usuario y su rol inicial.
 -- ============================================================
 CREATE OR REPLACE FUNCTION auth.fn_insertar_usuario(

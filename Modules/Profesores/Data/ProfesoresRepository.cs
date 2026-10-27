@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Profesores.Models;
 
 namespace iet_bi_portal_backend.Modules.Profesores.Data;
 
-/// <summary>Acceso a las funciones de administración de profesores (CU06 a CU09). Todo por cédula.</summary>
+/// <summary>Acceso a las funciones de administración de profesores (CU01 a CU04). Todo por cédula.</summary>
 public class ProfesoresRepository(NpgsqlDataSource db)
 {
     private const string Columnas =

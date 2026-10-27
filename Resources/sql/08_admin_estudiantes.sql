@@ -1,5 +1,5 @@
 -- ============================================================
--- 08_admin_estudiantes.sql: CU 10 a 13. Se opera SIEMPRE por cédula (nunca por id_estudiante).
+-- 08_admin_estudiantes.sql: CU 05 a 08. Se opera SIEMPRE por cédula (nunca por id_estudiante).
 -- La cédula es inmutable. La edad (RN-01) NO se valida aquí sino al matricular, contra el inicio del
 -- periodo de la matrícula: así se pueden digitalizar estudiantes de periodos pasados.
 -- ============================================================
@@ -52,7 +52,7 @@ BEGIN
 END;
 $$;
 
--- CU 10 - Registrar estudiante. Devuelve la cédula normalizada.
+-- CU 05 - Registrar estudiante. Devuelve la cédula normalizada.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_estudiante(
     p_id_usuario_actor UUID,
     p_nombre TEXT,
@@ -92,7 +92,7 @@ BEGIN
 END;
 $$;
 
--- CU 11 - Consultar estudiantes
+-- CU 06 - Consultar estudiantes
 -- Búsqueda opcional por nombre, apellidos, cédula o correo (sin mayúsculas ni acentos).
 CREATE OR REPLACE FUNCTION academico.fn_admin_listar_estudiantes(p_id_usuario_actor UUID, p_busqueda TEXT, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.estudiante_admin
@@ -132,7 +132,7 @@ AS $$
     WHERE e.cedula = api.fn_limpiar_cedula(p_cedula);
 $$;
 
--- CU 12 - Modificar estudiante. La fecha de nacimiento solo se revalida (ES004) si cambia; la edad se valida al matricular.
+-- CU 07 - Modificar estudiante. La fecha de nacimiento solo se revalida (ES004) si cambia; la edad se valida al matricular.
 CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_estudiante(
     p_id_usuario_actor UUID,
     p_cedula TEXT,
@@ -197,7 +197,7 @@ BEGIN
 END;
 $$;
 
--- CU 13 - Eliminar estudiante (borrado físico; devuelve snapshot para auditoría).
+-- CU 08 - Eliminar estudiante (borrado físico; devuelve snapshot para auditoría).
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_estudiante(
     p_id_usuario_actor UUID,
     p_cedula TEXT

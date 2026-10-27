@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Estudiantes.Models;
 
-/// <summary>CU12: datos editables de un estudiante. La cédula no se puede cambiar (RN-10).
+/// <summary>CU07: datos editables de un estudiante. La cédula no se puede cambiar (RN-10).
 /// La edad (RN-01) se valida al matricular, contra el inicio del periodo. El trim y los vacíos a null los hace la DB.</summary>
 public class ActualizarEstudianteRequest
 {
@@ -26,7 +26,7 @@ public class ActualizarEstudianteRequest
     public DateOnly? FechaNacimiento { get; set; }
 }
 
-/// <summary>CU10: los mismos campos + la cédula.</summary>
+/// <summary>CU05: los mismos campos + la cédula.</summary>
 public class RegistrarEstudianteRequest : ActualizarEstudianteRequest
 {
     [Required, RegularExpression(PatronesValidacion.Cedula, ErrorMessage = PatronesValidacion.MensajeCedula)]

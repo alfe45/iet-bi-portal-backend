@@ -15,7 +15,7 @@ public class AsignacionesService(AsignacionesRepository repo, ILogsService logs)
     private static string IdRegistro(int anio, int nivel, int numero, string codigo, string cedula) =>
         $"{anio}/{nivel}-{numero}/{codigo.Trim().ToUpperInvariant()}/{cedula.Trim()}";
 
-    /// <summary>CU30: asigna a un profesor una asignatura en una sección.</summary>
+    /// <summary>CU25: asigna a un profesor una asignatura en una sección.</summary>
     public async Task RegistrarAsync(Guid actorId, RegistrarAsignacionRequest request)
     {
         await repo.RegistrarAsync(actorId, request);
@@ -25,10 +25,10 @@ public class AsignacionesService(AsignacionesRepository repo, ILogsService logs)
             datosNuevos: request);
     }
 
-    /// <summary>CU31: listado paginado con filtros opcionales.</summary>
+    /// <summary>CU26: listado paginado con filtros opcionales.</summary>
     public Task<ResultadoPaginado<Asignacion>> ListarAsync(Guid actorId, ConsultaAsignaciones consulta) => repo.ListarAsync(actorId, consulta);
 
-    /// <summary>CU32: reemplaza al profesor de la asignación. Registra log solo si hubo cambios.</summary>
+    /// <summary>CU27: reemplaza al profesor de la asignación. Registra log solo si hubo cambios.</summary>
     public async Task CambiarProfesorAsync(
         Guid actorId, int anio, int nivel, int numero, string codigo, string cedula, CambiarProfesorRequest request)
     {
@@ -41,7 +41,7 @@ public class AsignacionesService(AsignacionesRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU33: elimina la asignación.</summary>
+    /// <summary>CU28: elimina la asignación.</summary>
     public async Task EliminarAsync(Guid actorId, int anio, int nivel, int numero, string codigo, string cedula)
     {
         var anteriores = await repo.EliminarAsync(actorId, anio, nivel, numero, codigo, cedula);
@@ -49,7 +49,7 @@ public class AsignacionesService(AsignacionesRepository repo, ILogsService logs)
             IdRegistro(anio, nivel, numero, codigo, cedula), datosAnteriores: anteriores.ComoJson());
     }
 
-    /// <summary>Profesor Regular CU03: mis asignaciones de un año (null = periodo en curso).</summary>
+    /// <summary>Profesor Regular CU02: mis asignaciones de un año (null = periodo en curso).</summary>
     public Task<List<Asignacion>> ListarMisAsignacionesAsync(Guid idUsuario, int? anio) =>
         repo.ListarMisAsignacionesAsync(idUsuario, anio);
 }

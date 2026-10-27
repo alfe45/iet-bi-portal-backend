@@ -1,5 +1,5 @@
 -- ============================================================
--- 12_admin_asignaciones.sql: CU 30 a 33 (admin) + consulta de mis asignaciones (profesor).
+-- 12_admin_asignaciones.sql: CU 25 a 28 (admin) + consulta de mis asignaciones (profesor).
 -- Una asignación = profesor que imparte una asignatura en una sección. Varios profesores pueden
 -- compartir la misma asignatura y sección (co-docencia). Se opera SIEMPRE por claves naturales:
 -- (año, nivel, número, código de asignatura, cédula del profesor), nunca por id_asignacion.
@@ -61,7 +61,7 @@ $$;
 
 -- AD002 si el periodo de la sección no está finalizado y el profesor no tiene usuario activo con
 -- rol PROFESOR_REGULAR (el front activa el módulo de profesor según ese rol). En la asignatura CAS además
--- debe tener el rol PROFESOR_CAS (RN-82, AD007): asignar CAS es el Administrador CU38.
+-- debe tener el rol PROFESOR_CAS (RN-82, AD007): asignar CAS es el Administrador CU33.
 CREATE OR REPLACE FUNCTION academico.fn_validar_profesor_asignable(p_id_seccion BIGINT, p_id_asignatura BIGINT, p_id_profesor BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -114,7 +114,7 @@ BEGIN
 END;
 $$;
 
--- CU 30 - Asignar a un profesor una asignatura en una sección.
+-- CU 25 - Asignar a un profesor una asignatura en una sección.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_asignacion(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -152,7 +152,7 @@ BEGIN
 END;
 $$;
 
--- CU 31 - Consultar asignaciones. Todos los filtros son opcionales (NULL = todos).
+-- CU 26 - Consultar asignaciones. Todos los filtros son opcionales (NULL = todos).
 CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaciones(p_id_usuario_actor UUID, 
     p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_codigo_asignatura TEXT, p_cedula_profesor TEXT,
     p_pagina INTEGER, p_tamano_pagina INTEGER)
@@ -189,7 +189,7 @@ AS $$
       AND (p_cedula_profesor IS NULL OR (d.fila).cedula_profesor = api.fn_limpiar_cedula(p_cedula_profesor));
 $$;
 
--- CU 32 - Modificar asignación: reemplazar al profesor (ej. sustitución de un docente). Se conserva
+-- CU 27 - Modificar asignación: reemplazar al profesor (ej. sustitución de un docente). Se conserva
 -- la asignación para que sus registros futuros (evaluaciones, asistencia) sigan asociados.
 -- Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 CREATE OR REPLACE FUNCTION academico.fn_admin_cambiar_profesor_asignacion(
@@ -240,7 +240,7 @@ BEGIN
 END;
 $$;
 
--- CU 33 - Eliminar asignación. Devuelve el snapshot previo. Si otras entidades la referencian
+-- CU 28 - Eliminar asignación. Devuelve el snapshot previo. Si otras entidades la referencian
 -- (evaluaciones, asistencia) con FK RESTRICT, Postgres lanza 23001.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_asignacion(
     p_id_usuario_actor UUID,
@@ -271,7 +271,7 @@ BEGIN
 END;
 $$;
 
--- Profesor Regular CU03 - Mis asignaciones (secciones y asignaturas que imparto) en un año.
+-- Profesor Regular CU02 - Mis asignaciones (secciones y asignaturas que imparto) en un año.
 -- p_anio NULL = periodo en curso (NF005 si no hay). Si el usuario no tiene perfil de profesor,
 -- no devuelve filas.
 CREATE OR REPLACE FUNCTION academico.fn_profesor_listar_mis_asignaciones(p_id_usuario UUID, p_anio INTEGER)

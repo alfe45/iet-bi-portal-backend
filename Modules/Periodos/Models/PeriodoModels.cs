@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace iet_bi_portal_backend.Modules.Periodos.Models;
 
-/// <summary>CU16: fechas de los dos semestres. El año no se puede cambiar. El orden de las fechas y
+/// <summary>CU11: fechas de los dos semestres. El año no se puede cambiar. El orden de las fechas y
 /// las reglas de cierre las valida la DB (PA002, PA004, PA005, PA007, PA008).</summary>
 public class ActualizarPeriodoRequest
 {
@@ -19,7 +19,7 @@ public class ActualizarPeriodoRequest
     public DateOnly? FinSemestreII { get; set; }
 }
 
-/// <summary>CU14: las mismas fechas + el año del periodo.</summary>
+/// <summary>CU09: las mismas fechas + el año del periodo.</summary>
 public class RegistrarPeriodoRequest : ActualizarPeriodoRequest
 {
     [Required]

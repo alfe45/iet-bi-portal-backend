@@ -13,19 +13,19 @@ public class MonografiasService(MonografiasRepository repo, ILogsService logs)
     private const string TablaSeguimientos = "academico.seguimientos_monografia";
     private const string TablaReportes = "academico.reportes_monografia";
 
-    /// <summary>Administrador CU34.</summary>
+    /// <summary>Administrador CU29.</summary>
     public async Task RegistrarAsync(Guid actorId, RegistrarMonografiaRequest request)
     {
         await repo.RegistrarAsync(actorId, request);
         await logs.RegistrarAsync(actorId, AccionesLog.RegistrarMonografia, TablaMonografias, request.CedulaEstudiante.Trim(), datosNuevos: request);
     }
 
-    /// <summary>Administrador CU35.</summary>
+    /// <summary>Administrador CU30.</summary>
     public Task<ResultadoPaginado<Monografia>> ListarAsync(Guid actorId, ConsultaMonografias consulta) => repo.ListarAsync(actorId, consulta);
 
     public Task<Monografia> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
-    /// <summary>Administrador CU36. Registra log solo si hubo cambios.</summary>
+    /// <summary>Administrador CU31. Registra log solo si hubo cambios.</summary>
     public async Task ModificarAsync(Guid actorId, string cedula, ModificarMonografiaRequest request)
     {
         var (estado, anteriores) = await repo.ModificarAsync(actorId, cedula, request);
@@ -34,7 +34,7 @@ public class MonografiasService(MonografiasRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>Administrador CU37.</summary>
+    /// <summary>Administrador CU32.</summary>
     public async Task EliminarAsync(Guid actorId, string cedula)
     {
         var anteriores = await repo.EliminarAsync(actorId, cedula);

@@ -1,5 +1,5 @@
 -- ============================================================
--- 11_admin_asignaturas.sql: CU 26 a 29. Se opera SIEMPRE por código (nunca por id_asignatura).
+-- 11_admin_asignaturas.sql: CU 21 a 24. Se opera SIEMPRE por código (nunca por id_asignatura).
 -- El código es inmutable y se guarda en mayúsculas. El nombre es único sin distinguir mayúsculas.
 -- ============================================================
 SET search_path = academico, api, auth, public;
@@ -101,7 +101,7 @@ BEGIN
 END;
 $$;
 
--- CU 26 - Registrar asignatura. Devuelve el código normalizado.
+-- CU 21 - Registrar asignatura. Devuelve el código normalizado.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_asignatura(
     p_id_usuario_actor UUID,
     p_codigo TEXT,
@@ -143,7 +143,7 @@ BEGIN
 END;
 $$;
 
--- CU 27 - Consultar asignaturas. Filtros opcionales por tipo y nivel (NULL = todos).
+-- CU 22 - Consultar asignaturas. Filtros opcionales por tipo y nivel (NULL = todos).
 CREATE OR REPLACE FUNCTION academico.fn_admin_listar_asignaturas(p_id_usuario_actor UUID, 
     p_tipo academico.tipo_asignatura, p_nivel INTEGER, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.asignatura_admin
@@ -183,7 +183,7 @@ AS $$
     WHERE a.codigo = academico.fn_normalizar_codigo_asignatura(p_codigo);
 $$;
 
--- CU 28 - Modificar asignatura (todo menos el código). Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
+-- CU 23 - Modificar asignatura (todo menos el código). Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 -- AS006 tipo con notas o monografías; AS007 nivel con asignaciones; AS008 CAS no TRONCAL.
 CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_asignatura(
     p_id_usuario_actor UUID,
@@ -266,7 +266,7 @@ BEGIN
 END;
 $$;
 
--- CU 29 - Eliminar asignatura. Devuelve el snapshot previo. Si otras entidades la referencian
+-- CU 24 - Eliminar asignatura. Devuelve el snapshot previo. Si otras entidades la referencian
 -- (asignaciones docentes) con FK RESTRICT, Postgres lanza 23001.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_asignatura(
     p_id_usuario_actor UUID,

@@ -13,7 +13,7 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
     private const string TablaConfirmaciones = "academico.confirmaciones_notas";
     private const string TablaProrrogas = "academico.prorrogas";
 
-    /// <summary>CU06 / CU07 / CU09: registra o corrige notas y observaciones hasta la confirmación del semestre.
+    /// <summary>CU05 / CU06 / CU08: registra o corrige notas y observaciones hasta la confirmación del semestre.
     /// Registra log solo si hubo cambios.</summary>
     public async Task RegistrarNotasAsync(Guid actorId, RegistrarNotasRequest request)
     {
@@ -23,7 +23,7 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request.Notas);
     }
 
-    /// <summary>CU07: elimina la nota de un estudiante mientras la asignación no esté confirmada.</summary>
+    /// <summary>CU06: elimina la nota de un estudiante mientras la asignación no esté confirmada.</summary>
     public async Task EliminarNotaAsync(Guid actorId, ConsultaNotasAsignacion asignacion, string cedula)
     {
         var anteriores = await repo.EliminarNotaAsync(actorId, asignacion, cedula);
@@ -31,11 +31,11 @@ public class EvaluacionesService(EvaluacionesRepository repo, ILogsService logs)
             datosAnteriores: anteriores.ComoJson());
     }
 
-    /// <summary>CU08: estado y notas de mi asignación en el semestre.</summary>
+    /// <summary>CU07: estado y notas de mi asignación en el semestre.</summary>
     public Task<NotasAsignacion> ListarNotasAsync(Guid idUsuario, ConsultaNotasAsignacion consulta) =>
         repo.ListarNotasAsync(idUsuario, consulta);
 
-    /// <summary>CU14: confirma las notas del semestre (RN-75). Registra log solo si no estaban confirmadas.</summary>
+    /// <summary>CU13: confirma las notas del semestre (RN-75). Registra log solo si no estaban confirmadas.</summary>
     public async Task ConfirmarNotasAsync(Guid actorId, ConsultaNotasAsignacion request)
     {
         if (await repo.ConfirmarNotasAsync(actorId, request) == EstadoOperacion.Ok)

@@ -32,12 +32,12 @@ public class NotaRequest
     [Required, MaxLength(3)]
     public string Nota { get; set; } = string.Empty;
 
-    /// <summary>Profesor Regular CU09: observaciones del profesor (salen en el reporte de bandas).</summary>
+    /// <summary>Profesor Regular CU08: observaciones del profesor (salen en el reporte de bandas).</summary>
     [StringLength(500, MinimumLength = 3, ErrorMessage = "Las observaciones deben tener entre 3 y 500 caracteres.")]
     public string? Observaciones { get; set; }
 }
 
-/// <summary>Profesor Regular CU06 / CU07 / CU09: registra o corrige las notas de los estudiantes indicados (los demás no
+/// <summary>Profesor Regular CU05 / CU06 / CU08: registra o corrige las notas de los estudiantes indicados (los demás no
 /// cambian). EV002/EV003 fuera de plazo; EV004 estudiante que no se califica; EV005 repetido.</summary>
 public class RegistrarNotasRequest : ConsultaNotasAsignacion
 {
@@ -100,7 +100,7 @@ public record EstadoNotas(
     int Estudiantes,
     int SinNota);
 
-/// <summary>Profesor Regular CU08: estado y notas de la asignación.</summary>
+/// <summary>Profesor Regular CU07: estado y notas de la asignación.</summary>
 public record NotasAsignacion(EstadoNotas Estado, List<NotaEstudiante> Notas);
 
 /// <summary>Guía CU03: nota registrada de un estudiante en una asignación de la sección y si el profesor ya la confirmó.</summary>

@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Secciones.Models;
 
 namespace iet_bi_portal_backend.Modules.Secciones.Data;
 
-/// <summary>Acceso a las funciones de secciones (CU18 a CU21). Todo por (año, nivel, número).</summary>
+/// <summary>Acceso a las funciones de secciones (CU13 a CU16). Todo por (año, nivel, número).</summary>
 public class SeccionesRepository(NpgsqlDataSource db)
 {
     private const string Columnas = "anio, nivel::int, numero::int, nombre, cedula_guia, nombre_guia, cantidad_estudiantes";

@@ -187,7 +187,7 @@ CREATE INDEX ix_ausencias_matricula ON academico.ausencias(id_matricula);
 
 -- EVALUACIONES: nota semestral de un estudiante (matrícula) en una asignación (RN-73). La nota se guarda como
 -- texto normalizado ('1'..'7', 'A'..'E' o '0'..'100'); la escala según el tipo de asignatura la valida
--- 15_evaluaciones.sql (EV001). observaciones = observaciones del profesor (Profesor Regular CU09).
+-- 15_evaluaciones.sql (EV001). observaciones = observaciones del profesor (Profesor Regular CU08).
 CREATE TABLE academico.evaluaciones (
     id_evaluacion BIGINT GENERATED ALWAYS AS IDENTITY,
     id_asignacion BIGINT NOT NULL,

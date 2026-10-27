@@ -3,7 +3,7 @@ using iet_bi_portal_backend.Common.Models;
 
 namespace iet_bi_portal_backend.Modules.Secciones.Models;
 
-/// <summary>CU18: sección de un nivel (11 u 12) en el periodo de un año. Nivel y número los valida la DB (SE002).</summary>
+/// <summary>CU13: sección de un nivel (11 u 12) en el periodo de un año. Nivel y número los valida la DB (SE002).</summary>
 public class RegistrarSeccionRequest
 {
     [Required]
@@ -16,14 +16,14 @@ public class RegistrarSeccionRequest
     public int? Numero { get; set; }
 }
 
-/// <summary>CU21: profesor guía de la sección, por cédula.</summary>
+/// <summary>CU16: profesor guía de la sección, por cédula.</summary>
 public class AsignarGuiaRequest
 {
     [Required, RegularExpression(PatronesValidacion.Cedula, ErrorMessage = PatronesValidacion.MensajeCedula)]
     public string CedulaProfesor { get; set; } = string.Empty;
 }
 
-/// <summary>CU19: listado paginado con filtros opcionales por año y nivel.</summary>
+/// <summary>CU14: listado paginado con filtros opcionales por año y nivel.</summary>
 public class ConsultaSecciones : ConsultaPaginada
 {
     public int? Anio { get; set; }

@@ -5,7 +5,7 @@ using iet_bi_portal_backend.Modules.Periodos.Models;
 
 namespace iet_bi_portal_backend.Modules.Periodos.Data;
 
-/// <summary>Acceso a las funciones de periodos académicos (CU14 a CU17 y periodo actual). Todo por año.</summary>
+/// <summary>Acceso a las funciones de periodos académicos (CU09 a CU12 y periodo actual). Todo por año.</summary>
 public class PeriodosRepository(NpgsqlDataSource db)
 {
     private const string Columnas =

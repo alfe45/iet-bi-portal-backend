@@ -1,5 +1,5 @@
 -- ============================================================
--- 09_admin_periodos.sql: CU 14 a 17 + periodo/semestre actual y cierres.
+-- 09_admin_periodos.sql: CU 09 a 12 + periodo/semestre actual y cierres.
 -- Se opera SIEMPRE por año (nunca por id_periodo). El año es inmutable.
 -- "Hoy" es api.fn_hoy() (hora de Costa Rica). Un semestre queda cerrado cuando pasa su fecha de fin.
 -- El cierre aplica a la operación de los profesores (fn_validar_*_abierto). El ADMIN puede registrar
@@ -152,7 +152,7 @@ BEGIN
 END;
 $$;
 
--- CU 14 - Registrar periodo académico. Devuelve el año.
+-- CU 09 - Registrar periodo académico. Devuelve el año.
 CREATE OR REPLACE FUNCTION academico.fn_admin_registrar_periodo(
     p_id_usuario_actor UUID,
     p_anio INTEGER,
@@ -185,7 +185,7 @@ BEGIN
 END;
 $$;
 
--- CU 15 - Consultar periodos académicos (más reciente primero)
+-- CU 10 - Consultar periodos académicos (más reciente primero)
 CREATE OR REPLACE FUNCTION academico.fn_admin_listar_periodos(p_id_usuario_actor UUID, p_pagina INTEGER, p_tamano_pagina INTEGER)
 RETURNS SETOF academico.periodo_admin
 LANGUAGE sql STABLE
@@ -250,7 +250,7 @@ BEGIN
 END;
 $$;
 
--- CU 16 - Modificar las fechas de un periodo. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
+-- CU 11 - Modificar las fechas de un periodo. Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
 -- PA008 si las nuevas fechas dejan fuera registros del periodo (lecciones, matrículas, retiros...).
 -- Periodo finalizado (histórico): se puede corregir mientras siga finalizado (PA007: no se reabre).
 -- Periodo no finalizado: las fechas de un semestre finalizado no cambian (PA004) y un semestre no
@@ -341,7 +341,7 @@ BEGIN
 END;
 $$;
 
--- CU 17 - Eliminar periodo académico. Solo si no tiene secciones (PA006). Devuelve el snapshot previo.
+-- CU 12 - Eliminar periodo académico. Solo si no tiene secciones (PA006). Devuelve el snapshot previo.
 -- Si otras entidades lo referencian con FK RESTRICT, Postgres lanza 23503.
 CREATE OR REPLACE FUNCTION academico.fn_admin_eliminar_periodo(
     p_id_usuario_actor UUID,

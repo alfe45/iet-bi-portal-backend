@@ -12,7 +12,7 @@ public class EstudiantesService(EstudiantesRepository repo, ILogsService logs)
 {
     private const string Tabla = "academico.estudiantes";
 
-    /// <summary>CU10: registra un estudiante. Devuelve la cédula normalizada. Reglas validadas por la DB.</summary>
+    /// <summary>CU05: registra un estudiante. Devuelve la cédula normalizada. Reglas validadas por la DB.</summary>
     public async Task<string> RegistrarAsync(Guid actorId, RegistrarEstudianteRequest request)
     {
         request.Email = request.Email.NormalizarEmail();
@@ -22,13 +22,13 @@ public class EstudiantesService(EstudiantesRepository repo, ILogsService logs)
         return cedula;
     }
 
-    /// <summary>CU11: listado paginado con búsqueda opcional (nombre, apellidos, cédula o correo).</summary>
+    /// <summary>CU06: listado paginado con búsqueda opcional (nombre, apellidos, cédula o correo).</summary>
     public Task<ResultadoPaginado<EstudianteAdmin>> ListarAsync(Guid actorId, ConsultaConBusqueda consulta) => repo.ListarAsync(actorId, consulta);
 
-    /// <summary>CU11: detalle por cédula, o null si no existe.</summary>
+    /// <summary>CU06: detalle por cédula, o null si no existe.</summary>
     public Task<EstudianteAdmin?> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
-    /// <summary>CU12: modifica un estudiante. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
+    /// <summary>CU07: modifica un estudiante. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
     public async Task ActualizarAsync(Guid actorId, string cedula, ActualizarEstudianteRequest request)
     {
         request.Email = request.Email.NormalizarEmail();
@@ -39,7 +39,7 @@ public class EstudiantesService(EstudiantesRepository repo, ILogsService logs)
                 datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
     }
 
-    /// <summary>CU13: elimina un estudiante.</summary>
+    /// <summary>CU08: elimina un estudiante.</summary>
     public async Task EliminarAsync(Guid actorId, string cedula)
     {
         var anteriores = await repo.EliminarAsync(actorId, cedula);
