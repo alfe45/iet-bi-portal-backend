@@ -14,13 +14,14 @@ public class CorreoService(CorreoRepository repo, IServicioCorreo correo, Limite
     public const int MaxAdjuntos = 10;
     public const long MaxBytesAdjuntos = 10 * 1024 * 1024;
 
-    /// <summary>Extensiones permitidas (RP-61): documentos, hojas de cálculo, presentaciones, imágenes y zip.</summary>
+    /// <summary>Extensiones permitidas (RP-61): documentos, hojas de cálculo, presentaciones, imágenes y zip. Solo las que
+    /// Brevo acepta como adjunto (rechaza webp y odp con 400).</summary>
     private static readonly HashSet<string> Extensiones =
     [
         ".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt",
         ".xls", ".xlsx", ".ods", ".csv",
-        ".ppt", ".pptx", ".odp",
-        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
+        ".ppt", ".pptx",
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp",
         ".zip"
     ];
 

@@ -24,7 +24,9 @@ public sealed class BrevoCorreo(HttpClient http, RemitenteCorreo remitente) : IS
         };
 
         using var respuesta = await http.PostAsJsonAsync("smtp/email", cuerpo, Json, ct);
+        // El error de Brevo ({ code, message }) va al log del servidor, nunca al cliente (RP-16).
         if (!respuesta.IsSuccessStatusCode)
-            throw new HttpRequestException($"Brevo respondió {(int)respuesta.StatusCode}.", null, respuesta.StatusCode);
+            throw new HttpRequestException(
+                $"Brevo respondió {(int)respuesta.StatusCode}: {await respuesta.Content.ReadAsStringAsync(ct)}", null, respuesta.StatusCode);
     }
 }
