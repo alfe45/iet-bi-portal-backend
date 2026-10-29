@@ -26,4 +26,6 @@ Después: actualizar `DB_PASSWORD` en Render si cambió, reiniciar la API y crea
 ### Variables en Render
 `DB_HOST` (endpoint directo de Neon), `DB_USER=svc_api`, `DB_PASSWORD`, `CORS_ORIGINS` (separados por comas y sin barra final; incluir `http://localhost:4200` para el frontend local) y `CONFIAR_PROXY=true`. El resto está en `render.yaml`.
 
+Correo (Profesor Regular CU12, RP-61): `CORREO_PROVEEDOR=brevo`, `BREVO_API_KEY`, `CORREO_REMITENTE` (un remitente verificado en Brevo) y `CORREO_REMITENTE_NOMBRE`. Son obligatorias: sin ellas la API no arranca. Render free bloquea los puertos SMTP, por eso el correo sale por la API HTTP de Brevo. Para cambiar de proveedor (Resend u otro) se agrega una clase que implemente `IServicioCorreo` en `Common/Correo` y su caso en `ServicioCorreoModule`.
+
 Plan free: la API se duerme tras 15 min sin tráfico (la primera petición tarda ~1 min) y Neon suspende la base sin uso (la primera conexión tarda ~1 s).

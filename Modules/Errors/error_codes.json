@@ -124,6 +124,11 @@
   "CA001": { "status": 400, "mensaje": "La fecha de una experiencia CAS no es válida: no puede ser futura y debe caer dentro del periodo." },
   "CA002": { "status": 400, "mensaje": "La fecha final de una experiencia CAS necesita la inicial y no puede ser anterior." },
   "NF015": { "status": 404, "mensaje": "El informe CAS no existe." },
+  "CO001": { "status": 400, "mensaje": "Tipo de archivo no permitido. Se aceptan documentos (pdf, doc, docx, odt, rtf, txt), hojas de cálculo (xls, xlsx, ods, csv), presentaciones (ppt, pptx, odp), imágenes (jpg, jpeg, png, gif, webp, bmp) y zip." },
+  "CO002": { "status": 400, "mensaje": "Los adjuntos no son válidos: máximo 10 archivos y 10 MB en total, y ninguno puede estar vacío." },
+  "CO003": { "status": 409, "mensaje": "La sección no tiene estudiantes matriculados a quienes enviar el correo." },
+  "CO004": { "status": 502, "mensaje": "No se pudo enviar el correo a ninguno de los estudiantes. Inténtalo de nuevo más tarde." },
+  "CO005": { "status": 429, "mensaje": "Alcanzaste el máximo de envíos de correo por hora. Inténtalo de nuevo más tarde." },
 
   "23502": { "status": 400, "mensaje": "Falta un valor obligatorio." },
   "23505": { "status": 409, "mensaje": "Ya existe un registro con esos datos." },

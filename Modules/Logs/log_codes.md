@@ -106,3 +106,8 @@ PERMITIR_CAMBIOS_REPORTE_MONOGRAFIA // El guía reactivó la edición de un repo
 REGISTRAR_INFORME_CAS   // Primer informe CAS del estudiante en el semestre (datos_nuevos = request).
 MODIFICAR_INFORME_CAS   // Cambio del informe (datos_anteriores = informe previo con sus experiencias). No se registra si no hubo cambios.
 ELIMINAR_INFORME_CAS    // Eliminación (datos_anteriores = informe previo).
+
+# Correo (id_registro_afectado = "año/nivel-número" de la sección)
+ENVIAR_CORREO_SECCION   // El profesor envió documentos por correo a estudiantes de una sección (RN-92). datos_nuevos =
+                        // { asunto, adjuntos: [{ nombre, bytes }], enviados: [cédulas], fallidos: [cédulas] }. Nunca el
+                        // mensaje ni el contenido de los archivos. Se registra también si fallaron todos (CO004).

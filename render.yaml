@@ -23,6 +23,16 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
+      # Correo (RP-61): Brevo por API HTTP (Render free bloquea SMTP). El remitente debe estar verificado en Brevo.
+      - key: CORREO_PROVEEDOR
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: CORREO_REMITENTE
+        sync: false
+      - key: CORREO_REMITENTE_NOMBRE
+        value: Portal IET-BI
+
       # Neon: endpoint directo (sin -pooler) y la cuenta svc_api creada por 01_roles_schemas.sql.
       - key: DB_HOST
         sync: false

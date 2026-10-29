@@ -71,13 +71,16 @@ Reglas de diseño que se aplican siempre al escribir código. Cada regla es ató
 - RP-37: El namespace refleja la carpeta.
 
 ## Módulos
-- RP-40: Los módulos de negocio (Auth, Usuarios, Profesores, Estudiantes, Periodos, Secciones, Asignaturas, Asignaciones, Matrículas, Ausentismo, Evaluaciones, Monografias, Cas, Informes) solo dependen de Common, Config, Errors y Logs; nunca entre sí.
+- RP-40: Los módulos de negocio (Auth, Usuarios, Profesores, Estudiantes, Periodos, Secciones, Asignaturas, Asignaciones, Matrículas, Ausentismo, Evaluaciones, Monografias, Cas, Informes, Correo) solo dependen de Common, Config, Errors y Logs; nunca entre sí.
 - RP-41: Todo lo que usen 2 o más módulos vive en Common (roles, claims, contraseñas, paginación, base de controllers, texto, acceso a datos).
 - RP-42: Todo controller hereda de `ApiControllerBase`; los de administración, de `AdminControllerBase` (exige ADMIN).
 - RP-43: El id del usuario autenticado se lee con `ActorId`; no se repite la validación del claim en cada endpoint.
 - RP-44: Un solo tipo por concepto: el mismo record es resultado del Repository y respuesta HTTP.
 - RP-45: Los estados `OK` / `SIN_CAMBIOS` se comparan con `EstadoOperacion`, no con strings sueltos.
 - RP-46: Cada módulo se registra con `Add<Nombre>Module` y se conecta en `Program.cs`.
+
+## Correo
+- RP-61: El correo sale por la interfaz `IServicioCorreo` (`Common/Correo`); el proveedor se elige con `CORREO_PROVEEDOR` (`brevo` por API HTTP, porque Render free bloquea los puertos SMTP; `carpeta` guarda cada correo como `.eml` en `CORREO_CARPETA`, para local y pruebas). Cambiar de proveedor (Resend u otro) es agregar una clase que implemente la interfaz y su caso en `CorreoModule`; el resto del código no cambia. Adjuntos: hasta 10 archivos y 10 MB en total, ninguno vacío (CO002), con extensión permitida (CO001): pdf, doc, docx, odt, rtf, txt, xls, xlsx, ods, csv, ppt, pptx, odp, jpg, jpeg, png, gif, webp, bmp y zip (nunca ejecutables ni scripts). Asunto y mensaje van en texto plano. Máximo 10 envíos por hora por usuario (CO005). El envío se hace fuera de la base y no se deshace: el log registra destinatarios enviados y fallidos, asunto y nombre y tamaño de cada adjunto.
 
 ## Auditoría
 - RP-58: Las peticiones que modifican datos (POST/PUT/PATCH/DELETE) corren en una transacción (`TransaccionPorPeticionFilter`): la función SQL y `ILogsService.RegistrarAsync` se confirman juntas. Se confirma si la acción no lanzó excepción, aunque responda 4xx (login fallido, refresh reutilizado).
