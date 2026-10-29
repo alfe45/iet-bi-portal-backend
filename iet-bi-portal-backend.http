@@ -437,6 +437,32 @@ Authorization: Bearer {{tokenProfe}}
 GET {{host}}/api/profesor/secciones/{{anio}}/11/1/estudiantes/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
+### Profesor Regular CU12 - Enviar documentos por correo a la sección (multipart; sin "cedulas" = todos los estudiantes
+### sin retiro). Adjuntos: hasta 10 y 10 MB en total; pdf, Word, Excel, PowerPoint, imágenes, zip... (RP-61).
+### Con CORREO_PROVEEDOR=carpeta los correos quedan como .eml en CORREO_CARPETA.
+POST {{host}}/api/profesor/secciones/{{anio}}/11/1/correo
+Authorization: Bearer {{tokenProfe}}
+Content-Type: multipart/form-data; boundary=LimiteCorreo
+
+--LimiteCorreo
+Content-Disposition: form-data; name="asunto"
+
+Material de la semana
+--LimiteCorreo
+Content-Disposition: form-data; name="mensaje"
+
+Buenas tardes, adjunto la guía de la semana.
+--LimiteCorreo
+Content-Disposition: form-data; name="cedulas"
+
+{{cedulaEst}}
+--LimiteCorreo
+Content-Disposition: form-data; name="adjuntos"; filename="guia.txt"
+Content-Type: text/plain
+
+Guía de ejercicios 1 a 10.
+--LimiteCorreo--
+
 # ------------------------------------------------------------
 # Ausentismo: el profesor registra cada lección cuando la imparte y marca a los ausentes.
 # La fecha no puede ser futura y debe caer en un semestre abierto del periodo.

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 
 namespace iet_bi_portal_backend.Modules.Errors;
@@ -16,6 +17,15 @@ public static class ErrorsModule
         {
             options.InvalidModelStateResponseFactory = context =>
             {
+                // Un formulario (multipart) que pasa el límite de tamaño falla al leerse durante el binding, sin excepción
+                // (RP-17: no se lee el mensaje): 413, como los cuerpos JSON demasiado grandes en GlobalExceptionHandler.
+                var limite = context.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>()?.MaxRequestBodySize;
+                if (limite is not null && context.HttpContext.Request.ContentLength > limite)
+                    return new ObjectResult(new { codigo = "PAYLOAD_TOO_LARGE", mensaje = "La solicitud supera el tamaño máximo permitido." })
+                    {
+                        StatusCode = StatusCodes.Status413PayloadTooLarge
+                    };
+
                 var mensaje = string.Join(" ", context.ModelState.Values
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage));

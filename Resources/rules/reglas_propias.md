@@ -62,11 +62,11 @@ Bachillerato Internacional. La numeración RN-xx es común con las reglas genera
 ### Roles
 - RN-13: Roles válidos: ADMIN, PROFESOR_REGULAR (profesor de asignatura), GUIA (profesor guía de sección), COORD_MONOGRAFIA, PROFESOR_CAS y COORD_CAS. Asignar profesores como coordinadores (CU34) es otorgarles COORD_MONOGRAFIA o COORD_CAS.
 
-## Aplazadas
-Reglas aceptadas que el usuario decidió no implementar por ahora (no tienen módulo).
-
 ### Correo
-- PR-17: Un módulo futuro enviaría por correo a los estudiantes los documentos que se ocupen, a su correo registrado aunque no usen el sistema (Profesor Regular CU12). Se descarta por ahora (decisión del 30/09/2026); falta definir qué documentos y el servidor de correo.
+- RN-92: El profesor envía por correo documentos a los estudiantes de una sección, a su correo registrado aunque no usen el sistema (Profesor Regular CU12; antes PR-17, aplazada el 30/09/2026 y retomada el 29/10/2026). Mismo acceso de RN-59: imparte en la sección o es su guía (AD003). Destinatarios: los estudiantes matriculados en la sección sin retiro, todos o los que elija por cédula (NF009 si una cédula no está matriculada en la sección o está retirada); CO003 si la sección no tiene a quién enviar. Lleva asunto, mensaje y de 0 a 10 adjuntos de cualquier tipo de documento o imagen (lista permitida en RP-61; CO001, CO002). Cada estudiante recibe su propio correo (no ven los correos de los demás) y responder le llega al profesor. Si falla el envío a algunos se informan; si falla a todos, CO004. El envío se audita sin el contenido de los archivos.
+
+## Aplazadas
+Reglas aceptadas que el usuario decidió no implementar por ahora (no tienen módulo). Ninguna por ahora (PR-17 pasó a RN-92 el 29/10/2026).
 
 ## Descartadas
 - PR-09: Estudiantes y encargados no usan el sistema (no son usuarios, ni siquiera de consulta).

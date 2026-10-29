@@ -95,4 +95,7 @@ public static class AccionesLog
     public const string RegistrarInformeCas = "REGISTRAR_INFORME_CAS";
     public const string ModificarInformeCas = "MODIFICAR_INFORME_CAS";
     public const string EliminarInformeCas = "ELIMINAR_INFORME_CAS";
+
+    // Correo
+    public const string EnviarCorreoSeccion = "ENVIAR_CORREO_SECCION";
 }

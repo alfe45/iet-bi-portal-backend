@@ -1,11 +1,13 @@
 using DotNetEnv;
 using iet_bi_portal_backend.Common;
+using iet_bi_portal_backend.Common.Correo;
 using iet_bi_portal_backend.Common.Data;
 using iet_bi_portal_backend.Config;
 using iet_bi_portal_backend.Modules.Asignaciones;
 using iet_bi_portal_backend.Modules.Asignaturas;
 using iet_bi_portal_backend.Modules.Ausentismo;
 using iet_bi_portal_backend.Modules.Cas;
+using iet_bi_portal_backend.Modules.Correo;
 using iet_bi_portal_backend.Modules.Evaluaciones;
 using iet_bi_portal_backend.Modules.Informes;
 using iet_bi_portal_backend.Modules.Monografias;
@@ -27,6 +29,7 @@ Env.Load(Environment.GetEnvironmentVariable("ENV_FILE") ?? ".env");
 var builder = WebApplication.CreateBuilder(args);
 
 // Sin cabecera Server y cuerpo máximo de 1 MB (el mayor pedido legítimo, 100 notas o 30 experiencias CAS, ocupa pocos KB).
+// El correo con adjuntos (Profesor Regular CU12) sube su propio límite con [RequestSizeLimit].
 builder.WebHost.ConfigureKestrel(o =>
 {
     o.AddServerHeader = false;
@@ -58,6 +61,7 @@ if (confiarProxy)
 }
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddCommon();
+builder.Services.AddServicioCorreo(builder.Configuration);
 
 // Infraestructura compartida
 builder.Services.AddErrorsModule();
@@ -78,6 +82,7 @@ builder.Services.AddEvaluacionesModule();
 builder.Services.AddMonografiasModule();
 builder.Services.AddCasModule();
 builder.Services.AddInformesModule();
+builder.Services.AddCorreoModule();
 
 var app = builder.Build();
 
