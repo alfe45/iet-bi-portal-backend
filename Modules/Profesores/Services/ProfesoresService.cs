@@ -44,14 +44,30 @@ public class ProfesoresService(ProfesoresRepository repo, IContrasenaService con
     /// <summary>CU02: detalle por cédula, o null si no existe.</summary>
     public Task<ProfesorAdmin?> ObtenerAsync(Guid actorId, string cedula) => repo.ObtenerAsync(actorId, cedula);
 
-    /// <summary>CU03: modifica un profesor. Registra snapshot previo y datos nuevos solo si hubo cambios.</summary>
-    public async Task ActualizarAsync(Guid actorId, string cedula, ActualizarProfesorRequest request)
+    /// <summary>CU03: modifica un profesor y, si viene, su cuenta. Corre en la transacción de la petición (RP-58): datos y
+    /// cuenta se confirman juntos o no se aplica nada (RD-010). Audita cada parte solo si cambió.</summary>
+    public async Task ActualizarAsync(Guid actorId, string cedula, ModificarProfesorRequest request)
     {
         var (estado, anteriores) = await repo.ActualizarAsync(actorId, cedula, request);
 
         if (estado == EstadoOperacion.Ok)
             await logs.RegistrarAsync(actorId, AccionesLog.ModificarProfesor, Tabla, cedula,
-                datosAnteriores: anteriores.ComoJson(), datosNuevos: request);
+                datosAnteriores: anteriores.ComoJson(), datosNuevos: new
+                {
+                    request.Nombre, request.PrimerApellido, request.SegundoApellido, request.NumeroCelular, request.FechaNacimiento
+                });
+
+        if (request.Cuenta is not { } cuenta) return;
+
+        var hash = cuenta.Contrasena is null ? null : contrasenas.Hashear(cuenta.Contrasena);
+        var (estadoCuenta, cuentaAnterior, idUsuario, creada) = await repo.ActualizarCuentaAsync(actorId, cedula, cuenta, hash);
+
+        if (creada)
+            await logs.RegistrarAsync(actorId, AccionesLog.CrearCuentaProfesor, Tabla, cedula,
+                datosNuevos: new { idUsuario, cuenta.Email, cuenta.Roles });
+        else if (estadoCuenta == EstadoOperacion.Ok)
+            await logs.RegistrarAsync(actorId, AccionesLog.ModificarCuentaProfesor, Tabla, cedula,
+                datosAnteriores: cuentaAnterior.ComoJson(), datosNuevos: cuenta.ParaLog());
     }
 
     /// <summary>CU04: elimina el perfil de profesor y su cuenta (RN-07).</summary>
