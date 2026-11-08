@@ -37,7 +37,11 @@ builder.WebHost.ConfigureKestrel(o =>
 });
 
 // Toda petición que modifica datos va en una transacción: operación y auditoría juntas (RP-58).
-builder.Services.AddControllers(o => o.Filters.Add<TransaccionPorPeticionFilter>());
+builder.Services.AddControllers(o =>
+{
+    o.Filters.Add<TransaccionPorPeticionFilter>();
+    MensajesValidacion.Configurar(o); // RD-007: VAERR en español
+});
 // CORS_ORIGINS: orígenes del frontend separados por comas (en Render, la URL pública del frontend); sin ella, el Angular local.
 var origenesCors = (builder.Configuration["CORS_ORIGINS"] ?? "http://localhost:4200,http://127.0.0.1:4200")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
