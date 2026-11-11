@@ -14,6 +14,9 @@ namespace iet_bi_portal_backend.Modules.Errors;
 /// </summary>
 public static partial class MensajesValidacion
 {
+    /// <summary>DV-001: [EmailAddress] trae su propio mensaje en inglés y la plantilla no lo reemplaza; se usa este.</summary>
+    public const string CorreoInvalido = "El correo electrónico no tiene un formato válido.";
+
     /// <summary>Palabras que el nombre técnico del campo escribe sin tilde.</summary>
     private static readonly Dictionary<string, string> Palabras = new(StringComparer.OrdinalIgnoreCase)
     {

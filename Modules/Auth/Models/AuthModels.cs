@@ -1,3 +1,4 @@
+using iet_bi_portal_backend.Modules.Errors;
 using System.ComponentModel.DataAnnotations;
 
 namespace iet_bi_portal_backend.Modules.Auth.Models;
@@ -5,7 +6,7 @@ namespace iet_bi_portal_backend.Modules.Auth.Models;
 /// <summary>Datos para iniciar sesión.</summary>
 public class LoginRequest
 {
-    [Required, EmailAddress, MaxLength(254)]
+    [Required, EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string Email { get; set; } = string.Empty;
 
     [Required, MaxLength(128)]
@@ -39,7 +40,7 @@ public class CambiarContrasenaRequest
 /// <summary>Datos para crear el primer administrador del sistema (ver SetupController).</summary>
 public class PrimerAdminRequest
 {
-    [Required, EmailAddress, MaxLength(254)]
+    [Required, EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string Email { get; set; } = string.Empty;
 
     [Required, MinLength(8), MaxLength(128)]

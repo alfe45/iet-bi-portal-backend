@@ -1,3 +1,4 @@
+using iet_bi_portal_backend.Modules.Errors;
 using System.ComponentModel.DataAnnotations;
 using iet_bi_portal_backend.Common.Models;
 
@@ -19,7 +20,7 @@ public class ActualizarEstudianteRequest
     [MaxLength(20)]
     public string? NumeroCelular { get; set; }
 
-    [Required, EmailAddress, MaxLength(254)]
+    [Required, EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string Email { get; set; } = string.Empty;
 
     [Required]

@@ -1,3 +1,4 @@
+using iet_bi_portal_backend.Modules.Errors;
 using System.ComponentModel.DataAnnotations;
 using iet_bi_portal_backend.Common.Models;
 using iet_bi_portal_backend.Common.Security;
@@ -35,7 +36,7 @@ public class ModificarProfesorRequest : ActualizarProfesorRequest
 /// completo deseado. Si el profesor no tenía cuenta (registrado antes de RN-05), se le crea con estos datos.</summary>
 public class ActualizarCuentaProfesorRequest
 {
-    [EmailAddress, MaxLength(254)]
+    [EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string? Email { get; set; }
 
     /// <summary>Contraseña nueva (8 a 128); null = no se cambia.</summary>
@@ -65,7 +66,7 @@ public class RegistrarProfesorRequest : ActualizarProfesorRequest
 /// PROFESOR_REGULAR).</summary>
 public class CuentaProfesorRequest
 {
-    [Required, EmailAddress, MaxLength(254)]
+    [Required, EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string? Email { get; set; }
 
     [Required, MinLength(8), MaxLength(128)]
