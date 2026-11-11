@@ -1,6 +1,6 @@
 -- ============================================================
--- 20_catalogo_asignaturas.sql (opcional): catálogo de asignaturas del Instituto. Se ejecuta después de 01..19
--- al preparar una base nueva; las pruebas no lo usan (crean sus propias asignaturas).
+-- 20_catalogo_asignaturas.sql (obligatorio, RP-25): catálogo de asignaturas del Instituto. Se ejecuta después de 01..19
+-- al preparar cualquier base (también las de prueba). CAS y MON son parte del sistema: no se pueden eliminar (AS009).
 -- CAS se identifica por el código 'CAS' y es TRONCAL (RN-82, AS008). MON es la asignatura TRONCAL de la monografía (RN-88). Estudios Sociales y Cívica solo en nivel 11 (RN-39).
 -- ============================================================
 SET search_path = academico, api, auth, public;

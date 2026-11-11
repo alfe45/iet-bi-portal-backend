@@ -9,12 +9,12 @@ Render solo despliega el código C#. Si un cambio necesita SQL nuevo:
 1. Ejecutar el script en Neon **antes** del merge a `develop` (si no, el endpoint dará 500).
 2. Reiniciar la API en Render (Manual Deploy → Restart): Npgsql guarda en caché los tipos de la base.
 
-Los scripts `01..19` recrean los esquemas desde cero (`DROP SCHEMA ... CASCADE`): **borran todos los datos** de una base compartida. Para cambiar una función basta ejecutar su archivo, revisando que no haga `DROP` de tablas.
+Los scripts `01..20` recrean los esquemas desde cero (el `20` carga el catálogo de asignaturas del Instituto, obligatorio: CAS y MON son parte del sistema) (`DROP SCHEMA ... CASCADE`): **borran todos los datos** de una base compartida. Para cambiar una función basta ejecutar su archivo, revisando que no haga `DROP` de tablas.
 
 ### Recrear la base desde cero
 Con la cadena de conexión del dueño (consola de Neon → Connect, endpoint **sin** `-pooler`):
 ```bash
-for f in Resources/sql/[01][0-9]_*.sql; do psql "$NEON_OWNER_URL" -v ON_ERROR_STOP=1 -f "$f" || break; done
+for f in Resources/sql/[012][0-9]_*.sql; do psql "$NEON_OWNER_URL" -v ON_ERROR_STOP=1 -f "$f" || break; done
 ```
 `01_roles_schemas.sql` crea las cuentas `svc_api` y `svc_admin` (desactivable con `PGOPTIONS="-c ietbi.crear_roles=off"`). Sus contraseñas se ponen aparte y nunca van al repo:
 ```sql

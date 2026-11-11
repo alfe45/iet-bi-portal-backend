@@ -67,6 +67,8 @@
   "AS006": { "status": 409, "mensaje": "No se puede cambiar el tipo de una asignatura con notas o monografías registradas: el tipo define su escala." },
   "AS007": { "status": 409, "mensaje": "La asignatura tiene asignaciones en un nivel que se quiere quitar." },
   "AS008": { "status": 400, "mensaje": "La asignatura CAS debe ser de tipo Troncal." },
+  "AS009": { "status": 409, "mensaje": "Las asignaturas CAS y Monografía (MON) son parte del sistema: no se pueden eliminar." },
+  "AS010": { "status": 400, "mensaje": "La asignatura de Monografía (MON) debe ser de tipo Troncal." },
   "NF007": { "status": 404, "mensaje": "La asignatura no existe." },
 
   "AD001": { "status": 409, "mensaje": "El profesor ya tiene asignada esa asignatura en la sección." },

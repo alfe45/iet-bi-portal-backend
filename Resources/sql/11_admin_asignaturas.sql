@@ -90,6 +90,7 @@ END;
 $$;
 
 -- RN-82: AS008 si la asignatura CAS no es TRONCAL (su nota usa la escala A a E y tiene su propio informe).
+-- RN-88: AS010 si la asignatura de la monografía (MON) no es TRONCAL.
 CREATE OR REPLACE FUNCTION academico.fn_validar_tipo_asignatura(p_codigo TEXT, p_tipo academico.tipo_asignatura)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -97,6 +98,9 @@ AS $$
 BEGIN
     IF p_codigo = 'CAS' AND p_tipo IS DISTINCT FROM 'TRONCAL' THEN
         PERFORM api.fn_lanzar_excepcion('AS008', 'La asignatura CAS debe ser de tipo TRONCAL.');
+    END IF;
+    IF p_codigo = 'MON' AND p_tipo IS DISTINCT FROM 'TRONCAL' THEN
+        PERFORM api.fn_lanzar_excepcion('AS010', 'La asignatura de Monografía (MON) debe ser de tipo TRONCAL.');
     END IF;
 END;
 $$;
@@ -184,7 +188,7 @@ AS $$
 $$;
 
 -- CU 23 - Modificar asignatura (todo menos el código). Devuelve 'OK' o 'SIN_CAMBIOS' y el snapshot previo.
--- AS006 tipo con notas o monografías; AS007 nivel con asignaciones; AS008 CAS no TRONCAL.
+-- AS006 tipo con notas o monografías; AS007 nivel con asignaciones; AS008 CAS no TRONCAL; AS010 MON no TRONCAL.
 CREATE OR REPLACE FUNCTION academico.fn_admin_actualizar_asignatura(
     p_id_usuario_actor UUID,
     p_codigo TEXT,
@@ -288,6 +292,11 @@ BEGIN
 
     IF NOT FOUND THEN
         PERFORM api.fn_lanzar_excepcion('NF007', 'La asignatura no existe.');
+    END IF;
+
+    -- RN-82/RN-88: CAS y MON vienen del catálogo (20_catalogo_asignaturas.sql) y el sistema depende de ellas.
+    IF v_prev.codigo IN ('CAS', 'MON') THEN
+        PERFORM api.fn_lanzar_excepcion('AS009', 'Las asignaturas CAS y Monografía (MON) son parte del sistema: no se pueden eliminar.');
     END IF;
 
     DELETE FROM academico.asignaturas WHERE id_asignatura = v_prev.id_asignatura;
