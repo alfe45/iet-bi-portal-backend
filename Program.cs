@@ -10,6 +10,7 @@ using iet_bi_portal_backend.Modules.Cas;
 using iet_bi_portal_backend.Modules.Correo;
 using iet_bi_portal_backend.Modules.Evaluaciones;
 using iet_bi_portal_backend.Modules.Informes;
+using iet_bi_portal_backend.Modules.Tablero;
 using iet_bi_portal_backend.Modules.Monografias;
 using iet_bi_portal_backend.Modules.Auth;
 using iet_bi_portal_backend.Modules.Errors;
@@ -86,6 +87,7 @@ builder.Services.AddEvaluacionesModule();
 builder.Services.AddMonografiasModule();
 builder.Services.AddCasModule();
 builder.Services.AddInformesModule();
+builder.Services.AddTableroModule();
 builder.Services.AddCorreoModule();
 
 var app = builder.Build();

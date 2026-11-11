@@ -351,6 +351,14 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/admin/prorrogas/{{anio}}/I_SEMESTRE/{{cedulaProfe}}
 Authorization: Bearer {{token}}
 
+### Tablero del Administrador (RP-62): sin año, el curso lectivo en curso
+GET {{host}}/api/admin/tablero
+Authorization: Bearer {{token}}
+
+### Tablero de un año
+GET {{host}}/api/admin/tablero?anio={{anio}}
+Authorization: Bearer {{token}}
+
 ### CU19 - Estudiantes matriculados en una sección
 GET {{host}}/api/admin/matriculas?anio={{anio}}&nivel=11&numero=1&estado=&busqueda=
 Authorization: Bearer {{token}}
