@@ -71,8 +71,11 @@ public class ConsultaProgresoGeneral
     [Required]
     public int? Anio { get; set; }
 
+    // DV-015 (CC01 FA 1): mismo rango y mensaje que los demás criterios de nivel y sección.
+    [Range(11, 12, ErrorMessage = "El nivel debe ser 11 u 12.")]
     public int? Nivel { get; set; }
 
+    [Range(1, 99, ErrorMessage = "El número de sección debe estar entre 1 y 99.")]
     public int? Numero { get; set; }
 
     [Required, RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)]

@@ -1,3 +1,5 @@
+using iet_bi_portal_backend.Common.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using iet_bi_portal_backend.Common.Controllers;
@@ -20,6 +22,6 @@ public class CoordinadorCasController(CasService cas) : ApiControllerBase
 
     /// <summary>CU02: informes CAS del estudiante en el semestre (uno por profesor CAS de su sección). 404 (NF004/NF003/NF009/NF015).</summary>
     [HttpGet("informes/{anio:int}/{semestre}/{cedula}")]
-    public async Task<IActionResult> Informes(int anio, string semestre, string cedula) =>
+    public async Task<IActionResult> Informes(int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula) =>
         Ok(await cas.InformesEstudianteAsync(anio, semestre, cedula));
 }

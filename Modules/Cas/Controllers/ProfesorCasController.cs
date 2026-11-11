@@ -1,3 +1,5 @@
+using iet_bi_portal_backend.Common.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using iet_bi_portal_backend.Common.Controllers;
@@ -23,13 +25,13 @@ public class ProfesorCasController(CasService cas) : ApiControllerBase
 
     /// <summary>CU03: informe completo. 404 (NF004/NF003/NF009/NF015); 403 (AD004).</summary>
     [HttpGet(RutaInforme)]
-    public async Task<IActionResult> Obtener(int anio, string semestre, string cedula) =>
+    public async Task<IActionResult> Obtener(int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula) =>
         Ok(await cas.ObtenerInformeAsync(ActorId, anio, semestre, cedula));
 
     /// <summary>CU01 / CU02: registra o reemplaza el informe (RN-83). 404 (NF004/NF003/NF009); 403 (AD004); 400 (EV004)
     /// estudiante que no se califica en el semestre; 400 (CA001) fecha de experiencia inválida; 400 (CA002) fecha final sin inicial o anterior; 409 (EV002/EV003).</summary>
     [HttpPut(RutaInforme)]
-    public async Task<IActionResult> Guardar(int anio, string semestre, string cedula, GuardarInformeCasRequest request)
+    public async Task<IActionResult> Guardar(int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula, GuardarInformeCasRequest request)
     {
         await cas.GuardarInformeAsync(ActorId, anio, semestre, cedula, request);
         return NoContent();
@@ -37,7 +39,7 @@ public class ProfesorCasController(CasService cas) : ApiControllerBase
 
     /// <summary>CU04: 404 (NF004/NF003/NF009/NF015); 403 (AD004); 409 (EV002/EV003).</summary>
     [HttpDelete(RutaInforme)]
-    public async Task<IActionResult> Eliminar(int anio, string semestre, string cedula)
+    public async Task<IActionResult> Eliminar(int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula)
     {
         await cas.EliminarInformeAsync(ActorId, anio, semestre, cedula);
         return NoContent();

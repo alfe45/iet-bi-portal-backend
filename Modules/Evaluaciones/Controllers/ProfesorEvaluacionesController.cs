@@ -1,3 +1,5 @@
+using iet_bi_portal_backend.Common.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using iet_bi_portal_backend.Common.Controllers;
@@ -36,7 +38,7 @@ public class ProfesorEvaluacionesController(EvaluacionesService evaluaciones) : 
 
     /// <summary>CU06: elimina la nota de un estudiante (corrección) antes de confirmar. 404 (NF009/NF016); 403 (AD004); 409 (EV002/EV003/EV008).</summary>
     [HttpDelete("evaluaciones/{anio:int}/{nivel:int}/{numero:int}/{codigo}/{semestre}/{cedula}")]
-    public async Task<IActionResult> EliminarNota(int anio, int nivel, int numero, string codigo, string semestre, string cedula)
+    public async Task<IActionResult> EliminarNota(int anio, int nivel, int numero, string codigo, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula)
     {
         var asignacion = new ConsultaNotasAsignacion { Anio = anio, Nivel = nivel, Numero = numero, CodigoAsignatura = codigo, Semestre = semestre };
         await evaluaciones.EliminarNotaAsync(ActorId, asignacion, cedula);
