@@ -1,3 +1,5 @@
+using iet_bi_portal_backend.Common.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using iet_bi_portal_backend.Common.Controllers;
 using iet_bi_portal_backend.Modules.Evaluaciones.Models;
@@ -19,7 +21,7 @@ public class AdminProrrogasController(EvaluacionesService evaluaciones) : AdminC
 
     /// <summary>Otorga o cambia la prórroga. 404 (NF004/NF002); 400 (EV007) fecha no posterior al fin del semestre o pasada.</summary>
     [HttpPut(RutaProrroga)]
-    public async Task<IActionResult> Otorgar(int anio, string semestre, string cedula, OtorgarProrrogaRequest request)
+    public async Task<IActionResult> Otorgar(int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula, OtorgarProrrogaRequest request)
     {
         await evaluaciones.OtorgarProrrogaAsync(ActorId, anio, semestre, cedula, request);
         return NoContent();
@@ -27,7 +29,7 @@ public class AdminProrrogasController(EvaluacionesService evaluaciones) : AdminC
 
     /// <summary>Quita la prórroga. 404 (NF002/NF012).</summary>
     [HttpDelete(RutaProrroga)]
-    public async Task<IActionResult> Quitar(int anio, string semestre, string cedula)
+    public async Task<IActionResult> Quitar(int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, string cedula)
     {
         await evaluaciones.QuitarProrrogaAsync(ActorId, anio, semestre, cedula);
         return NoContent();

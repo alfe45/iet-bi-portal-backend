@@ -70,7 +70,8 @@ public class AdminMatriculasController(MatriculasService matriculas) : AdminCont
         return NoContent();
     }
 
-    /// <summary>CU20: elimina la matrícula. 404 (NF009); 409 (23001) si tiene registros asociados.</summary>
+    /// <summary>CU20: elimina la matrícula. 404 (NF009); 409 (MA007) matrícula de nivel 11 con continuidad en nivel 12;
+    /// 409 (23001) si tiene registros asociados.</summary>
     [HttpDelete(RutaMatricula)]
     public async Task<IActionResult> Eliminar(int anio, string cedula)
     {

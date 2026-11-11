@@ -27,6 +27,8 @@ REGISTRAR_PROFESOR      // Alta de perfil de profesor con su cuenta (datos y cue
 MODIFICAR_PROFESOR      // Modificación de un profesor (datos_anteriores = snapshot previo, datos_nuevos = datos nuevos).
 ELIMINAR_PROFESOR       // Eliminación del perfil de profesor y su cuenta (datos_anteriores = snapshot previo con email y roles).
 CREAR_CUENTA_PROFESOR   // Se creó la cuenta de un profesor que no tenía (datos_nuevos = idUsuario, email, roles).
+MODIFICAR_CUENTA_PROFESOR // CU03: cambió la cuenta del profesor junto con sus datos (datos_anteriores = email, activo y roles previos;
+                        // datos_nuevos = lo pedido + contrasenaRestablecida, nunca la contraseña). Desde el 08/11/2026 (RD-010).
 QUITAR_CUENTA_PROFESOR  // En desuso desde el 22/10/2026 (ya no se quita la cuenta: se elimina el profesor). Puede aparecer en logs anteriores.
 
 # Estudiantes

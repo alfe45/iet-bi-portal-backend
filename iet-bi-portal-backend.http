@@ -268,46 +268,33 @@ POST {{host}}/api/admin/asignaturas
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "codigo": "MAT", "nombre": "Matemáticas", "tipo": "MEP", "descripcion": null, "imparteNivel11": true, "imparteNivel12": true }
+{ "codigo": "QUI", "nombre": "Química", "tipo": "MEP", "descripcion": null, "imparteNivel11": true, "imparteNivel12": true }
 
-### CU21 - Registrar asignatura solo de nivel 11 (Cívica: el nivel 12 no la recibe)
+### CU21 - Registrar asignatura solo de nivel 11 (como Cívica y Estudios Sociales: el nivel 12 no la recibe)
 POST {{host}}/api/admin/asignaturas
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "codigo": "CIV", "nombre": "Educación Cívica", "tipo": "MEP", "descripcion": null, "imparteNivel11": true, "imparteNivel12": false }
+{ "codigo": "FIL", "nombre": "Filosofía", "tipo": "MEP", "descripcion": null, "imparteNivel11": true, "imparteNivel12": false }
 
-### CU21 - Registrar asignatura SUPERIOR (materia de monografía)
-POST {{host}}/api/admin/asignaturas
-Authorization: Bearer {{token}}
-Content-Type: application/json
 
-{ "codigo": "BIO", "nombre": "Biología", "tipo": "SUPERIOR", "descripcion": null, "imparteNivel11": true, "imparteNivel12": true }
-
-### CU21 - Registrar la asignatura CAS (TRONCAL, se identifica por el código CAS)
-POST {{host}}/api/admin/asignaturas
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{ "codigo": "CAS", "nombre": "Creatividad, Actividad y Servicio", "tipo": "TRONCAL", "descripcion": null, "imparteNivel11": true, "imparteNivel12": true }
-
-### CU22 - Listar asignaturas (filtros opcionales: tipo, nivel)
+### CU22 - Listar asignaturas (filtros opcionales: tipo, nivel). Incluye el catálogo del Instituto, siempre cargado: BIO (materia de la monografía), CAS y MON (no se eliminan: AS009)
 GET {{host}}/api/admin/asignaturas?tipo=&nivel=&pagina=1&tamanoPagina=20
 Authorization: Bearer {{token}}
 
 ### CU23 - Modificar asignatura
-PUT {{host}}/api/admin/asignaturas/MAT
+PUT {{host}}/api/admin/asignaturas/QUI
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "nombre": "Matemáticas", "tipo": "MEP", "descripcion": "Programa del MEP", "imparteNivel11": true, "imparteNivel12": true }
+{ "nombre": "Química", "tipo": "MEP", "descripcion": "Programa del MEP", "imparteNivel11": true, "imparteNivel12": true }
 
 ### CU25 - Asignar al profesor la asignatura y sección (se permite co-docencia)
 POST {{host}}/api/admin/asignaciones
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "MAT", "cedulaProfesor": "{{cedulaProfe}}" }
+{ "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "QUI", "cedulaProfesor": "{{cedulaProfe}}" }
 
 ### CU33 - Asignar el profesor CAS a la sección (asignación de la asignatura CAS; requiere rol PROFESOR_CAS)
 POST {{host}}/api/admin/asignaciones
@@ -479,7 +466,7 @@ Authorization: Bearer {{tokenProfe}}
 Content-Type: application/json
 
 {
-  "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "MAT",
+  "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "QUI",
   "fecha": "2026-09-01", "hora": "07:00:00", "tema": "Funciones", "ausentes": ["{{cedulaEst}}"], "tardias": []
 }
 
@@ -487,7 +474,7 @@ Content-Type: application/json
 @idLeccion = {{leccion.response.body.$.idLeccion}}
 
 ### Profesor Regular CU11 - Lecciones de mi asignación (semestre opcional: I_SEMESTRE / II_SEMESTRE)
-GET {{host}}/api/profesor/lecciones?anio={{anio}}&nivel=11&numero=1&codigoAsignatura=MAT&semestre=
+GET {{host}}/api/profesor/lecciones?anio={{anio}}&nivel=11&numero=1&codigoAsignatura=QUI&semestre=
 Authorization: Bearer {{tokenProfe}}
 
 ### Profesor Regular CU11 - Detalle de la lección con sus ausentes
@@ -509,7 +496,7 @@ Content-Type: application/json
 { "fecha": "2026-09-01", "hora": "07:00:00", "tema": "Funciones lineales", "ausentes": ["{{cedulaEst}}"], "tardias": [] }
 
 ### Profesor Regular CU11 - Resumen de ausentismo de mi asignación (ausencias contra lecciones)
-GET {{host}}/api/profesor/ausentismo?anio={{anio}}&nivel=11&numero=1&codigoAsignatura=MAT&semestre=
+GET {{host}}/api/profesor/ausentismo?anio={{anio}}&nivel=11&numero=1&codigoAsignatura=QUI&semestre=
 Authorization: Bearer {{tokenProfe}}
 
 ### Guía CU05 - Ausentismo de mi sección guía por estudiante y asignatura
@@ -532,12 +519,12 @@ Authorization: Bearer {{tokenProfe}}
 Content-Type: application/json
 
 {
-  "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "MAT", "semestre": "II_SEMESTRE",
+  "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "QUI", "semestre": "II_SEMESTRE",
   "notas": [ { "cedulaEstudiante": "{{cedulaEst}}", "nota": "85", "observaciones": "Buen análisis de problemas." } ]
 }
 
 ### Profesor Regular CU07 - Estado y notas de mi asignación en el semestre
-GET {{host}}/api/profesor/evaluaciones?anio={{anio}}&nivel=11&numero=1&codigoAsignatura=MAT&semestre=II_SEMESTRE
+GET {{host}}/api/profesor/evaluaciones?anio={{anio}}&nivel=11&numero=1&codigoAsignatura=QUI&semestre=II_SEMESTRE
 Authorization: Bearer {{tokenProfe}}
 
 ### Profesor Regular CU13 - Confirmar el registro de bandas (todos los estudiantes con nota)
@@ -545,7 +532,7 @@ POST {{host}}/api/profesor/evaluaciones/confirmacion
 Authorization: Bearer {{tokenProfe}}
 Content-Type: application/json
 
-{ "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "MAT", "semestre": "II_SEMESTRE" }
+{ "anio": {{anio}}, "nivel": 11, "numero": 1, "codigoAsignatura": "QUI", "semestre": "II_SEMESTRE" }
 
 ### Guía CU03 / CU04 - Notas de una sección (cualquier sección; notas registradas y si están confirmadas)
 GET {{host}}/api/profesor/guia/notas?anio={{anio}}&nivel=11&numero=1&semestre=II_SEMESTRE
@@ -695,8 +682,8 @@ Authorization: Bearer {{tokenProfe}}
 DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/CAS/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
-### Profesor Regular CU06 - Eliminar la nota de MAT (solo sin confirmar: EV008)
-DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/MAT/II_SEMESTRE/{{cedulaEst}}
+### Profesor Regular CU06 - Eliminar la nota de QUI (solo sin confirmar: EV008)
+DELETE {{host}}/api/profesor/evaluaciones/{{anio}}/11/1/QUI/II_SEMESTRE/{{cedulaEst}}
 Authorization: Bearer {{tokenProfe}}
 
 ### Coordinador de Monografía CU05 - Retirar el reporte del semestre (solo sin confirmar: MO008)
@@ -723,8 +710,8 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/admin/secciones/{{anioSiguiente}}/12/1/guia
 Authorization: Bearer {{token}}
 
-### CU28 - Eliminar las asignaciones que la subida copió a la 12-1 (MAT)
-DELETE {{host}}/api/admin/asignaciones/{{anioSiguiente}}/12/1/MAT/{{cedulaProfe}}
+### CU28 - Eliminar las asignaciones que la subida copió a la 12-1 (QUI)
+DELETE {{host}}/api/admin/asignaciones/{{anioSiguiente}}/12/1/QUI/{{cedulaProfe}}
 Authorization: Bearer {{token}}
 
 ### CU28 - Eliminar las asignaciones que la subida copió a la 12-1 (CAS)
@@ -744,7 +731,7 @@ DELETE {{host}}/api/admin/matriculas/{{anio}}/{{cedulaEst}}
 Authorization: Bearer {{token}}
 
 ### CU28 - Eliminar asignación
-DELETE {{host}}/api/admin/asignaciones/{{anio}}/11/1/MAT/{{cedulaProfe}}
+DELETE {{host}}/api/admin/asignaciones/{{anio}}/11/1/QUI/{{cedulaProfe}}
 Authorization: Bearer {{token}}
 
 ### CU16 - Quitar profesor guía
@@ -756,19 +743,11 @@ DELETE {{host}}/api/admin/secciones/{{anio}}/11/1
 Authorization: Bearer {{token}}
 
 ### CU24 - Eliminar asignaturas
-DELETE {{host}}/api/admin/asignaturas/CIV
+DELETE {{host}}/api/admin/asignaturas/FIL
 Authorization: Bearer {{token}}
 
 ###
-DELETE {{host}}/api/admin/asignaturas/MAT
-Authorization: Bearer {{token}}
-
-###
-DELETE {{host}}/api/admin/asignaturas/BIO
-Authorization: Bearer {{token}}
-
-###
-DELETE {{host}}/api/admin/asignaturas/CAS
+DELETE {{host}}/api/admin/asignaturas/QUI
 Authorization: Bearer {{token}}
 
 ### CU12 - Eliminar periodo (solo sin secciones)

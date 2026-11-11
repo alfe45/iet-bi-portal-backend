@@ -15,7 +15,7 @@ public class ConsultaPaginada
 /// <summary>Listado paginado con búsqueda de texto opcional (sin distinguir mayúsculas ni acentos).</summary>
 public class ConsultaConBusqueda : ConsultaPaginada
 {
-    [MaxLength(100)]
+    [MaxLength(100, ErrorMessage = "La búsqueda no puede superar 100 caracteres.")]
     public string? Busqueda { get; set; }
 }
 

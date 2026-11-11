@@ -34,9 +34,11 @@ public class AdminProfesoresController(ProfesoresService profesores) : AdminCont
         return profesor is null ? this.ApiError("NF002") : Ok(profesor);
     }
 
-    /// <summary>CU03: modifica un profesor (reemplazo completo de los campos editables). 404 (NF002) si no existe.</summary>
+    /// <summary>CU03: modifica un profesor (reemplazo completo de los campos editables) y, si viene <c>cuenta</c>, su correo,
+    /// contraseña, estado y roles, todo en una transacción (RD-010): si algo falla no se guarda nada. 404 (NF002); 400 (PR005)
+    /// fecha de nacimiento; cuenta: 409 (TA001) correo en uso, 400 (NU001/NU002), 409 (AU003-AU005, AU010, AU011, AU016-AU021).</summary>
     [HttpPut("{cedula}")]
-    public async Task<IActionResult> Actualizar(string cedula, ActualizarProfesorRequest request)
+    public async Task<IActionResult> Actualizar(string cedula, ModificarProfesorRequest request)
     {
         await profesores.ActualizarAsync(ActorId, cedula, request);
         return NoContent();

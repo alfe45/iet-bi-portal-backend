@@ -46,6 +46,17 @@ public class ProfesoresRepository(NpgsqlDataSource db)
             x => (x.GetString(0), x.IsDBNull(1) ? null : x.GetString(1)),
             actorId, cedula, r.Nombre, r.PrimerApellido, r.SegundoApellido, r.NumeroCelular, r.FechaNacimiento);
 
+    /// <summary>CU03 (RD-010): cambios de la cuenta en la misma transacción que los datos. Devuelve OK/SIN_CAMBIOS, el
+    /// snapshot previo de la cuenta, el id del usuario y si se creó la cuenta. Errores: NF002, NU001, NU002, TA001, AU003,
+    /// AU004, AU005, AU010, AU011, AU016 a AU021.</summary>
+    public Task<(string Estado, string? Anteriores, Guid IdUsuario, bool Creada)> ActualizarCuentaAsync(
+        Guid actorId, string cedula, ActualizarCuentaProfesorRequest c, string? hash) =>
+        db.PrimeroAsync<(string Estado, string? Anteriores, Guid IdUsuario, bool Creada)>(
+            "SELECT out_status, out_datos_anteriores::text, out_id_usuario, out_cuenta_creada " +
+            "FROM academico.fn_admin_actualizar_cuenta_profesor($1, $2::text, $3::text, $4::text, $5::boolean, $6::text[])",
+            x => (x.GetString(0), x.IsDBNull(1) ? null : x.GetString(1), x.GetGuid(2), x.GetBoolean(3)),
+            actorId, cedula, c.Email, hash, c.Activo, c.Roles?.ToArray());
+
     /// <summary>Elimina el perfil y su cuenta y devuelve el snapshot previo en JSON (con correo y roles).
     /// Errores: NF002, PR004, AU012, AU013, PR009 y 23001 (registros académicos que lo referencian).</summary>
     public Task<string> EliminarAsync(Guid actorId, string cedula) =>

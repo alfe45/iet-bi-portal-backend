@@ -12,6 +12,10 @@ namespace iet_bi_portal_backend.Modules.Errors;
 /// </summary>
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
+    /// <summary>Error del sistema (FA "Error del sistema" de las especificaciones, RD-003).</summary>
+    public const string CodigoErrorInterno = "INTERNAL_ERROR";
+    public const string MensajeErrorInterno = "Ocurrió un error inesperado. Intente de nuevo más tarde.";
+
     public async ValueTask<bool> TryHandleAsync(HttpContext http, Exception ex, CancellationToken ct)
     {
         var (status, codigo, mensaje) = ex switch
@@ -19,8 +23,10 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             PostgresException pg when ApiErrorCatalog.Errors.TryGetValue(pg.SqlState ?? "", out var info)
                 => (info.Status, pg.SqlState!, info.Mensaje),
 
-            PostgresException
-                => (StatusCodes.Status500InternalServerError, "DB_ERROR", "Ocurrió un error al procesar la solicitud."),
+            // RD-033: un error de base no catalogado (o la base caída) responde igual que
+            // cualquier otro error inesperado; el cliente no distingue en qué punto falló.
+            PostgresException or NpgsqlException
+                => (StatusCodes.Status500InternalServerError, CodigoErrorInterno, MensajeErrorInterno),
 
             UnauthorizedAccessException
                 => (StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "No autorizado."),
@@ -32,7 +38,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             BadHttpRequestException bad
                 => (bad.StatusCode, "BAD_REQUEST", "La solicitud no es válida."),
 
-            _ => (StatusCodes.Status500InternalServerError, "INTERNAL_ERROR", "Ocurrió un error inesperado.")
+            _ => (StatusCodes.Status500InternalServerError, CodigoErrorInterno, MensajeErrorInterno)
         };
 
         if (ex is PostgresException pg2 && !ApiErrorCatalog.Errors.ContainsKey(pg2.SqlState ?? ""))

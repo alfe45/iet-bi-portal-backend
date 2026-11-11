@@ -1,3 +1,5 @@
+using iet_bi_portal_backend.Common.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using iet_bi_portal_backend.Common.Controllers;
@@ -57,7 +59,7 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
     /// <summary>CU05: confirma el reporte del semestre al guía (RN-81); desde ahí queda bloqueado hasta que el guía reactive su
     /// edición. 404 (NF003/NF013/NF004/NF009); 403 (AD006); 400 (MO009); 409 (EV002/EV003/MO008).</summary>
     [HttpPut("{cedula}/reportes/{anio:int}/{semestre}")]
-    public async Task<IActionResult> EnviarReporte(string cedula, int anio, string semestre, ReporteMonografiaRequest request)
+    public async Task<IActionResult> EnviarReporte(string cedula, int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, ReporteMonografiaRequest request)
     {
         await monografias.EnviarReporteAsync(ActorId, cedula, anio, semestre, request);
         return NoContent();
@@ -66,7 +68,7 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
     /// <summary>CU05: guarda el reporte sin confirmarlo (borrador); el guía lo ve como pendiente de confirmación y el reporte
     /// de bandas lo imprime igual (RN-81). 404 (NF003/NF013/NF004/NF009); 403 (AD006); 400 (MO009); 409 (EV002/EV003/MO008).</summary>
     [HttpPut("{cedula}/reportes/{anio:int}/{semestre}/borrador")]
-    public async Task<IActionResult> GuardarBorrador(string cedula, int anio, string semestre, ReporteMonografiaRequest request)
+    public async Task<IActionResult> GuardarBorrador(string cedula, int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre, ReporteMonografiaRequest request)
     {
         await monografias.GuardarBorradorReporteAsync(ActorId, cedula, anio, semestre, request);
         return NoContent();
@@ -74,7 +76,7 @@ public class CoordinadorMonografiaController(MonografiasService monografias) : A
 
     /// <summary>CU05: retira el reporte del semestre antes de confirmarlo. 404 (NF003/NF013/NF004/NF017); 403 (AD006); 409 (EV002/EV003/MO008).</summary>
     [HttpDelete("{cedula}/reportes/{anio:int}/{semestre}")]
-    public async Task<IActionResult> EliminarReporte(string cedula, int anio, string semestre)
+    public async Task<IActionResult> EliminarReporte(string cedula, int anio, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre)
     {
         await monografias.EliminarReporteAsync(ActorId, cedula, anio, semestre);
         return NoContent();

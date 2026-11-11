@@ -1,3 +1,4 @@
+using iet_bi_portal_backend.Modules.Errors;
 using System.ComponentModel.DataAnnotations;
 using iet_bi_portal_backend.Common.Models;
 using iet_bi_portal_backend.Common.Security;
@@ -7,7 +8,7 @@ namespace iet_bi_portal_backend.Modules.Usuarios.Models;
 /// <summary>Usuario sin perfil (administrador inicial y pruebas): datos para registrar un usuario (nace con PROFESOR_REGULAR).</summary>
 public class RegistrarUsuarioRequest
 {
-    [Required, EmailAddress, MaxLength(254)]
+    [Required, EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string Email { get; set; } = string.Empty;
 
     [Required, MinLength(8), MaxLength(128)]
@@ -17,7 +18,7 @@ public class RegistrarUsuarioRequest
 /// <summary>CU03 (cuenta del profesor): nuevo correo del usuario.</summary>
 public class ActualizarEmailRequest
 {
-    [Required, EmailAddress, MaxLength(254)]
+    [Required, EmailAddress(ErrorMessage = MensajesValidacion.CorreoInvalido), MaxLength(254)]
     public string Email { get; set; } = string.Empty;
 }
 

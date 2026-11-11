@@ -26,9 +26,17 @@ public static class ErrorsModule
                         StatusCode = StatusCodes.Status413PayloadTooLarge
                     };
 
-                var mensaje = string.Join(" ", context.ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage));
+                // RD-007: mensajes en español; los de JSON mal formado se reemplazan y, si los hay,
+                // se omite el "cuerpo obligatorio" que ASP.NET agrega como consecuencia.
+                var errores = context.ModelState
+                    .SelectMany(kv => kv.Value!.Errors.Select(e => (Clave: kv.Key, e.ErrorMessage, e.Exception)))
+                    .ToList();
+                var hayJson = errores.Any(e => e.Exception is not null || MensajesValidacion.EsMensajeJson(e.ErrorMessage));
+                var mensaje = string.Join(" ", errores
+                    .Where(e => !(hayJson && e.Exception is null && !e.Clave.StartsWith('$')))
+                    .GroupBy(e => e.Clave).Select(g => g.First())   // un mensaje por campo (p. ej. [Required] y [StringLength] con "")
+                    .Select(e => MensajesValidacion.Texto(e.Clave, e.Exception is null ? e.ErrorMessage : null))
+                    .Distinct());
 
                 return new ObjectResult(new { codigo = "VAERR", mensaje })
                 {

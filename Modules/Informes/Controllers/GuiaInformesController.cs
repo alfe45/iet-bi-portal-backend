@@ -1,3 +1,5 @@
+using iet_bi_portal_backend.Common.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using iet_bi_portal_backend.Common.Controllers;
@@ -28,7 +30,7 @@ public class GuiaInformesController(InformesService informes) : ApiControllerBas
     /// y vuelve a confirmar. 204 también si no había nada confirmado. 404 (NF006); 403 (AD005); 409 (EV003) si el plazo
     /// de notas ya cerró para todas las asignaturas confirmadas.</summary>
     [HttpPut("{anio:int}/{nivel:int}/{numero:int}/reactivar/{semestre}")]
-    public async Task<IActionResult> ReactivarSeccion(int anio, int nivel, int numero, string semestre)
+    public async Task<IActionResult> ReactivarSeccion(int anio, int nivel, int numero, [RegularExpression(Semestres.Patron, ErrorMessage = Semestres.Mensaje)] string semestre)
     {
         await informes.ReactivarBandasSeccionAsync(ActorId, new ConsultaReporteBandas { Anio = anio, Nivel = nivel, Numero = numero, Semestre = semestre });
         return NoContent();
