@@ -29,7 +29,7 @@ CREATE TYPE academico.fila_reporte_bandas AS (
 
 -- ------------------------------------------------------------
 -- Guía CU08 / CU09 - Reporte de bandas de la sección guía en un semestre (AD005). p_cedula_estudiante NULL = toda
--- la sección; NF009 si el estudiante no se califica en la sección ese semestre.
+-- la sección; EV004 si el estudiante no se califica en la sección ese semestre.
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION academico.fn_guia_reporte_bandas(
     p_id_usuario UUID, p_anio INTEGER, p_nivel INTEGER, p_numero INTEGER, p_semestre academico.numero_semestre,
@@ -52,7 +52,7 @@ BEGIN
     WHERE e.cedula = v_cedula;
 
     IF v_cedula IS NOT NULL AND v_id_matricula IS NULL THEN
-        PERFORM api.fn_lanzar_excepcion('NF009', 'El estudiante no está matriculado en la sección ese semestre.');
+        PERFORM api.fn_lanzar_excepcion('EV004', 'El estudiante no se califica en la sección ese semestre.');
     END IF;
 
     RETURN QUERY

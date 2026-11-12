@@ -7,7 +7,7 @@ namespace iet_bi_portal_backend.Modules.Correo.Data;
 /// <summary>Destinatarios del correo a una sección (Profesor Regular CU12).</summary>
 public class CorreoRepository(NpgsqlDataSource db)
 {
-    /// <summary>Estudiantes sin retiro de la sección (cedulas null o vacío = todos). Errores: NF006, AD003, NF009 (cédula
+    /// <summary>Estudiantes sin retiro de la sección (cedulas null o vacío = todos). Errores: NF006, AD003, CO006 (cédula
     /// no matriculada o retirada), CO003 (nadie a quien enviar).</summary>
     public Task<List<DestinatarioCorreo>> DestinatariosAsync(Guid idUsuario, int anio, int nivel, int numero, List<string>? cedulas) =>
         db.ListarAsync(

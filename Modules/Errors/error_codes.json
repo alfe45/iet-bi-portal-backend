@@ -131,6 +131,7 @@
   "CO003": { "status": 409, "mensaje": "La sección no tiene estudiantes matriculados a quienes enviar el correo." },
   "CO004": { "status": 502, "mensaje": "No se pudo enviar el correo a ninguno de los estudiantes. Inténtalo de nuevo más tarde." },
   "CO005": { "status": 429, "mensaje": "Alcanzaste el máximo de envíos de correo por hora. Inténtalo de nuevo más tarde." },
+  "CO006": { "status": 404, "mensaje": "Un estudiante elegido no está matriculado en la sección o se retiró." },
 
   "23502": { "status": 400, "mensaje": "Falta un valor obligatorio." },
   "23505": { "status": 409, "mensaje": "Ya existe un registro con esos datos." },

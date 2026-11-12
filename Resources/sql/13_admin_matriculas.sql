@@ -672,7 +672,7 @@ END;
 $$;
 
 -- Profesor Regular CU12 - Destinatarios del correo a una sección (RN-92). Mismo acceso de RN-59 (AD003). Estudiantes
--- matriculados en la sección sin retiro: todos (p_cedulas NULL o vacío) o los elegidos, NF009 si alguna cédula no está
+-- matriculados en la sección sin retiro: todos (p_cedulas NULL o vacío) o los elegidos, CO006 si alguna cédula no está
 -- matriculada en la sección o está retirada; CO003 si no queda nadie. Cada fila trae también el nombre y el correo del
 -- profesor (remitente para responder). El envío lo hace el backend: esta función no modifica datos.
 CREATE OR REPLACE FUNCTION academico.fn_profesor_destinatarios_correo(
@@ -693,7 +693,7 @@ BEGIN
         WHERE NOT EXISTS (SELECT 1 FROM academico.matriculas m
                           JOIN academico.estudiantes e ON e.id_estudiante = m.id_estudiante
                           WHERE m.id_seccion = v_id_seccion AND m.fecha_retiro IS NULL AND e.cedula = c)) THEN
-        PERFORM api.fn_lanzar_excepcion('NF009', 'El estudiante no está matriculado en esa sección.');
+        PERFORM api.fn_lanzar_excepcion('CO006', 'El estudiante no está matriculado en esa sección.');
     END IF;
 
     RETURN QUERY
