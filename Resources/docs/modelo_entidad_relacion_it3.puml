@@ -1,0 +1,314 @@
+@startuml
+skinparam defaultFontName Arial
+skinparam dpi 100
+hide circle
+hide empty members
+skinparam nodesep 70
+skinparam ranksep 110
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam ArrowThickness 1.4
+skinparam ArrowFontSize 12
+skinparam ArrowFontColor #333333
+skinparam packageBorderColor #999999
+skinparam packageFontSize 16
+skinparam packageFontStyle bold
+skinparam classFontSize 12
+skinparam classAttributeFontSize 12
+skinparam linetype polyline
+title <size:26><b>Modelo entidad-relación — iet_bi_portal_backend (PostgreSQL) — iteración 3</b></size>\n<size:14>Fuente: Resources/sql/03_auth.sql, 04_logs.sql y 06_academico_tablas.sql · 22 tablas · 30 relaciones · ? = admite NULL · PK clave primaria · FK clave foránea · UQ único</size>
+
+package "Seguridad y auditoría (api)" #dae8fc20 {
+  entity "<b>usuarios</b> <size:11>(api)</size>\n<size:11><color:#1a5fb4>clase: Usuario</color></size>" as usuarios #dae8fc;line:6c8ebf {
+    <b>PK</b> <u>id_usuario</u> : UUID
+    --
+    <b>UQ</b> email : CITEXT
+    password_hash : TEXT
+    activo : BOOLEAN
+    intentos_fallidos_login : INTEGER
+    bloqueado_hasta : TIMESTAMPTZ?
+    ultimo_login : TIMESTAMPTZ?
+    password_cambiada_en : TIMESTAMPTZ
+    tokens_invalidados_desde : TIMESTAMPTZ?
+    creado_en : TIMESTAMPTZ
+    actualizado_en : TIMESTAMPTZ
+  }
+  entity "<b>usuario_roles</b> <size:11>(api)</size>\n<size:11><color:#1a5fb4>clase: Usuario.roles (multivaluado)</color></size>" as usuario_roles #dae8fc;line:6c8ebf {
+    <b>PK,FK</b> <u>id_usuario</u> : UUID
+    <b>PK</b> <u>rol</u> : api.roles
+    --
+    asignado_en : TIMESTAMPTZ
+    <b>FK</b> asignado_por : UUID?
+  }
+  entity "<b>sesiones</b> <size:11>(api)</size>\n<size:11><color:#1a5fb4>clase: Sesion</color></size>" as sesiones #dae8fc;line:6c8ebf {
+    <b>PK</b> <u>id_sesion</u> : UUID
+    --
+    <b>FK</b> id_usuario : UUID
+    <b>UQ</b> token_hash : TEXT
+    creado_en : TIMESTAMPTZ
+    expira_en : TIMESTAMPTZ
+    rotado_en : TIMESTAMPTZ?
+    direccion_ip : TEXT?
+    agente_usuario : TEXT?
+  }
+  entity "<b>bootstrap_admin</b> <size:11>(api)</size>\n<size:11><color:#1a5fb4>clase: PrimerAdministrador</color></size>" as bootstrap_admin #dae8fc;line:6c8ebf {
+    <b>PK</b> <u>id_bootstrap</u> : INTEGER (=1)
+    --
+    <b>FK</b> id_usuario : UUID?
+    creado_en : TIMESTAMPTZ
+  }
+  entity "<b>logs</b> <size:11>(api)</size>\n<size:11><color:#1a5fb4>clase: RegistroAuditoria</color></size>" as logs #dae8fc;line:6c8ebf {
+    <b>PK</b> <u>id_log</u> : UUID
+    --
+    id_usuario : UUID? (sin FK)
+    email_usuario : TEXT?
+    accion : TEXT
+    tabla_afectada : TEXT?
+    id_registro_afectado : TEXT?
+    datos_anteriores : JSONB?
+    datos_nuevos : JSONB?
+    direccion_ip : TEXT?
+    agente_usuario : TEXT?
+    creado_en : TIMESTAMPTZ
+  }
+}
+
+package "Personas" #e1d5e720 {
+  entity "<b>profesores</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Profesor (Persona)</color></size>" as profesores #e1d5e7;line:9673a6 {
+    <b>PK</b> <u>id_profesor</u> : BIGINT
+    --
+    nombre : VARCHAR(100)
+    primer_apellido : VARCHAR(100)
+    segundo_apellido : VARCHAR(100)?
+    <b>UQ</b> cedula : VARCHAR(20)
+    numero_celular : VARCHAR(20)?
+    fecha_nacimiento : DATE
+    <b>FK,UQ</b> id_usuario : UUID?
+  }
+  entity "<b>estudiantes</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Estudiante (Persona)</color></size>" as estudiantes #e1d5e7;line:9673a6 {
+    <b>PK</b> <u>id_estudiante</u> : BIGINT
+    --
+    nombre : VARCHAR(100)
+    primer_apellido : VARCHAR(100)
+    segundo_apellido : VARCHAR(100)?
+    <b>UQ</b> cedula : VARCHAR(20)
+    numero_celular : VARCHAR(20)?
+    <b>UQ</b> email : CITEXT
+    fecha_nacimiento : DATE
+    fecha_registro : TIMESTAMPTZ
+  }
+}
+
+package "Estructura académica" #d5e8d420 {
+  entity "<b>periodos_academicos</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: PeriodoAcademico</color></size>" as periodos_academicos #d5e8d4;line:82b366 {
+    <b>PK</b> <u>id_periodo</u> : BIGINT
+    --
+    <b>UQ</b> anio : INTEGER
+    inicio_semestre_i : DATE
+    fin_semestre_i : DATE
+    inicio_semestre_ii : DATE
+    fin_semestre_ii : DATE
+  }
+  entity "<b>secciones</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Seccion</color></size>" as secciones #d5e8d4;line:82b366 {
+    <b>PK</b> <u>id_seccion</u> : BIGINT
+    --
+    <b>FK</b> id_periodo : BIGINT
+    nivel : SMALLINT (11|12)
+    numero : SMALLINT
+    <b>FK</b> id_profesor_guia : BIGINT?
+  }
+  entity "<b>asignaturas</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Asignatura</color></size>" as asignaturas #d5e8d4;line:82b366 {
+    <b>PK</b> <u>id_asignatura</u> : BIGINT
+    --
+    <b>UQ</b> codigo : VARCHAR(10)
+    <b>UQ</b> nombre : CITEXT
+    tipo : tipo_asignatura
+    descripcion : VARCHAR(255)?
+    imparte_nivel_11 : BOOLEAN
+    imparte_nivel_12 : BOOLEAN
+  }
+  entity "<b>asignaciones_docentes</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: AsignacionDocente</color></size>" as asignaciones_docentes #d5e8d4;line:82b366 {
+    <b>PK</b> <u>id_asignacion</u> : BIGINT
+    --
+    <b>FK</b> id_seccion : BIGINT
+    <b>FK</b> id_asignatura : BIGINT
+    <b>FK</b> id_profesor : BIGINT
+    creado_en : TIMESTAMPTZ
+  }
+  entity "<b>matriculas</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Matricula</color></size>" as matriculas #d5e8d4;line:82b366 {
+    <b>PK</b> <u>id_matricula</u> : BIGINT
+    --
+    <b>FK</b> id_estudiante : BIGINT
+    <b>FK</b> id_periodo : BIGINT
+    <b>FK</b> id_seccion : BIGINT
+    fecha_matricula : DATE
+    fecha_retiro : DATE?
+    motivo_retiro : VARCHAR(255)?
+    creado_en : TIMESTAMPTZ
+  }
+  entity "<b>prorrogas</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Prorroga</color></size>" as prorrogas #d5e8d4;line:82b366 {
+    <b>PK,FK</b> <u>id_profesor</u> : BIGINT
+    <b>PK,FK</b> <u>id_periodo</u> : BIGINT
+    <b>PK</b> <u>semestre</u> : numero_semestre
+    --
+    fecha_limite : DATE
+    creado_en : TIMESTAMPTZ
+  }
+}
+
+package "Asistencia y notas" #ffe6cc20 {
+  entity "<b>lecciones</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Leccion</color></size>" as lecciones #ffe6cc;line:d79b00 {
+    <b>PK</b> <u>id_leccion</u> : BIGINT
+    --
+    <b>FK</b> id_asignacion : BIGINT
+    fecha : DATE
+    hora : TIME
+    tema : VARCHAR(255)?
+    creado_en : TIMESTAMPTZ
+  }
+  entity "<b>ausencias</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Ausencia</color></size>" as ausencias #ffe6cc;line:d79b00 {
+    <b>PK,FK</b> <u>id_leccion</u> : BIGINT
+    <b>PK,FK</b> <u>id_matricula</u> : BIGINT
+    --
+    tardia : BOOLEAN
+    justificacion : VARCHAR(255)?
+    justificada_en : TIMESTAMPTZ?
+  }
+  entity "<b>evaluaciones</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Evaluacion</color></size>" as evaluaciones #ffe6cc;line:d79b00 {
+    <b>PK</b> <u>id_evaluacion</u> : BIGINT
+    --
+    <b>FK</b> id_asignacion : BIGINT
+    <b>FK</b> id_matricula : BIGINT
+    semestre : numero_semestre
+    nota : VARCHAR(3)
+    observaciones : VARCHAR(500)?
+    creado_en : TIMESTAMPTZ
+    modificado_en : TIMESTAMPTZ
+  }
+  entity "<b>confirmaciones_notas</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: ConfirmacionNotas</color></size>" as confirmaciones_notas #ffe6cc;line:d79b00 {
+    <b>PK,FK</b> <u>id_asignacion</u> : BIGINT
+    <b>PK</b> <u>semestre</u> : numero_semestre
+    --
+    confirmado_en : TIMESTAMPTZ
+  }
+}
+
+package "Monografías" #fad9d520 {
+  entity "<b>monografias</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: Monografia</color></size>" as monografias #fad9d5;line:ae4132 {
+    <b>PK</b> <u>id_monografia</u> : BIGINT
+    --
+    <b>FK,UQ</b> id_estudiante : BIGINT
+    <b>FK</b> id_matricula_inicio : BIGINT
+    <b>FK</b> id_coordinador : BIGINT
+    <b>FK</b> id_asignatura : BIGINT
+    estado : estado_monografia
+    creado_en : TIMESTAMPTZ
+  }
+  entity "<b>seguimientos_monografia</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: SeguimientoMonografia</color></size>" as seguimientos_monografia #fad9d5;line:ae4132 {
+    <b>PK</b> <u>id_seguimiento</u> : BIGINT
+    --
+    <b>FK</b> id_monografia : BIGINT
+    fecha : DATE
+    observacion : VARCHAR(1000)
+    creado_en : TIMESTAMPTZ
+  }
+  entity "<b>reportes_monografia</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: ReporteMonografia</color></size>" as reportes_monografia #fad9d5;line:ae4132 {
+    <b>PK,FK</b> <u>id_monografia</u> : BIGINT
+    <b>PK,FK</b> <u>id_periodo</u> : BIGINT
+    <b>PK</b> <u>semestre</u> : numero_semestre
+    --
+    observaciones : VARCHAR(1000)
+    enviado_en : TIMESTAMPTZ?
+  }
+}
+
+package "CAS" #d0eef020 {
+  entity "<b>informes_cas</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: InformeCas</color></size>" as informes_cas #d0eef0;line:10739e {
+    <b>PK</b> <u>id_informe</u> : BIGINT
+    --
+    <b>FK</b> id_asignacion : BIGINT
+    <b>FK</b> id_matricula : BIGINT
+    semestre : numero_semestre
+    perfil : BOOLEAN
+    entrevista_1 : BOOLEAN
+    entrevista_2 : BOOLEAN
+    entrevista_final : BOOLEAN
+    observaciones : VARCHAR(2000)?
+    creado_en : TIMESTAMPTZ
+    modificado_en : TIMESTAMPTZ
+  }
+  entity "<b>experiencias_cas</b> <size:11>(academico)</size>\n<size:11><color:#1a5fb4>clase: ExperienciaCas</color></size>" as experiencias_cas #d0eef0;line:10739e {
+    <b>PK,FK</b> <u>id_informe</u> : BIGINT
+    <b>PK</b> <u>orden</u> : SMALLINT (1..30)
+    --
+    descripcion : VARCHAR(255)
+    fecha_inicio : DATE?
+    fecha_fin : DATE?
+    creatividad : BOOLEAN
+    actividad : BOOLEAN
+    servicio : BOOLEAN
+    resultados_aprendizaje : SMALLINT[]
+    carpeta : BOOLEAN
+    reflexion : BOOLEAN
+    pruebas : BOOLEAN
+  }
+}
+
+usuario_roles }o-[#3d6aa8]-|| usuarios : "tiene"
+usuario_roles }o-[#3d6aa8]-o| usuarios : "asignado por"
+sesiones }o-[#3d6aa8]-|| usuarios : "abre"
+bootstrap_admin |o-[#3d6aa8]-o| usuarios : "primer admin"
+profesores |o-[#3d6aa8]-o| usuarios : "cuenta"
+prorrogas }o-[#7a4f99]-|| profesores : "recibe"
+prorrogas }o-[#4d8a37]-|| periodos_academicos : "en"
+secciones }o-[#4d8a37]-|| periodos_academicos : "contiene"
+secciones }o-[#7a4f99]-o| profesores : "guía (1 por periodo)"
+asignaciones_docentes }o-[#4d8a37]-|| secciones : "imparte en"
+asignaciones_docentes }o-[#4d8a37]-|| asignaturas : "de"
+asignaciones_docentes }o-[#7a4f99]-|| profesores : "imparte"
+matriculas }o-[#7a4f99]-|| estudiantes : "se matricula (1 por periodo)"
+matriculas }o-[#4d8a37]-|| secciones : "FK (id_seccion, id_periodo)"
+confirmaciones_notas }o-[#4d8a37]-|| asignaciones_docentes : "confirma notas"
+lecciones }o-[#4d8a37]-|| asignaciones_docentes : "registra"
+ausencias }o-[#b87d00]-|| lecciones : "en"
+ausencias }o-[#4d8a37]-|| matriculas : "de"
+evaluaciones }o-[#4d8a37]-|| asignaciones_docentes : "califica"
+evaluaciones }o-[#4d8a37]-|| matriculas : "de"
+monografias |o-[#7a4f99]-|| estudiantes : "realiza"
+monografias }o-[#4d8a37]-|| matriculas : "inicia en"
+monografias }o-[#7a4f99]-|| profesores : "coordina"
+monografias }o-[#4d8a37]-|| asignaturas : "en materia"
+seguimientos_monografia }o-[#ae4132]-|| monografias : "tiene"
+reportes_monografia }o-[#ae4132]-|| monografias : "reporta"
+reportes_monografia }o-[#4d8a37]-|| periodos_academicos : "en"
+informes_cas }o-[#4d8a37]-|| asignaciones_docentes : "CAS"
+informes_cas }o-[#4d8a37]-|| matriculas : "de"
+experiencias_cas }o-[#10739e]-|| informes_cas : "contiene"
+
+legend right
+<b>Notación (pata de gallo)</b>
+──┼  uno obligatorio     ──o┼  cero o uno     ──o<  cero o muchos
+La línea toma el color del área de la tabla padre.
+
+<b>Tipos enumerados</b>
+api.roles: ADMIN, PROFESOR_REGULAR, PROFESOR_CAS, GUIA, COORD_MONOGRAFIA, COORD_CAS
+tipo_asignatura: TRONCAL, SUPERIOR, MEDIO, MEP
+numero_semestre: I_SEMESTRE, II_SEMESTRE
+estado_monografia: CAPACITACION, INVESTIGACION, TERMINADA
+estado_periodo / estado_matricula: derivados por función (no se guardan)
+
+<b>Notas</b>
+• matriculas → secciones es una FK compuesta (id_seccion, id_periodo).
+• logs.id_usuario no tiene FK: la auditoría conserva al actor aunque se elimine.
+• profesores.id_usuario: la cuenta es obligatoria; solo es nula en profesores anteriores.
+• Catálogo obligatorio (RP-25): las asignaturas CAS y MON son del sistema (no se eliminan, siempre TRONCAL).
+
+<b>Correspondencia con el modelo de dominio</b>
+• Cada tabla indica su clase del dominio (texto azul); cada clase persistente tiene su tabla.
+• No son tablas: ReporteBandas, BandaAsignatura, MonografiaReporte y AvisoNotas son tipos de
+  resultado (CREATE TYPE) que calculan funciones a partir de las tablas:
+  – fila_reporte_bandas ← academico.fn_guia_reporte_bandas
+  – reporte_monografia_seccion ← academico.fn_guia_reportes_monografia
+  – aviso_notas ← academico.fn_profesor_avisos_notas
+endlegend
+@enduml
