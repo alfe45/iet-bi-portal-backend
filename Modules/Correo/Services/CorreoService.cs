@@ -28,7 +28,7 @@ public class CorreoService(CorreoRepository repo, IServicioCorreo correo, Limite
     private static readonly FileExtensionContentTypeProvider TiposMime = new();
 
     /// <summary>Profesor Regular CU12: envía el correo a cada estudiante por separado, con el profesor en "responder a"
-    /// (RN-92). Errores de la DB: NF006, AD003, NF009, CO003. Se audita con los enviados y los fallidos (también si
+    /// (RN-92). Errores de la DB: NF006, AD003, CO006, CO003. Se audita con los enviados y los fallidos (también si
     /// fallaron todos: CO004).</summary>
     public async Task<ResultadoEnvioCorreo> EnviarSeccionAsync(Guid actorId, int anio, int nivel, int numero, EnvioCorreoSeccion envio)
     {

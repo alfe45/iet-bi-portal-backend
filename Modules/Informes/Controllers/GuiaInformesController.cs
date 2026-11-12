@@ -21,7 +21,7 @@ public class GuiaInformesController(InformesService informes) : ApiControllerBas
     public async Task<IActionResult> Seccion([FromQuery] ConsultaReporteBandas consulta) =>
         Ok(await informes.ReportesSeccionAsync(ActorId, consulta));
 
-    /// <summary>CU08: 404 (NF006); 404 (NF009) si el estudiante no se califica en la sección ese semestre.</summary>
+    /// <summary>CU08: 404 (NF006); 400 (EV004) si el estudiante no se califica en la sección ese semestre.</summary>
     [HttpGet("{cedula}")]
     public async Task<IActionResult> Estudiante(string cedula, [FromQuery] ConsultaReporteBandas consulta) =>
         Ok(await informes.ReporteEstudianteAsync(ActorId, consulta, cedula));

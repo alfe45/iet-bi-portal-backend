@@ -27,6 +27,8 @@ public class AsignarGuiaRequest
 public class ConsultaSecciones : ConsultaPaginada
 {
     public int? Anio { get; set; }
+
+    [Range(11, 12, ErrorMessage = "El nivel debe ser 11 u 12.")]
     public int? Nivel { get; set; }
 }
 

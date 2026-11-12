@@ -16,7 +16,7 @@ public class ProfesorCorreoController(CorreoService correo) : ApiControllerBase
 {
     /// <summary>multipart/form-data: asunto, mensaje, cedulas (repetido; vacío = todos los estudiantes sin retiro) y
     /// adjuntos (repetido). 200 con los enviados y los fallidos. 400 (VAERR); 400 (CO001) tipo de archivo no permitido;
-    /// 400 (CO002) más de 10 adjuntos, más de 10 MB o un archivo vacío; 404 (NF006); 403 (AD003); 404 (NF009) cédula
+    /// 400 (CO002) más de 10 adjuntos, más de 10 MB o un archivo vacío; 404 (NF006); 403 (AD003); 404 (CO006) cédula
     /// no matriculada en la sección o retirada; 409 (CO003) nadie a quien enviar; 429 (CO005) más de 10 envíos por
     /// hora; 502 (CO004) no se pudo enviar a ninguno; 413 si la petición pasa de 11 MB.</summary>
     [HttpPost("{anio:int}/{nivel:int}/{numero:int}/correo")]

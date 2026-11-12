@@ -9,7 +9,7 @@ namespace iet_bi_portal_backend.Modules.Informes.Data;
 public class InformesRepository(NpgsqlDataSource db)
 {
     /// <summary>Una fila por estudiante y asignación (CodigoAsignatura null si la sección no tiene asignaciones), con el
-    /// nombre del guía de la sección. Errores: NF006, AD005, NF009.</summary>
+    /// nombre del guía de la sección. Errores: NF006, AD005, EV004.</summary>
     public Task<List<(string Cedula, string Nombre, BandaAsignatura? Banda, string? NombreGuia)>> FilasAsync(Guid idUsuario, ConsultaReporteBandas c, string? cedula) =>
         db.ListarAsync(
             "SELECT cedula_estudiante, nombre_estudiante, codigo_asignatura, asignatura, tipo_asignatura::text, nombre_profesor, " +
